@@ -7,6 +7,9 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.provider.DocumentsContract;
+import android.app.AlertDialog;
+import java.util.concurrent.CancellationException;
 import android.os.Environment;
 import android.graphics.Color;
 import android.view.View;
@@ -26,6 +29,12 @@ public class MainActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile boolean cancelled = false;
+    private final ExecutorService updateWorker = Executors.newSingleThreadExecutor();
+    private GithubUpdater.Cancel updateCancel;
+    private Button updatesButton;
+    private boolean updateBusy = false;
+    private AlertDialog downloadDialog;
+    private File pendingUpdate;
     private EditText urlField, proxyField;
     private Spinner formatField, qualityField;
     private CheckBox proxyEnabled, cookiesEnabled;
@@ -51,7 +60,14 @@ public class MainActivity extends Activity {
         label(outer, "Ссылка на видео");
         urlField = new EditText(this); urlField.setSingleLine(true);
         urlField.setHint("https://www.youtube.com/watch?v=...");
-        outer.addView(urlField);
+        LinearLayout linkRow=new LinearLayout(this);
+        linkRow.setOrientation(LinearLayout.HORIZONTAL);
+        linkRow.addView(urlField,new LinearLayout.LayoutParams(0,-2,1));
+        Button clear=new Button(this);
+        clear.setText("✕");clear.setContentDescription("Очистить ссылку");
+        clear.setOnClickListener(v -> urlField.setText(""));
+        linkRow.addView(clear);
+        outer.addView(linkRow);
         Button paste = button(outer, "Вставить из буфера обмена");
         paste.setOnClickListener(v -> {
             android.content.ClipboardManager cm=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
@@ -66,19 +82,30 @@ public class MainActivity extends Activity {
             public void onNothingSelected(android.widget.AdapterView<?> p) {}
             public void onItemSelected(android.widget.AdapterView<?> p, View v, int pos,long id) { qualityField.setEnabled(pos==0); }
         });
-        label(outer, "Настройки");
-        proxyEnabled = new CheckBox(this); proxyEnabled.setText("Использовать HTTP/HTTPS-прокси"); outer.addView(proxyEnabled);
-        proxyField = new EditText(this); proxyField.setHint("http://server:8118"); proxyField.setSingleLine(true); outer.addView(proxyField);
-        cookiesEnabled = new CheckBox(this); cookiesEnabled.setText("Использовать cookies.txt"); outer.addView(cookiesEnabled);
-        Button pick = button(outer, "Выбрать cookies.txt");
+        Button settingsToggle=button(outer,"⚙ Настройки ▾");
+        LinearLayout settingsGroup=new LinearLayout(this);
+        settingsGroup.setOrientation(LinearLayout.VERTICAL);
+        settingsGroup.setVisibility(View.GONE);
+        outer.addView(settingsGroup);
+        settingsToggle.setOnClickListener(v -> {
+            boolean expanded=settingsGroup.getVisibility()!=View.VISIBLE;
+            settingsGroup.setVisibility(expanded?View.VISIBLE:View.GONE);
+            settingsToggle.setText(expanded?"⚙ Настройки ▴":"⚙ Настройки ▾");
+        });
+        proxyEnabled = new CheckBox(this); proxyEnabled.setText("Использовать HTTP/HTTPS-прокси"); settingsGroup.addView(proxyEnabled);
+        proxyField = new EditText(this); proxyField.setHint("http://server:8118"); proxyField.setSingleLine(true); settingsGroup.addView(proxyField);
+        cookiesEnabled = new CheckBox(this); cookiesEnabled.setText("Использовать cookies.txt"); settingsGroup.addView(cookiesEnabled);
+        Button pick = button(settingsGroup, "Выбрать cookies.txt");
         pick.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("*/*");
             startActivityForResult(intent, COOKIES_PICKER);
         });
-        cookieStatus = new TextView(this); cookieStatus.setText("Файл не выбран"); outer.addView(cookieStatus);
-        label(outer, "Сохранение: системная папка Загрузки / Downloads");
+        cookieStatus = new TextView(this); cookieStatus.setText("Файл не выбран"); settingsGroup.addView(cookieStatus);
+        updatesButton=button(settingsGroup,"Проверить обновления");
+        updatesButton.setOnClickListener(v -> checkUpdates(true));
+        label(outer, "Сохранение: Загрузки / YoutubeVideoDownloader");
         progress = new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100); outer.addView(progress, new LinearLayout.LayoutParams(-1, 16));
         status = new TextView(this); status.setText("Готово к загрузке."); status.setPadding(0,12,0,12); outer.addView(status);
@@ -95,6 +122,9 @@ public class MainActivity extends Activity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             try { startActivity(intent); } catch(Exception e) { status.setText("Нет приложения для открытия файла"); }
         });
+        Button folder=button(outer,"Открыть папку с файлом");
+        folder.setOnClickListener(v -> openFolder());
+        label(outer,"Версия: "+getPackageVersion());
         android.content.SharedPreferences prefs=getPreferences(MODE_PRIVATE);
         formatField.setSelection(prefs.getInt("mode",0));
         qualityField.setSelection(prefs.getInt("quality",0));
@@ -108,6 +138,7 @@ public class MainActivity extends Activity {
             String shared=input.getStringExtra(Intent.EXTRA_TEXT);
             if(shared!=null) urlField.setText(shared);
         }
+        checkUpdates(false);
     }
     private void label(LinearLayout box, String value){TextView t=new TextView(this);t.setText(value);t.setPadding(0,16,0,4);box.addView(t);}
     private Button button(LinearLayout box,String value){ Button b=new Button(this);b.setText(value);box.addView(b);return b;}
@@ -166,10 +197,9 @@ public class MainActivity extends Activity {
                 request.addOption("--no-part");
                 request.addOption("--no-mtime");
                 request.addOption("--newline");
-                request.addOption("--restrict-filenames");
                 request.addOption("--print","after_move:filepath");
                 request.addOption("-P",temp.getAbsolutePath());
-                request.addOption("-o",audio?"%(title)s [%(id)s] [MP3 192kbps].%(ext)s":"%(title)s [%(id)s] [%(height)sp].%(ext)s");
+                request.addOption("-o","%(title).180B.%(ext)s");
                 request.addOption("-f",DownloadOptions.format(audio,quality));
                 if(audio) {
                     request.addOption("-x");request.addOption("--audio-format","mp3");
@@ -230,12 +260,147 @@ public class MainActivity extends Activity {
         getContentResolver().update(uri,values,null,null);
         return uri;
     }
+    private String getPackageVersion() {
+        try{return getPackageManager().getPackageInfo(getPackageName(),0).versionName;}
+        catch(Exception ignored){return "?";}
+    }
+
+    private void openFolder() {
+        // ACTION_VIEW works with some file managers, ACTION_OPEN_DOCUMENT is the fallback.
+        Uri folder=DocumentsContract.buildDocumentUri(
+            "com.android.externalstorage.documents", "primary:Download/YoutubeVideoDownloader");
+        Intent view=new Intent(Intent.ACTION_VIEW);
+        view.setDataAndType(folder,DocumentsContract.Document.MIME_TYPE_DIR);
+        view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try { startActivity(view); }
+        catch(Exception ignored) {
+            try {
+                Intent files=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                files.setType("*/*");
+                files.addCategory(Intent.CATEGORY_OPENABLE);
+                files.putExtra(DocumentsContract.EXTRA_INITIAL_URI,folder);
+                startActivity(files);
+            }catch(Exception ex) {status.setText("Не удалось открыть файловый менеджер");}
+        }
+    }
+
+    private void checkUpdates(boolean manual) {
+        if(updateBusy)return;
+        updateBusy=true;
+        updatesButton.setEnabled(false);
+        updatesButton.setText("Проверка обновлений…");
+        updateWorker.execute(() -> {
+            try {
+                GithubUpdater.Candidate candidate=new GithubUpdater(this).check();
+                runOnUiThread(() -> {
+                    if(isFinishing() || isDestroyed())return;
+                    if(candidate!=null)showUpdateOffer(candidate);
+                    else if(manual)new AlertDialog.Builder(this).setTitle("Обновления")
+                        .setMessage("Установлена последняя версия.").setPositiveButton("ОК",null).show();
+                });
+            }catch(Exception ex) {
+                if(manual)runOnUiThread(() -> {
+                    if(!isFinishing() && !isDestroyed())new AlertDialog.Builder(this).setTitle("Ошибка проверки")
+                        .setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
+                });
+            }finally {
+                runOnUiThread(() -> {
+                    updateBusy=false;
+                    if(updatesButton!=null){updatesButton.setEnabled(true);updatesButton.setText("Проверить обновления");}
+                });
+            }
+        });
+    }
+
+    private void showUpdateOffer(GithubUpdater.Candidate candidate) {
+        new AlertDialog.Builder(this)
+            .setTitle("Доступно обновление "+candidate.tag)
+            .setMessage("Скачать новую версию с GitHub Releases и установить поверх текущей?")
+            .setNegativeButton("Позже",null)
+            .setPositiveButton("Скачать", (dialog,which) -> downloadUpdate(candidate))
+            .show();
+    }
+
+    private void downloadUpdate(GithubUpdater.Candidate candidate) {
+        if(updateBusy)return;
+        updateBusy=true;updatesButton.setEnabled(false);
+        updateCancel=new GithubUpdater.Cancel();
+        LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32,18,32,18);
+        ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        TextView label=new TextView(this);label.setText("Загружено: 0%");
+        layout.addView(label);layout.addView(bar);
+        downloadDialog=new AlertDialog.Builder(this)
+            .setTitle("Скачивание обновления "+candidate.tag)
+            .setView(layout)
+            .setNegativeButton("Отмена",(d,w)->updateCancel.cancel())
+            .setOnCancelListener(d->updateCancel.cancel()).create();
+        downloadDialog.show();
+        updateWorker.execute(() -> {
+            try {
+                GithubUpdater updater=new GithubUpdater(this);
+                File file=updater.download(candidate,updateCancel,(received,total) ->
+                    runOnUiThread(() -> {
+                        if(downloadDialog!=null && downloadDialog.isShowing()){
+                            int percent=(int)(received*100/Math.max(total,1));
+                            bar.setProgress(percent);
+                            label.setText("Загружено: "+percent+"%");
+                        }
+                    }));
+                pendingUpdate=file;
+                runOnUiThread(() -> {
+                    downloadDialog.dismiss();
+                    new AlertDialog.Builder(this).setTitle("Обновление скачано")
+                        .setMessage("APK проверен. Установить версию "+candidate.tag+"?")
+                        .setNegativeButton("Позже",null)
+                        .setPositiveButton("Установить",(d,w)->installUpdate()).show();
+                });
+            }catch(Exception ex) {
+                runOnUiThread(() -> {
+                    if(downloadDialog!=null)downloadDialog.dismiss();
+                    if(!(ex instanceof CancellationException))
+                        new AlertDialog.Builder(this).setTitle("Ошибка обновления")
+                            .setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
+                });
+            }finally {
+                runOnUiThread(() -> {updateBusy=false;updatesButton.setEnabled(true);});
+            }
+        });
+    }
+
+    private void installUpdate() {
+        if(pendingUpdate==null)return;
+        try {new GithubUpdater(this).install(pendingUpdate);}
+        catch(SecurityException ex) {
+            // Android will return here after permission is granted.
+            Toast.makeText(this,ex.getMessage(),Toast.LENGTH_LONG).show();
+        }catch(Exception ex) {
+            new AlertDialog.Builder(this).setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
+        }
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if(pendingUpdate!=null && pendingUpdate.isFile() && getPackageManager().canRequestPackageInstalls()) {
+            File file=pendingUpdate;
+            pendingUpdate=null;
+            new AlertDialog.Builder(this).setTitle("Установить обновление?")
+                .setPositiveButton("Установить",(d,w)->{
+                    pendingUpdate=file;
+                    installUpdate();
+                }).setNegativeButton("Позже",null).show();
+        }
+    }
+
     private void cleanup(File dir) {
         File[] files=dir.listFiles();if(files!=null)for(File f:files)if(f.isDirectory())cleanup(f);else f.delete();dir.delete();
     }
     @Override protected void onDestroy() {
         if(running.get()){cancelled=true;YoutubeDL.getInstance().destroyProcessById(JOB);}
         worker.shutdownNow();
+        if(updateCancel!=null)updateCancel.cancel();
+        updateWorker.shutdownNow();
         super.onDestroy();
     }
 }

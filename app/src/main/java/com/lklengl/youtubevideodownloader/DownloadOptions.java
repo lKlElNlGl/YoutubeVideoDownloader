@@ -4,6 +4,8 @@ import java.net.URI;
 
 public final class DownloadOptions {
     private DownloadOptions() {}
+    // yt-dlp retains the original title and Unicode; 180 UTF-8 bytes avoids filesystem limits.
+    public static final String OUTPUT_TEMPLATE = "%(title).180B.%(ext)s";
     public static final String[] QUALITIES = {"best", "2160", "1440", "1080", "720", "480", "360"};
     public static String format(boolean audio, String quality) {
         if (audio) return "bestaudio/best";

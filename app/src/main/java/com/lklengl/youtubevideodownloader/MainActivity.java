@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
                 request.addOption("--newline");
                 request.addOption("--print","after_move:filepath");
                 request.addOption("-P",temp.getAbsolutePath());
-                request.addOption("-o","%(title).180B.%(ext)s");
+                request.addOption("-o",DownloadOptions.OUTPUT_TEMPLATE);
                 request.addOption("-f",DownloadOptions.format(audio,quality));
                 if(audio) {
                     request.addOption("-x");request.addOption("--audio-format","mp3");

@@ -359,7 +359,7 @@ public class MainActivity extends Activity {
             }catch(Exception ex) {
                 runOnUiThread(() -> {
                     if(downloadDialog!=null)downloadDialog.dismiss();
-                    if(!(ex instanceof CancellationException))
+                    if(updateCancel==null || !updateCancel.isCancelled())
                         new AlertDialog.Builder(this).setTitle("Ошибка обновления")
                             .setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
                 });

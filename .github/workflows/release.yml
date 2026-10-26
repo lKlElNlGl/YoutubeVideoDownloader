@@ -1,0 +1,79 @@
+name: Publish signed Android APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-publish
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Require permanent APK signing identity
+        env:
+          KEY_PEM: ${{ secrets.ANDROID_SIGNING_KEY_PEM }}
+          CERT_PEM: ${{ secrets.ANDROID_SIGNING_CERT_PEM }}
+        run: |
+          if [ -z "$KEY_PEM" ] || [ -z "$CERT_PEM" ]; then
+            echo "::error::Set ANDROID_SIGNING_KEY_PEM and ANDROID_SIGNING_CERT_PEM in Settings / Secrets and variables / Actions. Refusing temporary signing."
+            exit 1
+          fi
+      - name: Unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest
+      - name: Compile release
+        id: version
+        run: |
+          set -euo pipefail
+          version="0.2.${GITHUB_RUN_NUMBER}"
+          code="$((1000 + GITHUB_RUN_NUMBER))"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          gradle --no-daemon :app:assembleRelease -PappVersionName="$version" -PappVersionCode="$code"
+      - name: Sign and verify APK
+        env:
+          KEY_PEM: ${{ secrets.ANDROID_SIGNING_KEY_PEM }}
+          CERT_PEM: ${{ secrets.ANDROID_SIGNING_CERT_PEM }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/sign"
+          install -d -m 700 "$dir"
+          trap 'rm -rf "$dir"' EXIT
+          (umask 077; printf '%s\n' "$KEY_PEM" > "$dir/key.pem")
+          (umask 077; printf '%s\n' "$CERT_PEM" > "$dir/cert.pem")
+          openssl pkcs8 -topk8 -nocrypt -in "$dir/key.pem" -outform DER -out "$dir/key.pk8"
+          openssl pkey -in "$dir/key.pem" -pubout > "$dir/key.pub"
+          openssl x509 -in "$dir/cert.pem" -pubkey -noout > "$dir/cert.pub"
+          diff -q "$dir/key.pub" "$dir/cert.pub" > /dev/null
+          sdk="$ANDROID_HOME/build-tools/35.0.0"
+          "$sdk/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk "$dir/aligned.apk"
+          mkdir -p dist
+          name="YoutubeVideoDownloader-v${{ steps.version.outputs.version }}-android.apk"
+          "$sdk/apksigner" sign --key "$dir/key.pk8" --cert "$dir/cert.pem" --out "dist/$name" "$dir/aligned.apk"
+          "$sdk/apksigner" verify --min-sdk-version 29 --print-certs "dist/$name"
+          (cd dist && sha256sum "$name" > SHA256SUMS)
+      - name: Publish directly to GitHub Releases
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          gh release create "$tag" dist/*.apk dist/SHA256SUMS --target "$GITHUB_SHA" \
+            --title "YoutubeVideoDownloader $tag" \
+            --notes "Android $tag. APK подписан постоянным ключом. Установка и обновление через GitHub Releases. Подробности см. в README." \
+            --latest
+          gh release view "$tag" --json url,tagName,assets

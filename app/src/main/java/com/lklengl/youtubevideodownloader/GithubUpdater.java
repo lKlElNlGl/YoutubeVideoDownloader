@@ -37,6 +37,7 @@ public final class GithubUpdater {
         private volatile HttpsURLConnection active;
         public void cancel() { stopped.set(true); HttpsURLConnection c=active; if(c!=null)c.disconnect(); }
         public void check() { if(stopped.get())throw new CancellationException("Отменено"); }
+        public boolean isCancelled(){return stopped.get();}
     }
 
     private HttpsURLConnection connect(String url, String accept, Cancel cancel) throws IOException {

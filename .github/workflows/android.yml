@@ -1,4 +1,4 @@
-name: Android APK
+name: Android CI
 on:
   push:
     branches: [main]
@@ -23,8 +23,3 @@ jobs:
           gradle-version: '8.11.1'
       - name: Test and build
         run: gradle --no-daemon testDebugUnitTest assembleDebug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: YoutubeVideoDownloader-android-debug
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error

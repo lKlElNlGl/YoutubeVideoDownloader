@@ -161,7 +161,13 @@ public final class DownloadService extends Service {
             if(finished==null)throw new IOException("Не найден файл после обработки");
             progress(item,"Сохранение файла",99);
             Uri saved=saveFile(finished,item);
-            checkCancel();
+            if(cancelCurrent) {
+                try {
+                    if(item.directoryUri.isEmpty())getContentResolver().delete(saved,null,null);
+                    else DocumentsContract.deleteDocument(getContentResolver(),saved);
+                } catch(Exception ignored){}
+                checkCancel();
+            }
             DownloadQueue.update(this,item.id,DownloadQueue.DONE,"Сохранено",100,finished.getName());
             announce();
         } catch(Exception ex){
@@ -238,6 +244,12 @@ public final class DownloadService extends Service {
             if(children!=null)for(File child:children)deleteRecursive(child);
         }
         file.delete();
+    }
+    /** Android 15 limits dataSync foreground-service runtime; stop cleanly on timeout. */
+    @Override public void onTimeout(int startId,int fgsType) {
+        cancelCurrent=true;
+        if(currentId!=null)YoutubeDL.getInstance().destroyProcessById(currentId);
+        stopSelf();
     }
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public void onDestroy(){

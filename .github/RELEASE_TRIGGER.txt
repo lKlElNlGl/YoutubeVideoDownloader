@@ -1,0 +1,2 @@
+Initial permanently signed Android release.
+Triggered on 2026-10-27 after configuring ANDROID_SIGNING_KEY_PEM and ANDROID_SIGNING_CERT_PEM.

@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 
@@ -37,6 +38,7 @@ public final class DownloadService extends Service {
     private volatile String currentId=null;
     private volatile boolean cancelCurrent=false;
     private long lastNotification=0L;
+    private PowerManager.WakeLock activeLock;
 
     public static void kick(Context context) {
         Intent i=new Intent(context,DownloadService.class);
@@ -89,10 +91,15 @@ public final class DownloadService extends Service {
         if(!draining.compareAndSet(false,true))return;
         executor.execute(() -> {
             try {
+                PowerManager manager=getSystemService(PowerManager.class);
+                activeLock=manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"YoutubeVideoDownloader:Download");
+                activeLock.acquire(5L * 60L * 60L * 1000L);
                 for(DownloadQueue.Item item=DownloadQueue.next(this);item!=null;item=DownloadQueue.next(this)){
                     download(item);
                 }
             }finally {
+                if(activeLock!=null && activeLock.isHeld())activeLock.release();
+                activeLock=null;
                 draining.set(false);
                 if(DownloadQueue.next(this)!=null)runQueue();
                 else {currentId=null;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}

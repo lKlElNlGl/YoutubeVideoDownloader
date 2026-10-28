@@ -310,6 +310,8 @@ public final class MainActivity extends Activity {
     }
     private boolean overEditable(View v,float x,float y){
         if(v.getVisibility()!=View.VISIBLE)return false;
+        int[] loc=new int[2];v.getLocationOnScreen(loc);
+        if(x<loc[0]||x>=loc[0]+v.getWidth()||y<loc[1]||y>=loc[1]+v.getHeight())return false;
         if(v instanceof EditText||v instanceof Spinner){
             int[] xy=new int[2];v.getLocationOnScreen(xy);
             if(x>=xy[0]&&x<xy[0]+v.getWidth()&&y>=xy[1]&&y<xy[1]+v.getHeight())return true;
@@ -727,7 +729,7 @@ public final class MainActivity extends Activity {
                         "Движок обновлён успешно.":"Уже установлена последняя версия.")
                     .setPositiveButton("ОК",null).show());
             }catch(Exception e){runOnUiThread(()->error("Обновление yt-dlp",e));}
-            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить yt-dlp отдельно от APK");});}
+            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить yt-dlp");});}
         });
     }
     private String version(){

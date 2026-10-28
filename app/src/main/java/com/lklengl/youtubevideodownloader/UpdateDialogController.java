@@ -44,7 +44,8 @@ public final class UpdateDialogController {
         stage.setTextSize(15);stage.setPadding(0,pad/2,0,pad/3);layout.addView(stage);
         progress=new ProgressBar(activity,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);progress.setProgress(0);layout.addView(progress,new LinearLayout.LayoutParams(-1,(int)(5*density)));
-        details=new TextView(activity);details.setText("Нажатия вне окна не отменяют загрузку.");
+        details=new TextView(activity);details.setText("");
+        details.setMinHeight((int)(24*density));
         details.setTextSize(13);details.setPadding(0,pad/2,0,0);layout.addView(details);
         dialog=new AlertDialog.Builder(activity)
             .setTitle("Обновление "+candidate.tag)
@@ -83,14 +84,14 @@ public final class UpdateDialogController {
                             progress.setProgress(percent);details.setText("Скачано: "+percent+"%");
                         }
                     }),()->activity.runOnUiThread(()->{
-                        stage.setText("Проверка SHA-256 и подписи APK…");
-                        details.setText("Проверка целостности файла");
+                        stage.setText("Проверка обновления…");
+                        details.setText("");
                         cancel.setEnabled(false);cancel.setText("Подождите…");
                     }));
                 cancellation.check();
                 activity.runOnUiThread(()->{
                     stage.setText("APK проверен, открываем установщик Android…");
-                    details.setText("Проверка завершена успешно.");
+                    details.setText("");
                     dialog.dismiss();
                     executor.shutdown();
                     installer.launch(apk);
@@ -100,7 +101,7 @@ public final class UpdateDialogController {
                     busy=false;
                     if(cancellation.isCancelled()){
                         stage.setText("Загрузка отменена");
-                        details.setText("Временный файл удалён.");
+                        details.setText("");
                         progress.setProgress(0);
                     }else{
                         stage.setText("Не удалось скачать обновление");

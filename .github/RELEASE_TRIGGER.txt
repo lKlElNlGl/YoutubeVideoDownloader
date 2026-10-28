@@ -13,3 +13,5 @@ Publish v0.3.3: exact reference icon, premium buttons, confirmation-based queue 
 Publish v0.3.4: theme-matched dialogs, centered tabs, precise red gradient, reduced preview gap, detected video qualities, larger launcher icon.
 
 Publish v0.3.5: distinct dark dropdown popups, borderless upper navigation, exact #FC2A3F to #FE1F2C red gradient, 9dp adaptive launcher padding.
+
+Publish v0.3.6: approved transparent launcher artwork, compact update button, rounded dropdown items, neutral dialog actions and Russian network errors.

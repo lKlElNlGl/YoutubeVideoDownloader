@@ -9,3 +9,5 @@ Publish v0.3.1: premium dark UI refinements, icon background, swipe tabs, priori
 Publish v0.3.2: premium contrast, accessible tabs, working gestures, persistent metadata preview, cleaner updater dialog.
 
 Publish v0.3.3: exact reference icon, premium buttons, confirmation-based queue removal, concise errors, duplicate alerts and clearer download stages.
+
+Publish v0.3.4: theme-matched dialogs, centered tabs, precise red gradient, reduced preview gap, detected video qualities, larger launcher icon.

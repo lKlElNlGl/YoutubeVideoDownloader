@@ -82,21 +82,52 @@ public final class MainActivity extends Activity {
 
         TextView heading=text("Скачивание видео и аудио с YouTube",21);
         heading.setTextColor(ThemeStyle.text(this));page.addView(heading);
-        label(page,"Ссылка на видео");
+        LinearLayout nav=new LinearLayout(this);nav.setOrientation(LinearLayout.HORIZONTAL);
+        page.addView(nav);
+        Button downloadTab=new Button(this);downloadTab.setText("Загрузка");
+        Button queueTab=new Button(this);queueTab.setText("Очередь");
+        Button settingsTab=new Button(this);settingsTab.setText("Настройки");
+        Button[] tabs={downloadTab,queueTab,settingsTab};
+        for(Button tab:tabs) {
+            ThemeStyle.styleButton(tab,false);
+            LinearLayout.LayoutParams tabParams=new LinearLayout.LayoutParams(0,dp(48),1);
+            tabParams.setMargins(dp(2),dp(7),dp(2),dp(8));
+            nav.addView(tab,tabParams);
+        }
+        LinearLayout downloadPanel=new LinearLayout(this);
+        LinearLayout queuePanel=new LinearLayout(this);
+        LinearLayout settingsPanel=new LinearLayout(this);
+        for(LinearLayout panel:new LinearLayout[]{downloadPanel,queuePanel,settingsPanel}){
+            panel.setOrientation(LinearLayout.VERTICAL);page.addView(panel);
+        }
+        queuePanel.setVisibility(View.GONE);settingsPanel.setVisibility(View.GONE);
+        for(int index=0;index<tabs.length;index++){
+            final int selected=index;
+            tabs[index].setOnClickListener(v->{
+                downloadPanel.setVisibility(selected==0?View.VISIBLE:View.GONE);
+                queuePanel.setVisibility(selected==1?View.VISIBLE:View.GONE);
+                settingsPanel.setVisibility(selected==2?View.VISIBLE:View.GONE);
+                for(int k=0;k<tabs.length;k++)ThemeStyle.styleButton(tabs[k],k==selected);
+                if(selected==1)refreshQueue();
+            });
+        }
+        ThemeStyle.styleButton(downloadTab,true);
+        label(downloadPanel,"Ссылка на видео");
         LinearLayout linkRow=new LinearLayout(this);linkRow.setOrientation(LinearLayout.HORIZONTAL);
         url=new EditText(this);url.setSingleLine(true);
         url.setHint("https://www.youtube.com/watch?v=...");
         linkRow.addView(url,new LinearLayout.LayoutParams(0,dp(52),1));
         Button clear=button(linkRow,"✕");clear.setContentDescription("Очистить ссылку");
+        clear.setLayoutParams(new LinearLayout.LayoutParams(dp(54),dp(52)));
         clear.setOnClickListener(v->url.setText(""));
-        page.addView(linkRow);
-        Button paste=button(page,"Вставить ссылку");
+        downloadPanel.addView(linkRow);
+        Button paste=button(downloadPanel,"Вставить ссылку");
         paste.setOnClickListener(v->{
             ClipboardManager cm=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount()>0)
                 url.setText(cm.getPrimaryClip().getItemAt(0).coerceToText(this));
         });
-        previewButton=button(page,"Информация о видео");
+        previewButton=button(downloadPanel,"Информация о видео");
         previewButton.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist();
             else loadPreview();
@@ -104,13 +135,13 @@ public final class MainActivity extends Activity {
         thumbnail=new ImageView(this);
         thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
         thumbnail.setVisibility(View.GONE);
-        page.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(170)));
-        preview=text("",14);page.addView(preview);
+        downloadPanel.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(170)));
+        preview=text("",14);downloadPanel.addView(preview);
 
-        label(page,"Формат");
-        mode=spinner(page,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
-        label(page,"Качество видео");
-        quality=spinner(page,new String[]{"Максимальное","2160p","1440p","1080p","720p","480p","360p"});
+        label(downloadPanel,"Формат");
+        mode=spinner(downloadPanel,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
+        label(downloadPanel,"Качество видео");
+        quality=spinner(downloadPanel,new String[]{"Максимальное","2160p","1440p","1080p","720p","480p","360p"});
         mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
             @Override public void onNothingSelected(android.widget.AdapterView<?> p){}
             @Override public void onItemSelected(android.widget.AdapterView<?> p,View v,int i,long id){
@@ -118,25 +149,25 @@ public final class MainActivity extends Activity {
             }
         });
 
-        Button enqueue=button(page,"Добавить в очередь загрузок");
+        Button enqueue=button(downloadPanel,"Добавить в очередь загрузок");
         ThemeStyle.styleButton(enqueue,true);
         enqueue.setOnClickListener(v->{if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist();else enqueue();});
 
         status=text("Загрузки продолжатся при сворачивании приложения",13);
         status.setTextColor(ThemeStyle.subdued(this));
-        status.setPadding(0,dp(8),0,dp(8));page.addView(status);
-        label(page,"Очередь загрузок");
+        status.setPadding(0,dp(8),0,dp(8));queuePanel.addView(status);
+        label(queuePanel,"Очередь загрузок");
         queueList=new LinearLayout(this);
         queueList.setOrientation(LinearLayout.VERTICAL);
-        page.addView(queueList);
-        Button clean=button(page,"Очистить завершённые задания");
+        queuePanel.addView(queueList);
+        Button clean=button(queuePanel,"Очистить завершённые задания");
         clean.setOnClickListener(v->{DownloadQueue.clearFinished(this);refreshQueue();});
 
-        Button settingsToggle=button(page,"⚙ Настройки ▾");
+        Button settingsToggle=button(settingsPanel,"⚙ Настройки ▾");
         LinearLayout settings=new LinearLayout(this);
         settings.setOrientation(LinearLayout.VERTICAL);
         settings.setVisibility(View.GONE);
-        page.addView(settings);
+        settingsPanel.addView(settings);
         settingsToggle.setOnClickListener(v->{
             boolean open=settings.getVisibility()!=View.VISIBLE;
             settings.setVisibility(open?View.VISIBLE:View.GONE);

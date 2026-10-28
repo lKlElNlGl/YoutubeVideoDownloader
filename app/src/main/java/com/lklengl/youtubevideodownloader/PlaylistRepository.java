@@ -5,7 +5,6 @@ import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLRequest;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +26,7 @@ public final class PlaylistRepository {
             this.title=title;this.entries=entries;this.reportedCount=reportedCount;
         }
     }
-    public static Playlist fetch(Context context,String link,String proxy,boolean cookies) throws Exception {
+    public static Playlist fetch(Context context,String link,String proxy) throws Exception {
         if(!PlaylistSupport.isPlaylist(link))throw new IllegalArgumentException("Не найдена ссылка на плейлист");
         YoutubeDL.getInstance().init(context.getApplicationContext());
         YoutubeDLRequest req=new YoutubeDLRequest(link);
@@ -38,11 +37,6 @@ public final class PlaylistRepository {
         req.addOption("--ignore-errors");
         req.addOption("--no-warnings");
         if(proxy!=null && !proxy.isEmpty())req.addOption("--proxy",proxy);
-        if(cookies){
-            File file=new File(context.getFilesDir(),"cookies.txt");
-            if(!file.isFile())throw new IllegalArgumentException("Нет cookies.txt");
-            req.addOption("--cookies",file.getAbsolutePath());
-        }
         String result=YoutubeDL.getInstance().execute(req,null,null).getOut();
         JSONObject data=new JSONObject(result);
         JSONArray entries=data.optJSONArray("entries");

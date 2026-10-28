@@ -141,11 +141,6 @@ public final class DownloadService extends Service {
                 request.addOption("--audio-quality","192K");
             }else request.addOption("--merge-output-format","mp4");
             if(!item.proxy.isEmpty())request.addOption("--proxy",item.proxy);
-            if(item.cookies){
-                File cookies=new File(getFilesDir(),"cookies.txt");
-                if(!cookies.isFile())throw new IOException("Не найден cookies.txt");
-                request.addOption("--cookies",cookies.getAbsolutePath());
-            }
             YoutubeDL.getInstance().execute(request,item.id,(p,eta,line) -> {
                 int percent=Math.max(0,Math.min(99,Math.round(p)));
                 // Throttle preference writes to reduce flash wear.

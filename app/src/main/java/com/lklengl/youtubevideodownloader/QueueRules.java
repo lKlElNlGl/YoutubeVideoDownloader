@@ -12,6 +12,15 @@ public final class QueueRules {
         }
         return count;
     }
+    /** Insert urgent jobs before waiting jobs without interrupting a currently active download. */
+    public static void prependPriority(List<DownloadQueue.Item> items,List<DownloadQueue.Item> urgent) {
+        items.addAll(0,urgent);
+    }
+    public static DownloadQueue.Item nextWaiting(List<DownloadQueue.Item> items) {
+        for(DownloadQueue.Item item:items)
+            if(DownloadQueue.WAITING.equals(item.status))return item;
+        return null;
+    }
     public static String filenameTemplate() {return DownloadOptions.OUTPUT_TEMPLATE;}
     public static String readableDuration(int seconds) {
         if(seconds<0)return "—";

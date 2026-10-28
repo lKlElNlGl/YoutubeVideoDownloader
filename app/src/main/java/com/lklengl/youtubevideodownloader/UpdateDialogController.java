@@ -47,7 +47,7 @@ public final class UpdateDialogController {
         details=new TextView(activity);details.setText("");
         details.setMinHeight((int)(24*density));
         details.setTextSize(13);details.setPadding(0,pad/2,0,0);layout.addView(details);
-        dialog=new AlertDialog.Builder(activity)
+        dialog=ThemeStyle.dialog(activity)
             .setTitle("Обновление "+candidate.tag)
             .setView(layout).setPositiveButton("Скачать и обновить",null)
             .setNegativeButton("Позже",null).create();

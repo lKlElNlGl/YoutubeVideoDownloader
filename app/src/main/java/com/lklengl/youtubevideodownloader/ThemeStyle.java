@@ -1,6 +1,8 @@
 package com.lklengl.youtubevideodownloader;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.widget.ImageView;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.ColorStateList;
@@ -34,8 +36,7 @@ public final class ThemeStyle {
     }
     public static void initialize(Activity activity){
         boolean dark=isDark(activity);
-        activity.setTheme(dark?android.R.style.Theme_Material_NoActionBar:
-            android.R.style.Theme_Material_Light_NoActionBar);
+        activity.setTheme(dark?R.style.YvdDark:android.R.style.Theme_Material_Light_NoActionBar);
         activity.getWindow().setStatusBarColor(dark?0xFF090B0E:0xFFE8EAF0);
         activity.getWindow().setNavigationBarColor(dark?0xFF090B0E:0xFFE8EAF0);
         activity.getWindow().getDecorView().setSystemUiVisibility(dark?0:
@@ -56,9 +57,34 @@ public final class ThemeStyle {
     }
     private static Drawable gradient(Context c){
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFFFF4433,0xFFFC1F20,0xFFB50919});
+            new int[]{0xFFF8262E,0xFFC91D29,0xFF96121C});
         result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFFAC9A);
         return result;
+    }
+    public static AlertDialog.Builder dialog(Activity activity){
+        return isDark(activity)?new AlertDialog.Builder(activity,R.style.YvdDialogDark):
+            new AlertDialog.Builder(activity);
+    }
+    public static void styleTab(LinearLayout tab,boolean selected,String symbol,String title){
+        Context c=tab.getContext();
+        tab.removeAllViews();
+        tab.setOrientation(LinearLayout.HORIZONTAL);
+        tab.setGravity(android.view.Gravity.CENTER);
+        tab.setPadding(dp(c,4),0,dp(c,4),0);
+        tab.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF),
+            selected?gradient(c):rounded(buttonFill(c),buttonStroke(c),dp(c,11)),null));
+        tab.setElevation(dp(c,selected?2:1));
+        ImageView image=new ImageView(c);
+        image.setImageDrawable(new UiIcons(symbol,selected?Color.WHITE:text(c),dp(c,16)));
+        tab.addView(image,new LinearLayout.LayoutParams(dp(c,16),dp(c,16)));
+        TextView label=new TextView(c);
+        label.setText(title);label.setTextSize(13);
+        label.setTextColor(selected?Color.WHITE:text(c));
+        label.setTypeface(null,android.graphics.Typeface.BOLD);
+        label.setSingleLine(true);label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams textParams=new LinearLayout.LayoutParams(-2,-2);
+        textParams.setMargins(dp(c,5),0,0,0);
+        tab.addView(label,textParams);
     }
     public static void icon(Button b,String icon,int px){
         int color=b.getCurrentTextColor();
@@ -86,7 +112,7 @@ public final class ThemeStyle {
         Drawable shape;
         if(primary){
             GradientDrawable shine=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x48FFFFFF,0x12FFFFFF,0x00FFFFFF});
+                new int[]{0x22FFFFFF,0x08FFFFFF,0x00FFFFFF});
             shine.setCornerRadius(dp(c,11));
             android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(
                 new Drawable[]{gradient(c),shine});

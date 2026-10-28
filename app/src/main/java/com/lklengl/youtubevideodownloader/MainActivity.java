@@ -56,7 +56,7 @@ public final class MainActivity extends Activity {
     private PreviewSnapshot previewSnapshot;
     private Bitmap previewBitmap;
     private LinearLayout[] pagePanels;
-    private Button[] pageTabs;
+    private LinearLayout[] pageTabs;
     private int currentPage=0;
     private UpdateDialogController updateDialog;
     private boolean loadingPlaylist=false;
@@ -109,12 +109,12 @@ public final class MainActivity extends Activity {
 
         LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
         page.addView(tabs);
-        pageTabs=new Button[]{new Button(this),new Button(this),new Button(this)};
+        pageTabs=new LinearLayout[]{new LinearLayout(this),new LinearLayout(this),new LinearLayout(this)};
         String[] titles={"Загрузка","Очередь","Настройки"};
         String[] tabIcons={"play","queue","settings"};
         for(int i=0;i<3;i++){
-            Button tab=pageTabs[i];tab.setText(titles[i]);
-            ThemeStyle.styleTab(tab,i==currentPage,tabIcons[i]);
+            LinearLayout tab=pageTabs[i];
+            ThemeStyle.styleTab(tab,i==currentPage,tabIcons[i],titles[i]);
             LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(48),1);
             params.setMargins(dp(2),dp(4),dp(2),dp(11));tabs.addView(tab,params);
             final int destination=i;
@@ -261,6 +261,9 @@ public final class MainActivity extends Activity {
         LinearLayout updates=ThemeStyle.card(settingsPage,"Обновления");
         label(updates,"Загрузка с YouTube");
         updateEngineButton=button(updates,"Обновить компонент работы с YouTube");
+        updateEngineButton.setTextSize(13);
+        updateEngineButton.setSingleLine(false);updateEngineButton.setMaxLines(2);
+        updateEngineButton.getLayoutParams().height=dp(64);
         updateEngineButton.setOnClickListener(v->updateEngine());
         label(updates,"Приложение");
         checkAppButton=button(updates,"Проверить новую версию");
@@ -338,7 +341,9 @@ public final class MainActivity extends Activity {
         currentPage=Math.max(0,Math.min(2,index));
         for(int i=0;i<pagePanels.length;i++){
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
-            ThemeStyle.styleTab(pageTabs[i],i==currentPage,new String[]{"play","queue","settings"}[i]);
+            ThemeStyle.styleTab(pageTabs[i],i==currentPage,
+                new String[]{"play","queue","settings"}[i],
+                new String[]{"Загрузка","Очередь","Настройки"}[i]);
         }
         mainScroll.scrollTo(0,0);
         getPreferences(MODE_PRIVATE).edit().putInt("page",currentPage).apply();
@@ -367,7 +372,9 @@ public final class MainActivity extends Activity {
         parent.addView(b);return b;
     }
     private Spinner spinner(LinearLayout parent,String[] items){
-        Spinner s=new Spinner(this);
+        Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
+        s.setPopupBackgroundDrawable(ThemeStyle.rounded(
+            ThemeStyle.field(this),ThemeStyle.border(this),dp(10)));
         boolean themeChoices=items==ThemeStyle.MODES;
         String[] modes={"sun","moon","phone"};
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items){
@@ -388,6 +395,8 @@ public final class MainActivity extends Activity {
             @Override public View getDropDownView(int position,View old,ViewGroup parent){
                 TextView v=decorate((TextView)super.getDropDownView(position,old,parent),position);
                 v.setPadding(dp(16),dp(12),dp(16),dp(12));
+                v.setBackgroundColor(position==s.getSelectedItemPosition()?
+                    ThemeStyle.buttonFill(MainActivity.this):ThemeStyle.field(MainActivity.this));
                 return v;
             }
         };
@@ -425,7 +434,10 @@ public final class MainActivity extends Activity {
             @Override public View getDropDownView(int position,View convertView,ViewGroup parent){
                 TextView view=(TextView)super.getDropDownView(position,convertView,parent);
                 view.setTextColor(ThemeStyle.text(MainActivity.this));
-                view.setPadding(dp(16),dp(12),dp(16),dp(12));return view;
+                view.setPadding(dp(16),dp(12),dp(16),dp(12));
+                view.setBackgroundColor(position==quality.getSelectedItemPosition()?
+                    ThemeStyle.buttonFill(MainActivity.this):ThemeStyle.field(MainActivity.this));
+                return view;
             }
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -699,7 +711,7 @@ public final class MainActivity extends Activity {
             if(proxyEnabled.isChecked() && proxyValue.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
         }catch(Exception e){error("Плейлист",e);return;}
         final boolean audio=mode.getSelectedItemPosition()==1;
-        final String resolution=DownloadOptions.QUALITIES[quality.getSelectedItemPosition()];
+        final String resolution=selectedQuality();
         final String directory=selectedFolder();
         loadingPlaylist=true;previewButton.setEnabled(false);
         updatePreviewMessage("Получение списка видео плейлиста…");

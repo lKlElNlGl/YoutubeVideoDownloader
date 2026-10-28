@@ -44,6 +44,7 @@ public final class MainActivity extends Activity {
     private EditText url, proxy;
     private CheckBox proxyEnabled;
     private Spinner mode, quality;
+    private QualityChoices qualityChoices=QualityChoices.fallback();
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
     private LinearLayout previewCard;
     private ImageView thumbnail;
@@ -158,13 +159,14 @@ public final class MainActivity extends Activity {
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
             else loadPreview();
         });
-        preview=text("",14);preview.setPadding(dp(4),dp(6),dp(4),dp(4));
+        preview=text("",14);preview.setPadding(dp(4),0,dp(4),0);
+        preview.setVisibility(View.GONE);
         preview.setTextColor(ThemeStyle.subdued(this));linkCard.addView(preview);
         previewCard=new LinearLayout(this);previewCard.setOrientation(LinearLayout.VERTICAL);
         previewCard.setPadding(dp(12),dp(13),dp(12),dp(13));
         previewCard.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.border(this),dp(12)));
         LinearLayout.LayoutParams pc=new LinearLayout.LayoutParams(-1,-2);
-        pc.setMargins(0,dp(11),0,dp(5));linkCard.addView(previewCard,pc);
+        pc.setMargins(0,dp(8),0,dp(5));linkCard.addView(previewCard,pc);
         previewHeader=text("ИНФОРМАЦИЯ О ВИДЕО",12);
         previewHeader.setTextColor(ThemeStyle.subdued(this));previewHeader.setLetterSpacing(0.06f);
         previewHeader.setPadding(0,0,0,dp(9));previewCard.addView(previewHeader);
@@ -187,7 +189,7 @@ public final class MainActivity extends Activity {
         label(formatCard,"Формат");
         mode=spinner(formatCard,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
         label(formatCard,"Качество видео");
-        quality=spinner(formatCard,new String[]{"Максимальное","2160p","1440p","1080p","720p","480p","360p"});
+        quality=spinner(formatCard,qualityChoices.labels().toArray(new String[0]));
         mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
             @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int i,long id){
@@ -258,7 +260,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout updates=ThemeStyle.card(settingsPage,"Обновления");
         label(updates,"Загрузка с YouTube");
-        updateEngineButton=button(updates,"Обновить компонент для работы с YouTube");
+        updateEngineButton=button(updates,"Обновить компонент работы с YouTube");
         updateEngineButton.setOnClickListener(v->updateEngine());
         label(updates,"Приложение");
         checkAppButton=button(updates,"Проверить новую версию");
@@ -405,6 +407,39 @@ public final class MainActivity extends Activity {
         arrow.setOnClickListener(v->s.performClick());
         return s;
     }
+    private String selectedQuality(){
+        int pos=quality.getSelectedItemPosition();
+        List<String> values=qualityChoices.values();
+        return pos>=0 && pos<values.size()?values.get(pos):"best";
+    }
+    private void updateQualityChoices(QualityChoices next,boolean restoreSaved){
+        if(quality==null || qualityChoices.values().equals(next.values()))return;
+        String prior=selectedQuality();
+        qualityChoices=next;
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,next.labels()){
+            @Override public View getView(int position,View convertView,ViewGroup parent){
+                TextView view=(TextView)super.getView(position,convertView,parent);
+                view.setTextColor(ThemeStyle.text(MainActivity.this));view.setTextSize(14);
+                return view;
+            }
+            @Override public View getDropDownView(int position,View convertView,ViewGroup parent){
+                TextView view=(TextView)super.getDropDownView(position,convertView,parent);
+                view.setTextColor(ThemeStyle.text(MainActivity.this));
+                view.setPadding(dp(16),dp(12),dp(16),dp(12));return view;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        quality.setAdapter(adapter);
+        int selected=restoreSaved?getPreferences(MODE_PRIVATE).getInt("quality",0):0;
+        if(restoreSaved && selected>=0 && selected<next.values().size())
+            quality.setSelection(selected);
+        else quality.setSelection(next.values().indexOf(prior)>=0 && !restoreSaved?
+            next.values().indexOf(prior):0);
+    }
+    private void updatePreviewMessage(String message){
+        preview.setText(message);
+        preview.setVisibility(message==null||message.isEmpty()?View.GONE:View.VISIBLE);
+    }
     private void restorePreview(){
         android.content.SharedPreferences p=getPreferences(MODE_PRIVATE);
         String source=p.getString("previewSource","");
@@ -436,14 +471,19 @@ public final class MainActivity extends Activity {
         else try(FileOutputStream out=new FileOutputStream(thumb)){
             picture.compress(Bitmap.CompressFormat.JPEG,82,out);
         }catch(IOException ignored){thumb.delete();}
-        preview.setText("");
+        updatePreviewMessage("");
         renderPreview();
     }
     private void renderPreview(){
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
-        if(!valid)return;
+        if(!valid){
+            updateQualityChoices(QualityChoices.fallback(),false);
+            return;
+        }
+        updateQualityChoices(previewSnapshot.playlist?QualityChoices.fallback():
+            QualityChoices.fromDetected(previewSnapshot.resolutions),true);
         previewHeader.setText(previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО");
         previewTitle.setText(previewSnapshot.title);
         if(previewSnapshot.playlist){
@@ -513,7 +553,7 @@ public final class MainActivity extends Activity {
             String title=previewSnapshot!=null && previewSnapshot.matches(link) && !previewSnapshot.playlist?
                 previewSnapshot.title:"";
             DownloadQueue.enqueue(this,link,mode.getSelectedItemPosition()==1,
-                DownloadOptions.QUALITIES[quality.getSelectedItemPosition()],proxyUrl,selectedFolder(),priority,title);
+                selectedQuality(),proxyUrl,selectedFolder(),priority,title);
         }catch(Exception e){error("Невозможно добавить загрузку",e);return;}
         saveDraft();
         refreshQueue();
@@ -662,7 +702,7 @@ public final class MainActivity extends Activity {
         final String resolution=DownloadOptions.QUALITIES[quality.getSelectedItemPosition()];
         final String directory=selectedFolder();
         loadingPlaylist=true;previewButton.setEnabled(false);
-        preview.setText("Получение списка видео плейлиста…");
+        updatePreviewMessage("Получение списка видео плейлиста…");
         uiWorker.execute(()->{
             try {
                 PlaylistRepository.Playlist data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
@@ -676,7 +716,7 @@ public final class MainActivity extends Activity {
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     error("Не удалось открыть плейлист",ex);
-                    preview.setText("Не удалось прочитать плейлист");
+                    updatePreviewMessage("Не удалось прочитать плейлист");
                 });
             }
         });
@@ -744,7 +784,7 @@ public final class MainActivity extends Activity {
         try{videoUrl=DownloadOptions.validateUrl(url.getText().toString());}
         catch(Exception e){error("Ссылка",e);return;}
         previewButton.setEnabled(false);
-        preview.setText("Получение информации о видео…");
+        updatePreviewMessage("Получение информации о видео…");
         previewCard.setVisibility(View.GONE);
         final String effectiveProxy=proxyEnabled.isChecked()?proxy.getText().toString():"";
 
@@ -773,7 +813,7 @@ public final class MainActivity extends Activity {
                     rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution),picture);
                 });
             }catch(Exception e){
-                runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())preview.setText("Не удалось получить данные: "+e.getMessage());});
+                runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())updatePreviewMessage("Не удалось получить данные: "+e.getMessage());});
             }finally{runOnUiThread(()->previewButton.setEnabled(true));}
         });
     }
@@ -812,7 +852,7 @@ public final class MainActivity extends Activity {
                         "Компонент обновлён.":"Уже установлена последняя версия.")
                     .setPositiveButton("ОК",null).show());
             }catch(Exception e){runOnUiThread(()->error("Обновление yt-dlp",e));}
-            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить компонент для работы с YouTube");});}
+            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить компонент работы с YouTube");});}
         });
     }
     private String version(){

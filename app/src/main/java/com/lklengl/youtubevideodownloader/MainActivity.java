@@ -18,6 +18,12 @@ import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
+import android.view.Gravity;
+import android.text.TextWatcher;
+import android.text.Editable;
+import android.graphics.drawable.Drawable;
 import android.widget.*;
 
 import com.yausername.youtubedl_android.YoutubeDL;
@@ -38,11 +44,15 @@ public final class MainActivity extends Activity {
     private EditText url, proxy;
     private CheckBox proxyEnabled;
     private Spinner mode, quality;
-    private TextView preview, folderLabel, status;
+    private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader;
+    private LinearLayout previewCard;
     private ImageView thumbnail;
     private LinearLayout queueList;
     private Button checkAppButton, updateEngineButton, previewButton, defaultFolderButton;
-    private SwipeNavigationScrollView mainScroll;
+    private ScrollView mainScroll;
+    private float swipeStartX,swipeStartY;
+    private boolean swipeEligible;
+    private PreviewSnapshot previewSnapshot;
     private LinearLayout[] pagePanels;
     private Button[] pageTabs;
     private int currentPage=0;
@@ -68,6 +78,7 @@ public final class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},49);
         buildScreen();
         loadPreferences();
+        restorePreview();
         Intent received=getIntent();
         if(Intent.ACTION_SEND.equals(received.getAction()) && "text/plain".equals(received.getType())) {
             String shared=received.getStringExtra(Intent.EXTRA_TEXT);
@@ -80,7 +91,7 @@ public final class MainActivity extends Activity {
 
 
     private void buildScreen() {
-        mainScroll=new SwipeNavigationScrollView(this);
+        mainScroll=new ScrollView(this);
         mainScroll.setFillViewport(true);
         mainScroll.setBackgroundColor(ThemeStyle.background(this));
         LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);
@@ -97,10 +108,11 @@ public final class MainActivity extends Activity {
         LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
         page.addView(tabs);
         pageTabs=new Button[]{new Button(this),new Button(this),new Button(this)};
-        String[] titles={"▶ Загрузка","☷ Очередь","⚙ Настройки"};
+        String[] titles={"Загрузка","Очередь","Настройки"};
+        String[] tabIcons={"play","queue","settings"};
         for(int i=0;i<3;i++){
             Button tab=pageTabs[i];tab.setText(titles[i]);
-            ThemeStyle.styleButton(tab,i==currentPage);
+            ThemeStyle.styleTab(tab,i==currentPage,tabIcons[i]);
             LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(48),1);
             params.setMargins(dp(2),dp(4),dp(2),dp(11));tabs.addView(tab,params);
             final int destination=i;
@@ -111,7 +123,7 @@ public final class MainActivity extends Activity {
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
             pagePanels[i]=panel;page.addView(panel);
         }
-        mainScroll.setPageChanged(this::showPage);
+        // Activity-level dispatchTouchEvent observes gestures even if a child consumes them.
 
         LinearLayout download=pagePanels[0];
         LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");
@@ -119,6 +131,11 @@ public final class MainActivity extends Activity {
         LinearLayout linkRow=new LinearLayout(this);linkRow.setOrientation(LinearLayout.HORIZONTAL);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
+        url.addTextChangedListener(new TextWatcher(){
+            @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview();}
+            @Override public void afterTextChanged(Editable value){}
+        });
         linkRow.addView(url,new LinearLayout.LayoutParams(0,dp(51),1));
         Button clear=new Button(this);clear.setText("✕");
         clear.setContentDescription("Очистить ссылку");ThemeStyle.styleButton(clear,false);
@@ -137,9 +154,26 @@ public final class MainActivity extends Activity {
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
             else loadPreview();
         });
+        preview=text("",14);preview.setPadding(dp(4),dp(6),dp(4),dp(4));
+        preview.setTextColor(ThemeStyle.subdued(this));linkCard.addView(preview);
+        previewCard=new LinearLayout(this);previewCard.setOrientation(LinearLayout.VERTICAL);
+        previewCard.setPadding(dp(12),dp(13),dp(12),dp(13));
+        previewCard.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.border(this),dp(12)));
+        LinearLayout.LayoutParams pc=new LinearLayout.LayoutParams(-1,-2);
+        pc.setMargins(0,dp(11),0,dp(5));linkCard.addView(previewCard,pc);
+        previewHeader=text("ИНФОРМАЦИЯ О ВИДЕО",12);
+        previewHeader.setTextColor(ThemeStyle.subdued(this));previewHeader.setLetterSpacing(0.06f);
+        previewHeader.setPadding(0,0,0,dp(9));previewCard.addView(previewHeader);
         thumbnail=new ImageView(this);thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        thumbnail.setVisibility(View.GONE);linkCard.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(170)));
-        preview=text("",14);preview.setPadding(dp(4),dp(6),dp(4),0);linkCard.addView(preview);
+        thumbnail.setVisibility(View.GONE);
+        previewCard.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(164)));
+        previewTitle=text("",16);previewTitle.setTypeface(null,android.graphics.Typeface.BOLD);
+        previewTitle.setPadding(0,dp(9),0,dp(12));previewCard.addView(previewTitle);
+        LinearLayout stats=new LinearLayout(this);stats.setOrientation(LinearLayout.HORIZONTAL);
+        previewCard.addView(stats);
+        previewDuration=statView(stats,"clock");
+        previewQuality=statView(stats,"quality");
+        previewCard.setVisibility(View.GONE);
 
         LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
         label(formatCard,"Формат");
@@ -155,21 +189,19 @@ public final class MainActivity extends Activity {
 
         LinearLayout actions=ThemeStyle.card(download,"Скачивание");
         Button immediate=button(actions,"Скачать без очереди");
-        ThemeStyle.styleButton(immediate,true);
+        ThemeStyle.styleButton(immediate,true);ThemeStyle.icon(immediate,"download",19);
         immediate.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(true);
             else enqueue(true);
         });
         Button enqueue=button(actions,"Добавить в очередь");
+        ThemeStyle.icon(enqueue,"queue",19);
         enqueue.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
             else enqueue(false);
         });
 
         LinearLayout queueCard=ThemeStyle.card(pagePanels[1],"Очередь загрузок");
-        status=text("Загрузки продолжаются при сворачивании приложения",13);
-        status.setTextColor(ThemeStyle.subdued(this));status.setPadding(0,0,0,dp(8));
-        queueCard.addView(status);
         queueList=new LinearLayout(this);queueList.setOrientation(LinearLayout.VERTICAL);
         queueCard.addView(queueList);
         Button clean=button(queueCard,"Очистить завершённые задания");
@@ -234,13 +266,67 @@ public final class MainActivity extends Activity {
         showPage(Math.max(0,Math.min(2,currentPage)));
     }
 
+    private TextView statView(LinearLayout parent,String icon){
+        LinearLayout cell=new LinearLayout(this);cell.setOrientation(LinearLayout.HORIZONTAL);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(46),1);
+        params.setMargins(0,0,dp(6),0);
+        cell.setPadding(dp(9),0,dp(5),0);
+        cell.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(9)));
+        parent.addView(cell,params);
+        ImageView symbol=new ImageView(this);
+        symbol.setImageDrawable(new UiIcons(icon,ThemeStyle.RED,dp(18)));
+        cell.addView(symbol,new LinearLayout.LayoutParams(dp(18),dp(18)));
+        TextView value=text("",13);
+        value.setMaxLines(1);value.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1);
+        vp.setMargins(dp(6),0,0,0);cell.addView(value,vp);
+        return value;
+    }
+
+    /** Observe complete gestures at Activity level; child widgets cannot swallow horizontal swipes. */
+    @Override public boolean dispatchTouchEvent(MotionEvent e){
+        if(mainScroll==null)return super.dispatchTouchEvent(e);
+        int action=e.getActionMasked();
+        if(action==MotionEvent.ACTION_DOWN){
+            swipeStartX=e.getRawX();swipeStartY=e.getRawY();
+            swipeEligible=!overEditable(mainScroll,e.getRawX(),e.getRawY());
+        }else if(action==MotionEvent.ACTION_POINTER_DOWN || action==MotionEvent.ACTION_CANCEL){
+            swipeEligible=false;
+        }else if(action==MotionEvent.ACTION_UP && swipeEligible){
+            int destination=SwipeRules.target(currentPage,e.getRawX()-swipeStartX,
+                e.getRawY()-swipeStartY,dp(40));
+            swipeEligible=false;
+            if(destination!=currentPage){
+                MotionEvent cancel=MotionEvent.obtain(e);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                super.dispatchTouchEvent(cancel);cancel.recycle();
+                showPage(destination);
+                return true;
+            }
+        }
+        return super.dispatchTouchEvent(e);
+    }
+    private boolean overEditable(View v,float x,float y){
+        if(v.getVisibility()!=View.VISIBLE)return false;
+        if(v instanceof EditText||v instanceof Spinner){
+            int[] xy=new int[2];v.getLocationOnScreen(xy);
+            if(x>=xy[0]&&x<xy[0]+v.getWidth()&&y>=xy[1]&&y<xy[1]+v.getHeight())return true;
+        }
+        if(v instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)v;
+            for(int i=0;i<group.getChildCount();i++)
+                if(overEditable(group.getChildAt(i),x,y))return true;
+        }
+        return false;
+    }
+
     private void showPage(int index){
         currentPage=Math.max(0,Math.min(2,index));
         for(int i=0;i<pagePanels.length;i++){
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
-            ThemeStyle.styleButton(pageTabs[i],i==currentPage);
+            ThemeStyle.styleTab(pageTabs[i],i==currentPage,new String[]{"play","queue","settings"}[i]);
         }
-        mainScroll.setPageIndex(currentPage);
         mainScroll.scrollTo(0,0);
         getPreferences(MODE_PRIVATE).edit().putInt("page",currentPage).apply();
     }

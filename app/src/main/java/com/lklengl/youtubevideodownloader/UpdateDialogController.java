@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
+import android.content.res.ColorStateList;
+import android.util.Log;
 import android.widget.*;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +45,9 @@ public final class UpdateDialogController {
         stage=new TextView(activity);stage.setText("Готово к скачиванию");
         stage.setTextSize(15);stage.setPadding(0,pad/2,0,pad/3);layout.addView(stage);
         progress=new ProgressBar(activity,null,android.R.attr.progressBarStyleHorizontal);
-        progress.setMax(100);progress.setProgress(0);layout.addView(progress,new LinearLayout.LayoutParams(-1,(int)(5*density)));
+        progress.setMax(100);progress.setProgress(0);
+        progress.setProgressTintList(ColorStateList.valueOf(ThemeStyle.RED));
+        layout.addView(progress,new LinearLayout.LayoutParams(-1,(int)(5*density)));
         details=new TextView(activity);details.setText("");
         details.setMinHeight((int)(24*density));
         details.setTextSize(13);details.setPadding(0,pad/2,0,0);layout.addView(details);
@@ -105,7 +109,8 @@ public final class UpdateDialogController {
                         progress.setProgress(0);
                     }else{
                         stage.setText("Не удалось скачать обновление");
-                        details.setText(e.getMessage()==null?"Ошибка сети":e.getMessage());
+                        Log.w("YoutubeVideoDownloader","Ошибка загрузки обновления",e);
+                        details.setText(UpdateErrorMessages.userMessage(e));
                     }
                     accept.setEnabled(true);accept.setText("Повторить");
                     cancel.setText("Закрыть");cancel.setEnabled(true);

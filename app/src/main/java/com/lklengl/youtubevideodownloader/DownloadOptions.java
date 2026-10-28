@@ -14,8 +14,9 @@ public final class DownloadOptions {
         return "bv*[height<=" + quality + "]+ba/b[height<=" + quality + "]";
     }
     public static boolean isQuality(String quality) {
-        for (String item : QUALITIES) if (item.equals(quality)) return true;
-        return false;
+        if (quality == null || !quality.matches("[1-9][0-9]{1,3}")) return "best".equals(quality);
+        try { int h=Integer.parseInt(quality); return h>=100 && h<=4320; }
+        catch(NumberFormatException ignored) { return false; }
     }
     public static String validateUrl(String value) {
         if (value == null) throw new IllegalArgumentException("Введите ссылку");

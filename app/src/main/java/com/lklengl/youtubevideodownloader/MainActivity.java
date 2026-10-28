@@ -44,7 +44,7 @@ public final class MainActivity extends Activity {
     private EditText url, proxy;
     private CheckBox proxyEnabled;
     private Spinner mode, quality;
-    private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader;
+    private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
     private LinearLayout previewCard;
     private ImageView thumbnail;
     private LinearLayout queueList;
@@ -174,6 +174,10 @@ public final class MainActivity extends Activity {
         previewCard.addView(stats);
         previewDuration=statView(stats,"clock");
         previewQuality=statView(stats,"quality");
+        previewAllQualities=text("",12);
+        previewAllQualities.setTextColor(ThemeStyle.subdued(this));
+        previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
+        previewCard.addView(previewAllQualities);
         previewCard.setVisibility(View.GONE);
 
         LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
@@ -441,9 +445,13 @@ public final class MainActivity extends Activity {
         if(previewSnapshot.playlist){
             previewDuration.setText(previewSnapshot.videoCount+" видео");
             previewQuality.setText("Плейлист");
+            previewAllQualities.setVisibility(View.GONE);
         }else{
             previewDuration.setText(previewSnapshot.duration);
-            previewQuality.setText(previewSnapshot.resolutions);
+            String qualities=previewSnapshot.resolutions;
+            previewQuality.setText(qualities.split(",")[0]);
+            previewAllQualities.setText("Доступно: "+qualities);
+            previewAllQualities.setVisibility(View.VISIBLE);
         }
         if(previewBitmap!=null && !previewSnapshot.playlist){
             thumbnail.setImageBitmap(previewBitmap);
@@ -683,7 +691,9 @@ public final class MainActivity extends Activity {
                     if(format.getHeight()>0 && format.getVcodec()!=null && !"none".equals(format.getVcodec()))
                         heights.add(format.getHeight());
                 String duration=QueueRules.readableDuration(info.getDuration());
-                String resolution=heights.isEmpty()?"Не указано":heights.last()+"p";
+                List<String> options=new ArrayList<>();
+                for(Integer height:heights.descendingSet())options.add(height+"p");
+                String resolution=options.isEmpty()?"Не указано":TextUtils.join(", ",options);
                 Bitmap picture=loadImage(info.getThumbnail());
                 runOnUiThread(()->{
                     if(isFinishing()||isDestroyed()||!videoUrl.equals(url.getText().toString().trim()))return;

@@ -2,6 +2,8 @@ name: Publish signed Android APK
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/RELEASE_TRIGGER.txt'
   workflow_dispatch:
 permissions:
   contents: write
@@ -40,8 +42,16 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          version="0.2.${GITHUB_RUN_NUMBER}"
-          code="$((1000 + GITHUB_RUN_NUMBER))"
+          version="$(sed -nE "s/.*versionName = .*: '([0-9]+\\.[0-9]+\\.[0-9]+)'.*/\\1/p" app/build.gradle)"
+          code="$(sed -nE "s/.*versionCode = .*: '([0-9]+)'.*/\\1/p" app/build.gradle)"
+          if [[ ! "$version" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ || ! "$code" =~ ^[0-9]+$ ]]; then
+            echo "::error::Cannot determine semantic release version from app/build.gradle"
+            exit 1
+          fi
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "::error::Release v$version already exists; bump versionName/versionCode first"
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           gradle --no-daemon :app:assembleRelease -PappVersionName="$version" -PappVersionCode="$code"
       - name: Sign and verify APK

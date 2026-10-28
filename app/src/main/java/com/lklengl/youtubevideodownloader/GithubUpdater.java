@@ -112,6 +112,9 @@ public final class GithubUpdater {
     }
 
     public File download(Candidate release, Cancel cancellation, Progress onProgress) throws Exception {
+        return download(release,cancellation,onProgress,()->{});
+    }
+    public File download(Candidate release, Cancel cancellation, Progress onProgress,Runnable verifying) throws Exception {
         File folder=new File(context.getCacheDir(),"updates");
         if(!folder.isDirectory() && !folder.mkdirs())throw new IOException("Нет папки обновлений");
         File temporary=new File(folder,"downloading.tmp");
@@ -137,6 +140,7 @@ public final class GithubUpdater {
                 if(received!=release.size)throw new IOException("Неверный размер APK");
             }
             cancellation.check();
+            verifying.run();
             byte[] expected=new byte[32];
             for(int i=0;i<32;i++)expected[i]=(byte)Integer.parseInt(release.digest.substring(i*2,i*2+2),16);
             if(!MessageDigest.isEqual(expected,digest.digest()))throw new IOException("Не совпадает SHA-256 APK");

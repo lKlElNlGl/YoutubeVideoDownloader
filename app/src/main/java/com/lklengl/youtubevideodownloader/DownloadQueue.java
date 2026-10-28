@@ -15,7 +15,7 @@ public final class DownloadQueue {
     private static final Object LOCK=new Object();
 
     public static final class Item {
-        public String id, url, quality, proxy, directoryUri, status, message, filename;
+        public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle;
         public boolean audio, cookies;
         public int progress;
 
@@ -24,14 +24,14 @@ public final class DownloadQueue {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("filename",filename);j.put("audio",audio);j.put("cookies",cookies);j.put("progress",progress);
+            j.put("filename",filename);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("cookies",cookies);j.put("progress",progress);
             return j;
         }
         static Item fromJson(JSONObject j) {
             Item i=new Item();i.id=j.optString("id");i.url=j.optString("url");
             i.quality=j.optString("quality","best");i.proxy=j.optString("proxy");
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
-            i.message=j.optString("message");i.filename=j.optString("filename");
+            i.message=j.optString("message");i.filename=j.optString("filename");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
             i.audio=j.optBoolean("audio");i.cookies=j.optBoolean("cookies");
             i.progress=j.optInt("progress");return i;
         }
@@ -61,11 +61,32 @@ public final class DownloadQueue {
     public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,boolean cookies,String directoryUri) {
         synchronized(LOCK){
             List<Item> list=read(context);
-            if(QueueRules.activeCount(list)>=50)throw new IllegalStateException("Очередь ограничена 50 заданиями");
+            if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.cookies=cookies;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.progress=0;
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.title="";i.playlistTitle="";i.progress=0;
             list.add(i);save(context,list);return i.id;
+        }
+    }
+    /** Adds the selected playlist entries atomically; avoids partial playlists on capacity failures. */
+    public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
+            boolean audio,String quality,String proxy,boolean cookies,String directoryUri) {
+        synchronized(LOCK) {
+            if(selected.size()!=playlist.entries.size())throw new IllegalArgumentException("Выбор видео изменился");
+            List<Item> list=read(context);
+            int count=0;
+            for(Boolean checked:selected)if(Boolean.TRUE.equals(checked))count++;
+            if(count==0)throw new IllegalArgumentException("Выберите хотя бы одно видео");
+            if(QueueRules.activeCount(list)+count>2000)throw new IllegalStateException("Слишком много задач в очереди (максимум 2000)");
+            for(int n=0;n<selected.size();n++) {
+                if(!Boolean.TRUE.equals(selected.get(n)))continue;
+                PlaylistRepository.Entry entry=playlist.entries.get(n);
+                Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
+                i.playlistTitle=playlist.title;i.quality=quality;i.proxy=proxy;i.audio=audio;
+                i.cookies=cookies;i.directoryUri=directoryUri;i.status=WAITING;i.message="Ожидает";
+                i.filename="";i.progress=0;list.add(i);
+            }
+            save(context,list);return count;
         }
     }
     public static Item next(Context context) {

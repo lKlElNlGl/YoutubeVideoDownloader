@@ -135,7 +135,7 @@ public final class MainActivity extends Activity {
         url.setHint("https://www.youtube.com/watch?v=...");
         url.addTextChangedListener(new TextWatcher(){
             @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
-            @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview();}
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview(false);}
             @Override public void afterTextChanged(Editable value){}
         });
         url.setPadding(dp(12),0,dp(51),0);
@@ -423,7 +423,6 @@ public final class MainActivity extends Activity {
     }
     private void updateQualityChoices(QualityChoices next,boolean restoreSaved){
         if(quality==null || qualityChoices.values().equals(next.values()))return;
-        String prior=selectedQuality();
         qualityChoices=next;
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,next.labels()){
             @Override public View getView(int position,View convertView,ViewGroup parent){
@@ -445,8 +444,7 @@ public final class MainActivity extends Activity {
         int selected=restoreSaved?getPreferences(MODE_PRIVATE).getInt("quality",0):0;
         if(restoreSaved && selected>=0 && selected<next.values().size())
             quality.setSelection(selected);
-        else quality.setSelection(next.values().indexOf(prior)>=0 && !restoreSaved?
-            next.values().indexOf(prior):0);
+        else quality.setSelection(0);
     }
     private void updatePreviewMessage(String message){
         preview.setText(message);
@@ -467,7 +465,7 @@ public final class MainActivity extends Activity {
             File image=new File(getFilesDir(),"preview-thumbnail.jpg");
             if(image.isFile())previewBitmap=BitmapFactory.decodeFile(image.getAbsolutePath());
         }
-        renderPreview();
+        renderPreview(true);
     }
     private void rememberPreview(PreviewSnapshot value,Bitmap picture){
         previewSnapshot=value;previewBitmap=picture;
@@ -484,9 +482,9 @@ public final class MainActivity extends Activity {
             picture.compress(Bitmap.CompressFormat.JPEG,82,out);
         }catch(IOException ignored){thumb.delete();}
         updatePreviewMessage("");
-        renderPreview();
+        renderPreview(false);
     }
-    private void renderPreview(){
+    private void renderPreview(boolean restoreSaved){
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
@@ -495,7 +493,7 @@ public final class MainActivity extends Activity {
             return;
         }
         updateQualityChoices(previewSnapshot.playlist?QualityChoices.fallback():
-            QualityChoices.fromDetected(previewSnapshot.resolutions),true);
+            QualityChoices.fromDetected(previewSnapshot.resolutions),restoreSaved);
         previewHeader.setText(previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО");
         previewTitle.setText(previewSnapshot.title);
         if(previewSnapshot.playlist){
@@ -556,7 +554,7 @@ public final class MainActivity extends Activity {
             proxyUrl=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyUrl.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
             if(!approvedDuplicate && QueuePolicy.hasActiveDuplicate(DownloadQueue.all(this),link)){
-                new AlertDialog.Builder(this).setTitle("Видео уже в очереди")
+                ThemeStyle.dialog(this).setTitle("Видео уже в очереди")
                     .setMessage("Такая ссылка уже ожидает загрузки или скачивается. Добавить ещё раз?")
                     .setNegativeButton("Отмена",null)
                     .setPositiveButton("Добавить",(dialog,which)->enqueue(priority,true)).show();
@@ -648,14 +646,19 @@ public final class MainActivity extends Activity {
         }
     }
     private void confirmRemove(DownloadQueue.Item job){
-        new AlertDialog.Builder(this).setTitle("Удалить запись из очереди?")
+        AlertDialog confirm=ThemeStyle.dialog(this).setTitle("Удалить запись из очереди?")
             .setMessage("Скачанные файлы сохранятся. Если загрузка выполняется, она будет остановлена.")
             .setNegativeButton("Отмена",null)
             .setPositiveButton("Удалить",(dialog,which)->{
                 boolean running=DownloadQueue.requestRemove(this,job.id);
                 if(running)DownloadService.cancel(this,job.id);
                 refreshQueue();
-            }).show();
+            }).create();
+        confirm.setOnShowListener(dialog->{
+            confirm.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ThemeStyle.text(this));
+            confirm.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ThemeStyle.RED);
+        });
+        confirm.show();
     }
     private void showTechnicalDetails(DownloadQueue.Item job){
         TextView log=text(job.message,12);
@@ -663,7 +666,7 @@ public final class MainActivity extends Activity {
         log.setPadding(dp(16),dp(12),dp(16),dp(12));
         ScrollView scroller=new ScrollView(this);
         scroller.addView(log);
-        new AlertDialog.Builder(this).setTitle("Подробности ошибки")
+        ThemeStyle.dialog(this).setTitle("Подробности ошибки")
             .setView(scroller).setPositiveButton("Закрыть",null).show();
     }
     private String statusName(String value){
@@ -744,7 +747,7 @@ public final class MainActivity extends Activity {
             labels[i]=(i+1)+". "+entry.title+
                 (entry.duration>=0?" · "+QueueRules.readableDuration(entry.duration):"");
         }
-        AlertDialog dialog=new AlertDialog.Builder(this)
+        AlertDialog dialog=ThemeStyle.dialog(this)
             .setTitle(data.title+" ("+count+" видео)")
             .setMultiChoiceItems(labels,checked,(d,which,value)->checked[which]=value)
             .setNegativeButton("Отмена",null)
@@ -768,7 +771,7 @@ public final class MainActivity extends Activity {
                             QueuePolicy.hasActiveDuplicate(active,data.entries.get(i).url))existing++;
                     if(existing>0){
                         final int duplicates=existing;
-                        new AlertDialog.Builder(this).setTitle("Повторные видео")
+                        ThemeStyle.dialog(this).setTitle("Повторные видео")
                             .setMessage("Уже в очереди: "+duplicates+". Добавить их повторно?")
                             .setNegativeButton("Отмена",null)
                             .setPositiveButton("Добавить",(confirm,which)->{
@@ -850,7 +853,7 @@ public final class MainActivity extends Activity {
     }
     private void updateEngine(){
         if(DownloadQueue.hasActive(this)){
-            new AlertDialog.Builder(this).setMessage("Завершите очередь перед обновлением yt-dlp.")
+            ThemeStyle.dialog(this).setMessage("Завершите очередь перед обновлением yt-dlp.")
                 .setPositiveButton("ОК",null).show();return;
         }
         updateEngineButton.setEnabled(false);updateEngineButton.setText("Обновление компонента…");
@@ -859,7 +862,7 @@ public final class MainActivity extends Activity {
                 YoutubeDL.getInstance().init(getApplicationContext());
                 YoutubeDL.UpdateStatus response=YoutubeDL.getInstance().updateYoutubeDL(
                     getApplicationContext(),YoutubeDL.UpdateChannel.STABLE.INSTANCE);
-                runOnUiThread(()->new AlertDialog.Builder(this).setTitle("Компонент YouTube")
+                runOnUiThread(()->ThemeStyle.dialog(this).setTitle("Компонент YouTube")
                     .setMessage(response==YoutubeDL.UpdateStatus.DONE?
                         "Компонент обновлён.":"Уже установлена последняя версия.")
                     .setPositiveButton("ОК",null).show());
@@ -872,7 +875,7 @@ public final class MainActivity extends Activity {
         catch(Exception ignored){return "?";}
     }
     private void error(String title,Exception e){
-        new AlertDialog.Builder(this).setTitle(title).setMessage(e.getMessage())
+        ThemeStyle.dialog(this).setTitle(title).setMessage(e.getMessage())
             .setPositiveButton("ОК",null).show();
     }
     private void checkAppUpdate(boolean manual){
@@ -892,7 +895,7 @@ public final class MainActivity extends Activity {
                         });
                         updateDialog.show();
                     }
-                    else if(manual)new AlertDialog.Builder(this).setMessage("Установлена последняя версия.")
+                    else if(manual)ThemeStyle.dialog(this).setMessage("Установлена последняя версия.")
                         .setPositiveButton("ОК",null).show();
                 });
             }catch(Exception e){if(manual)runOnUiThread(()->error("Проверка обновлений",e));}
@@ -923,7 +926,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         if(pendingUpdate!=null&&pendingUpdate.isFile()&&getPackageManager().canRequestPackageInstalls()){
             File cached=pendingUpdate;pendingUpdate=null;
-            new AlertDialog.Builder(this).setTitle("Установить загруженное обновление?")
+            ThemeStyle.dialog(this).setTitle("Установить загруженное обновление?")
                 .setNegativeButton("Позже",null)
                 .setPositiveButton("Установить",(d,w)->{pendingUpdate=cached;installAppUpdate();}).show();
         }

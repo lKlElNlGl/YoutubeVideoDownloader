@@ -22,7 +22,7 @@ public final class ThemeStyle {
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
     public static final int RED=0xFFEF2830;
     public static final int NIGHT_BG=0xFF0D1119;
-    public static final int NIGHT_CARD=0xFF272E39;
+    public static final int NIGHT_CARD=PremiumPalette.DARK_CARD;
     public static final int DAY_BG=0xFFF5F6F9;
     public static final int DAY_CARD=0xFFFFFFFF;
     private ThemeStyle(){}
@@ -55,11 +55,29 @@ public final class ThemeStyle {
         GradientDrawable d=new GradientDrawable();
         d.setColor(fill);d.setCornerRadius(radius);d.setStroke(1,stroke);return d;
     }
-    private static Drawable gradient(Context c){
+    private static Drawable gradient(Context c,boolean outlined){
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFFF8262E,0xFFC91D29,0xFF96121C});
-        result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFFAC9A);
+            new int[]{PremiumPalette.GRADIENT_TOP_LEFT,PremiumPalette.GRADIENT_BOTTOM_RIGHT});
+        result.setCornerRadius(dp(c,11));
+        if(outlined)result.setStroke(dp(c,1),0xFFFF9CA4);
         return result;
+    }
+    private static Drawable plainRounded(Context c,int fill){
+        GradientDrawable result=new GradientDrawable();
+        result.setColor(fill);result.setCornerRadius(dp(c,11));
+        return result;
+    }
+    /** Popup colors are intentionally distinct from the card and input colors in dark mode. */
+    public static GradientDrawable popupBackground(Context c){
+        GradientDrawable result=rounded(isDark(c)?PremiumPalette.DARK_POPUP:field(c),
+            isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c),dp(c,11));
+        result.setStroke(dp(c,1),isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c));
+        result.setPadding(dp(c,2),dp(c,3),dp(c,2),dp(c,3));
+        return result;
+    }
+    public static int popupItemColor(Context c,boolean selected){
+        if(!isDark(c))return selected?buttonFill(c):field(c);
+        return selected?PremiumPalette.DARK_SELECTED:android.graphics.Color.TRANSPARENT;
     }
     public static AlertDialog.Builder dialog(Activity activity){
         return isDark(activity)?new AlertDialog.Builder(activity,R.style.YvdDialogDark):
@@ -72,7 +90,7 @@ public final class ThemeStyle {
         tab.setGravity(android.view.Gravity.CENTER);
         tab.setPadding(dp(c,4),0,dp(c,4),0);
         tab.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF),
-            selected?gradient(c):rounded(buttonFill(c),buttonStroke(c),dp(c,11)),null));
+            selected?gradient(c,false):plainRounded(c,buttonFill(c)),null));
         tab.setElevation(dp(c,selected?2:1));
         ImageView image=new ImageView(c);
         image.setImageDrawable(new UiIcons(symbol,selected?Color.WHITE:text(c),dp(c,16)));
@@ -115,7 +133,7 @@ public final class ThemeStyle {
                 new int[]{0x22FFFFFF,0x08FFFFFF,0x00FFFFFF});
             shine.setCornerRadius(dp(c,11));
             android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(
-                new Drawable[]{gradient(c),shine});
+                new Drawable[]{gradient(c,true),shine});
             layers.setLayerInset(1,dp(c,1),dp(c,1),dp(c,1),dp(c,1));
             shape=layers;
         }else shape=rounded(buttonFill(c),buttonStroke(c),dp(c,11));

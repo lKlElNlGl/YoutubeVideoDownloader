@@ -373,8 +373,7 @@ public final class MainActivity extends Activity {
     }
     private Spinner spinner(LinearLayout parent,String[] items){
         Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
-        s.setPopupBackgroundDrawable(ThemeStyle.rounded(
-            ThemeStyle.field(this),ThemeStyle.border(this),dp(10)));
+        s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
         boolean themeChoices=items==ThemeStyle.MODES;
         String[] modes={"sun","moon","phone"};
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items){
@@ -395,8 +394,8 @@ public final class MainActivity extends Activity {
             @Override public View getDropDownView(int position,View old,ViewGroup parent){
                 TextView v=decorate((TextView)super.getDropDownView(position,old,parent),position);
                 v.setPadding(dp(16),dp(12),dp(16),dp(12));
-                v.setBackgroundColor(position==s.getSelectedItemPosition()?
-                    ThemeStyle.buttonFill(MainActivity.this):ThemeStyle.field(MainActivity.this));
+                v.setBackgroundColor(ThemeStyle.popupItemColor(MainActivity.this,
+                    position==s.getSelectedItemPosition()));
                 return v;
             }
         };
@@ -434,8 +433,8 @@ public final class MainActivity extends Activity {
                 TextView view=(TextView)super.getDropDownView(position,convertView,parent);
                 view.setTextColor(ThemeStyle.text(MainActivity.this));
                 view.setPadding(dp(16),dp(12),dp(16),dp(12));
-                view.setBackgroundColor(position==quality.getSelectedItemPosition()?
-                    ThemeStyle.buttonFill(MainActivity.this):ThemeStyle.field(MainActivity.this));
+                view.setBackgroundColor(ThemeStyle.popupItemColor(MainActivity.this,
+                    position==quality.getSelectedItemPosition()));
                 return view;
             }
         };

@@ -18,9 +18,9 @@ import android.widget.TextView;
 /** Shared premium graphite/coral design tokens and compact visual components. */
 public final class ThemeStyle {
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
-    public static final int RED=0xFFE42D52;
+    public static final int RED=0xFFEF2830;
     public static final int NIGHT_BG=0xFF0D1119;
-    public static final int NIGHT_CARD=0xFF303744;
+    public static final int NIGHT_CARD=0xFF272E39;
     public static final int DAY_BG=0xFFF5F6F9;
     public static final int DAY_CARD=0xFFFFFFFF;
     private ThemeStyle(){}
@@ -45,10 +45,10 @@ public final class ThemeStyle {
     public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}
     public static int background(Context c){return isDark(c)?NIGHT_BG:DAY_BG;}
     public static int cardColor(Context c){return isDark(c)?NIGHT_CARD:DAY_CARD;}
-    public static int border(Context c){return isDark(c)?0xFF707B8D:0xFFD2D9E3;}
+    public static int border(Context c){return isDark(c)?0xFF5F6D80:0xFFD2D9E3;}
     public static int field(Context c){return isDark(c)?0xFF252C38:0xFFF0F2F6;}
-    public static int buttonFill(Context c){return isDark(c)?0xFF404959:0xFFEDEFF5;}
-    public static int buttonStroke(Context c){return isDark(c)?0xFF798496:0xFFD4DAE4;}
+    public static int buttonFill(Context c){return isDark(c)?0xFF353E4D:0xFFEDEFF5;}
+    public static int buttonStroke(Context c){return isDark(c)?0xFF687586:0xFFD4DAE4;}
     public static int dp(Context c,float n){return (int)(n*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int fill,int stroke,float radius){
         GradientDrawable d=new GradientDrawable();
@@ -56,8 +56,8 @@ public final class ThemeStyle {
     }
     private static Drawable gradient(Context c){
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFFFF6177,0xFFE12C53,0xFF971133});
-        result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFD8295);
+            new int[]{0xFFFF534A,0xFFFF2630,0xFFB6091D});
+        result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFFAC9A);
         return result;
     }
     public static void icon(Button b,String icon,int px){
@@ -86,7 +86,7 @@ public final class ThemeStyle {
         Drawable shape=primary?gradient(c):rounded(buttonFill(c),buttonStroke(c),dp(c,11));
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(primary?0x44FFFFFF:
             (isDark(c)?0x44FFFFFF:0x33000000)),shape,null));
-        b.setElevation(0);
+        b.setElevation(dp(c,primary?2:1));
         if(b.getLayoutParams()==null){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(c,50));
             p.setMargins(0,dp(c,6),0,dp(c,6));b.setLayoutParams(p);

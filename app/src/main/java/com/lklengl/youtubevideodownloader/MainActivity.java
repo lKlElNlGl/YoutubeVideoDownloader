@@ -129,7 +129,7 @@ public final class MainActivity extends Activity {
         LinearLayout download=pagePanels[0];
         LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");
         label(linkCard,"Ссылка на видео или плейлист");
-        LinearLayout linkRow=new LinearLayout(this);linkRow.setOrientation(LinearLayout.HORIZONTAL);
+        FrameLayout linkRow=new FrameLayout(this);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
         url.addTextChangedListener(new TextWatcher(){
@@ -137,11 +137,14 @@ public final class MainActivity extends Activity {
             @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview();}
             @Override public void afterTextChanged(Editable value){}
         });
-        linkRow.addView(url,new LinearLayout.LayoutParams(0,dp(51),1));
-        Button clear=new Button(this);clear.setText("✕");
-        clear.setContentDescription("Очистить ссылку");ThemeStyle.styleButton(clear,false);
-        LinearLayout.LayoutParams clearParams=new LinearLayout.LayoutParams(dp(51),dp(51));
-        clearParams.setMargins(dp(9),0,0,0);linkRow.addView(clear,clearParams);
+        url.setPadding(dp(12),0,dp(51),0);
+        linkRow.addView(url,new FrameLayout.LayoutParams(-1,dp(51)));
+        ImageView clear=new ImageView(this);
+        clear.setImageDrawable(new UiIcons("close",ThemeStyle.subdued(this),dp(18)));
+        clear.setContentDescription("Очистить ссылку");
+        FrameLayout.LayoutParams clearParams=new FrameLayout.LayoutParams(dp(49),dp(49),Gravity.END|Gravity.CENTER_VERTICAL);
+        clear.setPadding(dp(14),dp(14),dp(14),dp(14));
+        linkRow.addView(clear,clearParams);
         clear.setOnClickListener(v->url.setText(""));
         linkCard.addView(linkRow);
         Button paste=button(linkCard,"Вставить ссылку");
@@ -254,8 +257,8 @@ public final class MainActivity extends Activity {
         openFolder.setOnClickListener(v->openFolder());
 
         LinearLayout updates=ThemeStyle.card(settingsPage,"Обновления");
-        label(updates,"Движок yt-dlp");
-        updateEngineButton=button(updates,"Обновить yt-dlp");
+        label(updates,"Загрузка с YouTube");
+        updateEngineButton=button(updates,"Обновить компонент для работы с YouTube");
         updateEngineButton.setOnClickListener(v->updateEngine());
         label(updates,"Приложение");
         checkAppButton=button(updates,"Проверить новую версию");
@@ -492,14 +495,24 @@ public final class MainActivity extends Activity {
             }catch(Exception e){error("Выбор папки",e);}
         }
     }
-    private void enqueue(boolean priority){
+    private void enqueue(boolean priority){ enqueue(priority,false); }
+    private void enqueue(boolean priority,boolean approvedDuplicate){
         final String link, proxyUrl;
         try{
             link=DownloadOptions.validateUrl(url.getText().toString());
             proxyUrl=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyUrl.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
+            if(!approvedDuplicate && QueuePolicy.hasActiveDuplicate(DownloadQueue.all(this),link)){
+                new AlertDialog.Builder(this).setTitle("Видео уже в очереди")
+                    .setMessage("Такая ссылка уже ожидает загрузки или скачивается. Добавить ещё раз?")
+                    .setNegativeButton("Отмена",null)
+                    .setPositiveButton("Добавить",(dialog,which)->enqueue(priority,true)).show();
+                return;
+            }
+            String title=previewSnapshot!=null && previewSnapshot.matches(link) && !previewSnapshot.playlist?
+                previewSnapshot.title:"";
             DownloadQueue.enqueue(this,link,mode.getSelectedItemPosition()==1,
-                DownloadOptions.QUALITIES[quality.getSelectedItemPosition()],proxyUrl,selectedFolder(),priority);
+                DownloadOptions.QUALITIES[quality.getSelectedItemPosition()],proxyUrl,selectedFolder(),priority,title);
         }catch(Exception e){error("Невозможно добавить загрузку",e);return;}
         saveDraft();
         refreshQueue();
@@ -509,12 +522,13 @@ public final class MainActivity extends Activity {
         }catch(Exception e){error("Запуск загрузки",e);}
     }
     private void refreshQueue(){
+        if(queueList==null)return;
         queueList.removeAllViews();
         List<DownloadQueue.Item> jobs=DownloadQueue.all(this);
         if(jobs.isEmpty()){queueList.addView(text("Очередь пуста",14));return;}
         Map<String,int[]> playlists=new LinkedHashMap<>();
         for(DownloadQueue.Item item:jobs){
-            if(item.playlistTitle==null || item.playlistTitle.isEmpty())continue;
+            if(item.playlistTitle==null||item.playlistTitle.isEmpty())continue;
             int[] counts=playlists.computeIfAbsent(item.playlistTitle,k->new int[2]);
             counts[1]++;
             if(DownloadQueue.DONE.equals(item.status))counts[0]++;
@@ -523,44 +537,81 @@ public final class MainActivity extends Activity {
             int[] counts=group.getValue();
             TextView header=text("Плейлист: "+group.getKey()+" · "+counts[0]+"/"+counts[1]+" завершено",14);
             header.setPadding(dp(8),dp(8),dp(8),dp(8));
-            header.setTextColor(ThemeStyle.RED);queueList.addView(header);
+            header.setTextColor(ThemeStyle.subdued(this));queueList.addView(header);
         }
-        // Most recent jobs shown first, all pending work remains in persistent FIFO order.
         for(int k=jobs.size()-1;k>=0;k--){
             DownloadQueue.Item j=jobs.get(k);
-            LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);
-            row.setPadding(dp(9),dp(6),dp(9),dp(9));
-            row.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),
-                ThemeStyle.isDark(this)?0xFF424750:0xFFD7DAE1,dp(13)));
+            LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(11),dp(10),dp(11),dp(11));
+            card.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(12)));
             LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);
-            cardParams.setMargins(0,dp(7),0,dp(7));
-            row.setLayoutParams(cardParams);
-            String name=TextUtils.isEmpty(j.filename)?
-                ((j.title==null || j.title.isEmpty())?j.url:j.title):j.filename;
-            TextView title=text(name,13);
-            title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);
-            row.addView(title);
-            row.addView(text(j.message+" · "+statusName(j.status)+(DownloadQueue.RUNNING.equals(j.status)?" ("+j.progress+"%)":""),13));
+            cardParams.setMargins(0,dp(6),0,dp(9));queueList.addView(card,cardParams);
+            LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);
+            line.setGravity(Gravity.CENTER_VERTICAL);card.addView(line);
+            String name=!TextUtils.isEmpty(j.title)?j.title:
+                (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
+            TextView heading=text(name,14);heading.setTypeface(null,android.graphics.Typeface.BOLD);
+            heading.setMaxLines(2);heading.setEllipsize(TextUtils.TruncateAt.END);
+            line.addView(heading,new LinearLayout.LayoutParams(0,-2,1));
+            ImageView trash=new ImageView(this);
+            trash.setImageDrawable(new UiIcons("trash",ThemeStyle.subdued(this),dp(22)));
+            trash.setContentDescription("Удалить запись из очереди");
+            trash.setPadding(dp(12),dp(12),dp(12),dp(12));
+            line.addView(trash,new LinearLayout.LayoutParams(dp(48),dp(48)));
+            trash.setOnClickListener(v->confirmRemove(j));
+            if(!TextUtils.isEmpty(j.title)){
+                TextView source=text(j.url,11);source.setTextColor(ThemeStyle.subdued(this));
+                source.setMaxLines(1);source.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+                card.addView(source);
+            }
+            boolean failed=DownloadQueue.ERROR.equals(j.status);
+            String info=failed?QueuePolicy.errorSummary(j.message):
+                (j.message+" · "+statusName(j.status)+(DownloadQueue.RUNNING.equals(j.status)?" ("+j.progress+"%)":""));
+            TextView state=text(info,13);
+            if(failed)state.setTextColor(ThemeStyle.RED);
+            state.setPadding(0,dp(6),0,dp(6));card.addView(state);
             if(DownloadQueue.RUNNING.equals(j.status)){
                 ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-                progress.setMax(100);progress.setProgress(j.progress);row.addView(progress);
+                progress.setMax(100);progress.setProgress(j.progress);card.addView(progress);
             }
-            if(DownloadQueue.WAITING.equals(j.status) || DownloadQueue.RUNNING.equals(j.status)){
-                Button cancel=button(row,"Отменить");
-                cancel.setOnClickListener(v->{
-                    DownloadService.cancel(this,j.id);refreshQueue();
-                });
-            }else if(DownloadQueue.ERROR.equals(j.status)||DownloadQueue.CANCELLED.equals(j.status)){
-                Button retry=button(row,"Повторить загрузку");
+            if(failed || DownloadQueue.CANCELLED.equals(j.status)){
+                if(failed){
+                    Button details=button(card,"Подробности");
+                    details.setOnClickListener(v->showTechnicalDetails(j));
+                }
+                Button retry=button(card,"Повторить загрузку");
                 retry.setOnClickListener(v->{
                     DownloadQueue.retry(this,j.id);refreshQueue();DownloadService.kick(this);
                 });
+            }else if(DownloadQueue.WAITING.equals(j.status)||DownloadQueue.RUNNING.equals(j.status)){
+                Button cancel=button(card,"Отменить");
+                cancel.setOnClickListener(v->{
+                    DownloadService.cancel(this,j.id);refreshQueue();
+                });
             }else if(DownloadQueue.DONE.equals(j.status)){
-                Button folder=button(row,"Открыть папку");
+                Button folder=button(card,"Открыть папку");
                 folder.setOnClickListener(v->openFolderFor(j.directoryUri));
             }
-            queueList.addView(row);
         }
+    }
+    private void confirmRemove(DownloadQueue.Item job){
+        new AlertDialog.Builder(this).setTitle("Удалить запись из очереди?")
+            .setMessage("Скачанные файлы сохранятся. Если загрузка выполняется, она будет остановлена.")
+            .setNegativeButton("Отмена",null)
+            .setPositiveButton("Удалить",(dialog,which)->{
+                boolean running=DownloadQueue.requestRemove(this,job.id);
+                if(running)DownloadService.cancel(this,job.id);
+                refreshQueue();
+            }).show();
+    }
+    private void showTechnicalDetails(DownloadQueue.Item job){
+        TextView log=text(job.message,12);
+        log.setTextIsSelectable(true);
+        log.setPadding(dp(16),dp(12),dp(16),dp(12));
+        ScrollView scroller=new ScrollView(this);
+        scroller.addView(log);
+        new AlertDialog.Builder(this).setTitle("Подробности ошибки")
+            .setView(scroller).setPositiveButton("Закрыть",null).show();
     }
     private String statusName(String value){
         switch(value){
@@ -657,14 +708,35 @@ public final class MainActivity extends Activity {
                 try{
                     List<Boolean> selected=new ArrayList<>();
                     for(boolean value:checked)selected.add(value);
-                    int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority);
-                    dialog.dismiss();refreshQueue();
-                    DownloadService.kick(this);
-                    Toast.makeText(this,"Добавлено в очередь: "+added,Toast.LENGTH_LONG).show();
+                    List<DownloadQueue.Item> active=DownloadQueue.all(this);
+                    int existing=0;
+                    for(int i=0;i<selected.size();i++)
+                        if(Boolean.TRUE.equals(selected.get(i)) &&
+                            QueuePolicy.hasActiveDuplicate(active,data.entries.get(i).url))existing++;
+                    if(existing>0){
+                        final int duplicates=existing;
+                        new AlertDialog.Builder(this).setTitle("Повторные видео")
+                            .setMessage("Уже в очереди: "+duplicates+". Добавить их повторно?")
+                            .setNegativeButton("Отмена",null)
+                            .setPositiveButton("Добавить",(confirm,which)->{
+                                try{addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority);
+                                    dialog.dismiss();
+                                }catch(Exception e){error("Очередь плейлиста",e);}
+                            }).show();
+                    }else{
+                        addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority);
+                        dialog.dismiss();
+                    }
                 }catch(Exception e){error("Очередь плейлиста",e);}
             });
         });
         dialog.show();
+    }
+    private void addSelectedPlaylist(PlaylistRepository.Playlist data,List<Boolean> selected,
+            boolean audio,String resolution,String proxyValue,String directory,boolean priority){
+        int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority);
+        refreshQueue();DownloadService.kick(this);
+        Toast.makeText(this,"Добавлено в очередь: "+added,Toast.LENGTH_LONG).show();
     }
     private void loadPreview(){
         final String videoUrl;
@@ -728,18 +800,18 @@ public final class MainActivity extends Activity {
             new AlertDialog.Builder(this).setMessage("Завершите очередь перед обновлением yt-dlp.")
                 .setPositiveButton("ОК",null).show();return;
         }
-        updateEngineButton.setEnabled(false);updateEngineButton.setText("Обновление yt-dlp…");
+        updateEngineButton.setEnabled(false);updateEngineButton.setText("Обновление компонента…");
         uiWorker.execute(()->{
             try{
                 YoutubeDL.getInstance().init(getApplicationContext());
                 YoutubeDL.UpdateStatus response=YoutubeDL.getInstance().updateYoutubeDL(
                     getApplicationContext(),YoutubeDL.UpdateChannel.STABLE.INSTANCE);
-                runOnUiThread(()->new AlertDialog.Builder(this).setTitle("yt-dlp")
+                runOnUiThread(()->new AlertDialog.Builder(this).setTitle("Компонент YouTube")
                     .setMessage(response==YoutubeDL.UpdateStatus.DONE?
-                        "Движок обновлён успешно.":"Уже установлена последняя версия.")
+                        "Компонент обновлён.":"Уже установлена последняя версия.")
                     .setPositiveButton("ОК",null).show());
             }catch(Exception e){runOnUiThread(()->error("Обновление yt-dlp",e));}
-            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить yt-dlp");});}
+            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить компонент для работы с YouTube");});}
         });
     }
     private String version(){

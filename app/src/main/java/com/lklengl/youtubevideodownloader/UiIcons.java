@@ -47,6 +47,12 @@ public final class UiIcons extends Drawable {
                 c.drawRoundRect(new RectF(6,2,18,22),2.5f,2.5f,p);c.drawLine(10,19,14,19,p);break;
             case "chevron":
                 c.drawLine(6,9,12,15,p);c.drawLine(12,15,18,9,p);break;
+            case "trash":
+                c.drawLine(4,6,20,6,p);c.drawLine(9,4,15,4,p);
+                c.drawRoundRect(new RectF(6.5f,7,17.5f,21),1.3f,1.3f,p);
+                c.drawLine(10,10,10,17,p);c.drawLine(14,10,14,17,p);break;
+            case "close":
+                c.drawLine(5,5,19,19,p);c.drawLine(19,5,5,19,p);break;
             case "settings":
                 c.drawCircle(12,12,4,p);
                 for(int i=0;i<8;i++){double a=i*Math.PI/4;float x=(float)Math.cos(a),y=(float)Math.sin(a);

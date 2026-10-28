@@ -678,7 +678,7 @@ public final class MainActivity extends Activity {
                 }
                 VideoInfo info=YoutubeDL.getInstance().getInfo(request);
                 String title=info.getTitle()==null?"Без названия":info.getTitle();
-                Set<Integer> heights=new TreeSet<>();
+                NavigableSet<Integer> heights=new TreeSet<>();
                 if(info.getFormats()!=null)for(VideoFormat format:info.getFormats())
                     if(format.getHeight()>0 && format.getVcodec()!=null && !"none".equals(format.getVcodec()))
                         heights.add(format.getHeight());

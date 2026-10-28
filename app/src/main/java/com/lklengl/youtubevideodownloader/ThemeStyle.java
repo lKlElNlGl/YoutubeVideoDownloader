@@ -18,9 +18,9 @@ import android.widget.TextView;
 /** Shared premium graphite/coral design tokens and compact visual components. */
 public final class ThemeStyle {
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
-    public static final int RED=0xFFFF4051;
-    public static final int NIGHT_BG=0xFF0D1015;
-    public static final int NIGHT_CARD=0xFF20242C;
+    public static final int RED=0xFFE42D52;
+    public static final int NIGHT_BG=0xFF0D1119;
+    public static final int NIGHT_CARD=0xFF303744;
     public static final int DAY_BG=0xFFF5F6F9;
     public static final int DAY_CARD=0xFFFFFFFF;
     private ThemeStyle(){}
@@ -42,13 +42,13 @@ public final class ThemeStyle {
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     }
     public static int text(Context c){return isDark(c)?0xFFF4F5F8:0xFF171C25;}
-    public static int subdued(Context c){return isDark(c)?0xFFADB6C4:0xFF596477;}
+    public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}
     public static int background(Context c){return isDark(c)?NIGHT_BG:DAY_BG;}
     public static int cardColor(Context c){return isDark(c)?NIGHT_CARD:DAY_CARD;}
-    public static int border(Context c){return isDark(c)?0xFF343B46:0xFFDDE3EA;}
-    public static int field(Context c){return isDark(c)?0xFF171B22:0xFFF0F2F6;}
-    public static int buttonFill(Context c){return isDark(c)?0xFF2B303A:0xFFEDEFF5;}
-    public static int buttonStroke(Context c){return isDark(c)?0xFF444C59:0xFFD4DAE4;}
+    public static int border(Context c){return isDark(c)?0xFF707B8D:0xFFD2D9E3;}
+    public static int field(Context c){return isDark(c)?0xFF252C38:0xFFF0F2F6;}
+    public static int buttonFill(Context c){return isDark(c)?0xFF404959:0xFFEDEFF5;}
+    public static int buttonStroke(Context c){return isDark(c)?0xFF798496:0xFFD4DAE4;}
     public static int dp(Context c,float n){return (int)(n*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int fill,int stroke,float radius){
         GradientDrawable d=new GradientDrawable();
@@ -56,9 +56,27 @@ public final class ThemeStyle {
     }
     private static Drawable gradient(Context c){
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFFFF6973,0xFFF63A4C,0xFFC91B36});
-        result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFA8591);
+            new int[]{0xFFFF6177,0xFFE12C53,0xFF971133});
+        result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFD8295);
         return result;
+    }
+    public static void icon(Button b,String icon,int px){
+        int color=b.getCurrentTextColor();
+        b.setCompoundDrawablesWithIntrinsicBounds(new UiIcons(icon,color,dp(b.getContext(),px)),null,null,null);
+        b.setCompoundDrawablePadding(dp(b.getContext(),6));
+    }
+    /** Compact single-line navigation: unlike default Button padding, this fits small phones. */
+    public static void styleTab(Button b,boolean selected,String symbol){
+        styleButton(b,selected);
+        b.setSingleLine(true);
+        b.setMaxLines(1);
+        b.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        b.setTextSize(11);
+        b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);
+        b.setPadding(dp(b.getContext(),4),0,dp(b.getContext(),4),0);
+        icon(b,symbol,14);
+        b.setCompoundDrawablePadding(dp(b.getContext(),3));
+        b.setGravity(android.view.Gravity.CENTER);
     }
     public static void styleButton(Button b,boolean primary){
         Context c=b.getContext();
@@ -83,8 +101,8 @@ public final class ThemeStyle {
     }
     public static void styleSpinner(Spinner spinner){
         Context c=spinner.getContext();
-        spinner.setBackground(rounded(field(c),buttonStroke(c),dp(c,10)));
-        spinner.setPadding(dp(c,12),dp(c,5),dp(c,10),dp(c,5));
+        spinner.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        spinner.setPadding(dp(c,12),dp(c,5),dp(c,25),dp(c,5));
         spinner.setMinimumHeight(dp(c,50));
     }
     public static LinearLayout card(LinearLayout parent,String title){
@@ -99,9 +117,7 @@ public final class ThemeStyle {
         heading.setTextSize(16);heading.setTypeface(null,android.graphics.Typeface.BOLD);
         heading.setTextColor(text(c));heading.setPadding(dp(c,3),dp(c,4),0,dp(c,10));
         panel.addView(heading);
-        View underline=new View(c);underline.setBackgroundColor(RED);
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(c,34),dp(c,3));
-        p.setMargins(dp(c,3),0,0,dp(c,9));panel.addView(underline,p);
+        // Titles are separated by spacing and card borders, never progress-like red stripes.
         return panel;
     }
 }

@@ -111,7 +111,7 @@ public final class MainActivity extends Activity {
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
             pagePanels[i]=panel;page.addView(panel);
         }
-        mainScroll.setOnPageChange(this::showPage);
+        mainScroll.setPageChanged(this::showPage);
 
         LinearLayout download=pagePanels[0];
         LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");

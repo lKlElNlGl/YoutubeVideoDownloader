@@ -6,7 +6,7 @@ public final class PremiumPalette {
     public static final int GRADIENT_TOP_LEFT=0xFFFC2A3F;
     public static final int GRADIENT_BOTTOM_RIGHT=0xFFFE1F2C;
     public static final int DARK_CARD=0xFF272E39;
-    public static final int DARK_POPUP=0xFF3A485B;
-    public static final int DARK_SELECTED=0xFF536479;
+    public static final int DARK_POPUP=0xFF3B4457;
+    public static final int DARK_SELECTED=0xFF4F6073;
     public static final int DARK_POPUP_BORDER=0xFF8798AA;
 }

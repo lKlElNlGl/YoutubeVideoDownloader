@@ -7,7 +7,7 @@
     </style>
     <style name="YvdDialogDark" parent="android:style/Theme.Material.Dialog.Alert">
         <item name="android:windowBackground">@drawable/yvd_dialog_dark</item>
-        <item name="android:colorAccent">#F8262E</item>
+        <item name="android:colorAccent">#D3DAE6</item>
         <item name="android:textColorPrimary">#FFF4F5F8</item>
         <item name="android:textColorSecondary">#FFD3DAE6</item>
     </style>

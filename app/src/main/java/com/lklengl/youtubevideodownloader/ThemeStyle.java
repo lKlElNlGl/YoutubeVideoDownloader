@@ -68,16 +68,24 @@ public final class ThemeStyle {
         return result;
     }
     /** Popup colors are intentionally distinct from the card and input colors in dark mode. */
+    /** Individual item follows the outer rounded popup only at the first and last positions. */
+    public static GradientDrawable popupRowBackground(Context c,boolean selected,int position,int count){
+        GradientDrawable row=new GradientDrawable();
+        row.setColor(popupItemColor(c,selected));
+        float r=dp(c,10),top=position==0?r:0,bottom=position==count-1?r:0;
+        row.setCornerRadii(new float[]{top,top,top,top,bottom,bottom,bottom,bottom});
+        return row;
+    }
     public static GradientDrawable popupBackground(Context c){
         GradientDrawable result=rounded(isDark(c)?PremiumPalette.DARK_POPUP:field(c),
             isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c),dp(c,11));
         result.setStroke(dp(c,1),isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c));
-        result.setPadding(dp(c,2),dp(c,3),dp(c,2),dp(c,3));
+        result.setPadding(dp(c,1),dp(c,1),dp(c,1),dp(c,1));
         return result;
     }
     public static int popupItemColor(Context c,boolean selected){
         if(!isDark(c))return selected?buttonFill(c):field(c);
-        return selected?PremiumPalette.DARK_SELECTED:android.graphics.Color.TRANSPARENT;
+        return selected?PremiumPalette.DARK_SELECTED:PremiumPalette.DARK_POPUP;
     }
     public static AlertDialog.Builder dialog(Activity activity){
         return isDark(activity)?new AlertDialog.Builder(activity,R.style.YvdDialogDark):

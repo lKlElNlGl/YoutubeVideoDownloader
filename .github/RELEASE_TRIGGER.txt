@@ -7,3 +7,5 @@ Retry v0.3.0 signing after fixing the semantic version parser in release workflo
 Publish v0.3.1: premium dark UI refinements, icon background, swipe tabs, priority downloads, simplified settings.
 
 Publish v0.3.2: premium contrast, accessible tabs, working gestures, persistent metadata preview, cleaner updater dialog.
+
+Publish v0.3.3: exact reference icon, premium buttons, confirmation-based queue removal, concise errors, duplicate alerts and clearer download stages.

@@ -16,6 +16,7 @@ public final class DownloadQueue {
 
     public static final class Item {
         public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle;
+        public boolean deleteRequested;
         public boolean audio;
         public int progress;
 
@@ -24,7 +25,7 @@ public final class DownloadQueue {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("filename",filename);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("progress",progress);
+            j.put("filename",filename);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
             return j;
         }
         static Item fromJson(JSONObject j) {
@@ -32,7 +33,7 @@ public final class DownloadQueue {
             i.quality=j.optString("quality","best");i.proxy=j.optString("proxy");
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
             i.message=j.optString("message");i.filename=j.optString("filename");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
-            i.audio=j.optBoolean("audio");
+            i.audio=j.optBoolean("audio");i.deleteRequested=j.optBoolean("deleteRequested");
             i.progress=j.optInt("progress");return i;
         }
     }
@@ -59,12 +60,15 @@ public final class DownloadQueue {
     }
     public static List<Item> all(Context context){synchronized(LOCK){return read(context);}}
     public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,String directoryUri,boolean priority) {
+        return enqueue(context,url,audio,quality,proxy,directoryUri,priority,"");
+    }
+    public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,String directoryUri,boolean priority,String title) {
         synchronized(LOCK){
             List<Item> list=read(context);
             if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.title="";i.playlistTitle="";i.progress=0;
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
             if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             else list.add(i);
             save(context,list);return i.id;
@@ -104,7 +108,37 @@ public final class DownloadQueue {
         synchronized(LOCK){
             List<Item> list=read(context);boolean changed=false;
             for(Item i:list)if(RUNNING.equals(i.status)){i.status=WAITING;i.progress=0;i.message="Возобновление после перезапуска";changed=true;}
+            changed|=list.removeIf(i->i.deleteRequested);
             if(changed)save(context,list);
+        }
+    }
+    /** Transition WAITING->RUNNING atomically, preventing removal/start races. */
+    public static boolean begin(Context context,String id){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)&&WAITING.equals(i.status)&&!i.deleteRequested){
+                i.status=RUNNING;i.message="Подготовка загрузки";save(context,list);return true;
+            }
+            return false;
+        }
+    }
+    /** Remove immediately except for running jobs: defer until their download stops. */
+    public static boolean requestRemove(Context context,String id){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)){
+                if(RUNNING.equals(i.status)){
+                    i.deleteRequested=true;i.message="Отмена загрузки…";save(context,list);return true;
+                }
+                list.remove(i);save(context,list);return false;
+            }
+            return false;
+        }
+    }
+    public static void removeIfRequested(Context context,String id){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            if(list.removeIf(i->i.id.equals(id)&&i.deleteRequested))save(context,list);
         }
     }
     public static void update(Context context,String id,String status,String message,int progress,String filename){

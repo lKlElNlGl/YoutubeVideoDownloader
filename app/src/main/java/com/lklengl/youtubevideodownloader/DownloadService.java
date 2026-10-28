@@ -120,6 +120,7 @@ public final class DownloadService extends Service {
     }
     private void download(DownloadQueue.Item item){
         currentId=item.id;cancelCurrent=false;
+        if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
         File temp=new File(getCacheDir(),"download-"+item.id);
         try {
             if(!temp.isDirectory()&&!temp.mkdirs())throw new IOException("Невозможно создать папку загрузки");
@@ -142,6 +143,12 @@ public final class DownloadService extends Service {
             }else request.addOption("--merge-output-format","mp4");
             if(!item.proxy.isEmpty())request.addOption("--proxy",item.proxy);
             YoutubeDL.getInstance().execute(request,item.id,(p,eta,line) -> {
+                String output=line==null?"":line.toLowerCase(Locale.ROOT);
+                if(output.contains("[merger]")||output.contains("[extractaudio]")||
+                    output.contains("ffmpeg")||output.contains("merging formats")){
+                    progress(item,"Обработка видео и аудио",99);
+                    return kotlin.Unit.INSTANCE;
+                }
                 int percent=Math.max(0,Math.min(99,Math.round(p)));
                 // Throttle preference writes to reduce flash wear.
                 long now=android.os.SystemClock.elapsedRealtime();
@@ -172,6 +179,8 @@ public final class DownloadService extends Service {
             announce();
         }finally{
             deleteRecursive(temp);
+            DownloadQueue.removeIfRequested(this,item.id);
+            announce();
             currentId=null;cancelCurrent=false;
         }
     }

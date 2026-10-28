@@ -347,10 +347,10 @@ public final class MainActivity extends Activity {
             DownloadQueue.Item j=jobs.get(k);
             LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);
             row.setPadding(dp(9),dp(6),dp(9),dp(9));
-            row.setBackground(ThemeStyle.rounded(ThemeStyle.card(this),
-                ThemeStyle.isDark(this)?0xFF424750:0xFFD7DAE1,dp(14)));
+            row.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),
+                ThemeStyle.isDark(this)?0xFF424750:0xFFD7DAE1,dp(13)));
             LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);
-            cardParams.setMargins(0,dp(4),0,dp(4));
+            cardParams.setMargins(0,dp(7),0,dp(7));
             row.setLayoutParams(cardParams);
             String name=TextUtils.isEmpty(j.filename)?
                 ((j.title==null || j.title.isEmpty())?j.url:j.title):j.filename;

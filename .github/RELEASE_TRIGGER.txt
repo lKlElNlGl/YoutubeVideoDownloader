@@ -5,3 +5,5 @@ Build: signed APK, permanent signing identity, direct GitHub Release asset.
 Retry v0.3.0 signing after fixing the semantic version parser in release workflow.
 
 Publish v0.3.1: premium dark UI refinements, icon background, swipe tabs, priority downloads, simplified settings.
+
+Publish v0.3.2: premium contrast, accessible tabs, working gestures, persistent metadata preview, cleaner updater dialog.

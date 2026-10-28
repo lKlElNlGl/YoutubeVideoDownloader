@@ -53,6 +53,7 @@ public final class MainActivity extends Activity {
     private float swipeStartX,swipeStartY;
     private boolean swipeEligible;
     private PreviewSnapshot previewSnapshot;
+    private Bitmap previewBitmap;
     private LinearLayout[] pagePanels;
     private Button[] pageTabs;
     private int currentPage=0;
@@ -355,16 +356,102 @@ public final class MainActivity extends Activity {
     }
     private Spinner spinner(LinearLayout parent,String[] items){
         Spinner s=new Spinner(this);
+        boolean themeChoices=items==ThemeStyle.MODES;
+        String[] modes={"sun","moon","phone"};
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items){
-            @Override public View getView(int position,View convertView,android.view.ViewGroup parent){
-                TextView v=(TextView)super.getView(position,convertView,parent);
-                v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);return v;
+            private TextView decorate(TextView v,int position){
+                v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);
+                v.setSingleLine(true);v.setEllipsize(TextUtils.TruncateAt.END);
+                if(themeChoices){
+                    v.setCompoundDrawablesWithIntrinsicBounds(
+                        new UiIcons(modes[position],ThemeStyle.subdued(MainActivity.this),dp(18)),
+                        null,null,null);
+                    v.setCompoundDrawablePadding(dp(10));
+                }
+                return v;
+            }
+            @Override public View getView(int position,View old,ViewGroup parent){
+                return decorate((TextView)super.getView(position,old,parent),position);
+            }
+            @Override public View getDropDownView(int position,View old,ViewGroup parent){
+                TextView v=decorate((TextView)super.getDropDownView(position,old,parent),position);
+                v.setPadding(dp(16),dp(12),dp(16),dp(12));
+                return v;
             }
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         s.setAdapter(adapter);ThemeStyle.styleSpinner(s);
-        parent.addView(s);return s;
+        FrameLayout shell=new FrameLayout(this);
+        shell.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(10)));
+        LinearLayout.LayoutParams shellParams=new LinearLayout.LayoutParams(-1,dp(52));
+        shellParams.setMargins(0,dp(4),0,dp(7));parent.addView(shell,shellParams);
+        shell.addView(s,new FrameLayout.LayoutParams(-1,-1));
+        ImageView arrow=new ImageView(this);
+        arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(this),dp(20)));
+        FrameLayout.LayoutParams arrParams=new FrameLayout.LayoutParams(dp(40),-1,Gravity.END|Gravity.CENTER_VERTICAL);
+        arrow.setPadding(dp(10),0,dp(10),0);
+        arrow.setContentDescription("Открыть список");
+        shell.addView(arrow,arrParams);
+        arrow.setOnClickListener(v->s.performClick());
+        return s;
     }
+    private void restorePreview(){
+        android.content.SharedPreferences p=getPreferences(MODE_PRIVATE);
+        String source=p.getString("previewSource","");
+        if(source.isEmpty())return;
+        String title=p.getString("previewTitle","");
+        if(title.isEmpty())return;
+        if(p.getBoolean("previewPlaylist",false))
+            previewSnapshot=PreviewSnapshot.playlist(source,title,p.getInt("previewCount",0));
+        else
+            previewSnapshot=PreviewSnapshot.video(source,title,p.getString("previewDuration",""),
+                p.getString("previewQualities",""));
+        if(!previewSnapshot.playlist){
+            File image=new File(getFilesDir(),"preview-thumbnail.jpg");
+            if(image.isFile())previewBitmap=BitmapFactory.decodeFile(image.getAbsolutePath());
+        }
+        renderPreview();
+    }
+    private void rememberPreview(PreviewSnapshot value,Bitmap picture){
+        previewSnapshot=value;previewBitmap=picture;
+        getPreferences(MODE_PRIVATE).edit()
+            .putString("previewSource",value.source)
+            .putString("previewTitle",value.title)
+            .putBoolean("previewPlaylist",value.playlist)
+            .putInt("previewCount",value.videoCount)
+            .putString("previewDuration",value.duration)
+            .putString("previewQualities",value.resolutions).apply();
+        File thumb=new File(getFilesDir(),"preview-thumbnail.jpg");
+        if(picture==null)thumb.delete();
+        else try(FileOutputStream out=new FileOutputStream(thumb)){
+            picture.compress(Bitmap.CompressFormat.JPEG,82,out);
+        }catch(IOException ignored){thumb.delete();}
+        preview.setText("");
+        renderPreview();
+    }
+    private void renderPreview(){
+        if(previewCard==null||url==null)return;
+        boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
+        previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
+        if(!valid)return;
+        previewHeader.setText(previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО");
+        previewTitle.setText(previewSnapshot.title);
+        if(previewSnapshot.playlist){
+            previewDuration.setText(previewSnapshot.videoCount+" видео");
+            previewQuality.setText("Плейлист");
+        }else{
+            previewDuration.setText(previewSnapshot.duration);
+            previewQuality.setText(previewSnapshot.resolutions);
+        }
+        if(previewBitmap!=null && !previewSnapshot.playlist){
+            thumbnail.setImageBitmap(previewBitmap);
+            thumbnail.setVisibility(View.VISIBLE);
+        }else{
+            thumbnail.setImageDrawable(null);
+            thumbnail.setVisibility(View.GONE);
+        }
+    }
+
     private void loadPreferences(){
         android.content.SharedPreferences p=getPreferences(MODE_PRIVATE);
         mode.setSelection(p.getInt("mode",0));quality.setSelection(p.getInt("quality",0));
@@ -519,8 +606,8 @@ public final class MainActivity extends Activity {
                 PlaylistRepository.Playlist data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
-                    preview.setText("Плейлист: "+data.title+"\nДоступно видео: "+data.entries.size()+
-                        (data.reportedCount>data.entries.size()?" (часть видео недоступна)":""));
+                    if(!link.equals(url.getText().toString().trim()))return;
+                    rememberPreview(PreviewSnapshot.playlist(link,data.title,data.entries.size()),null);
                     showPlaylistSelection(data,audio,resolution,proxyValue,directory,priority);
                 });
             }catch(Exception ex){
@@ -575,7 +662,7 @@ public final class MainActivity extends Activity {
         catch(Exception e){error("Ссылка",e);return;}
         previewButton.setEnabled(false);
         preview.setText("Получение информации о видео…");
-        thumbnail.setVisibility(View.GONE);
+        previewCard.setVisibility(View.GONE);
         final String effectiveProxy=proxyEnabled.isChecked()?proxy.getText().toString():"";
 
         uiWorker.execute(()->{
@@ -593,13 +680,12 @@ public final class MainActivity extends Activity {
                 if(info.getFormats()!=null)for(VideoFormat format:info.getFormats())
                     if(format.getHeight()>0 && format.getVcodec()!=null && !"none".equals(format.getVcodec()))
                         heights.add(format.getHeight());
-                String details="Название: "+title+"\nДлительность: "+QueueRules.readableDuration(info.getDuration())+
-                    "\nДоступное разрешение: "+(heights.isEmpty()?"Не указано":TextUtils.join("p, ",heights)+"p");
+                String duration=QueueRules.readableDuration(info.getDuration());
+                String resolution=heights.isEmpty()?"Не указано":heights.last()+"p";
                 Bitmap picture=loadImage(info.getThumbnail());
                 runOnUiThread(()->{
-                    if(isFinishing()||isDestroyed())return;
-                    preview.setText(details);
-                    if(picture!=null){thumbnail.setImageBitmap(picture);thumbnail.setVisibility(View.VISIBLE);}
+                    if(isFinishing()||isDestroyed()||!videoUrl.equals(url.getText().toString().trim()))return;
+                    rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution),picture);
                 });
             }catch(Exception e){
                 runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())preview.setText("Не удалось получить данные: "+e.getMessage());});

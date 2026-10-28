@@ -50,8 +50,10 @@ public final class ThemeStyle {
         b.setTextColor(primary?Color.WHITE:text(c));
         b.setBackground(rounded(primary?RED:card(c),
             primary?0xFFEB4050:(isDark(c)?0xFF3A404C:0xFFD8DDE5),18*c.getResources().getDisplayMetrics().density));
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,
-            (int)(49*c.getResources().getDisplayMetrics().density));
-        params.setMargins(0,4,0,4);b.setLayoutParams(params);
+        if(b.getLayoutParams()==null){
+            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,
+                (int)(49*c.getResources().getDisplayMetrics().density));
+            params.setMargins(0,4,0,4);b.setLayoutParams(params);
+        }
     }
 }

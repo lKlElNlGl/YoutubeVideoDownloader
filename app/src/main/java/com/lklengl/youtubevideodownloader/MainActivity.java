@@ -32,16 +32,20 @@ import java.util.concurrent.Executors;
 
 /** Native Android UI. Downloads are owned by DownloadService, not this Activity. */
 public final class MainActivity extends Activity {
-    private static final int PICK_COOKIES=41, PICK_FOLDER=42;
+    private static final int PICK_FOLDER=42;
     private final ExecutorService uiWorker=Executors.newSingleThreadExecutor();
     private final ExecutorService updaterWorker=Executors.newSingleThreadExecutor();
     private EditText url, proxy;
-    private CheckBox proxyEnabled, cookieEnabled;
+    private CheckBox proxyEnabled;
     private Spinner mode, quality;
-    private TextView preview, folderLabel, cookieLabel, status;
+    private TextView preview, folderLabel, status;
     private ImageView thumbnail;
     private LinearLayout queueList;
-    private Button checkAppButton, updateEngineButton, previewButton;
+    private Button checkAppButton, updateEngineButton, previewButton, defaultFolderButton;
+    private SwipeNavigationScrollView mainScroll;
+    private LinearLayout[] pagePanels;
+    private Button[] pageTabs;
+    private int currentPage=0;
     private UpdateDialogController updateDialog;
     private boolean loadingPlaylist=false;
     private File pendingUpdate;
@@ -55,6 +59,10 @@ public final class MainActivity extends Activity {
         ThemeStyle.initialize(this);
         super.onCreate(savedInstanceState);
         UpdateAlerts.schedule(getApplicationContext());
+        // Remove unused legacy credentials when migrating from v0.3.0.
+        new File(getFilesDir(),"cookies.txt").delete();
+        getPreferences(MODE_PRIVATE).edit().remove("cookiesEnabled").apply();
+        currentPage=getPreferences(MODE_PRIVATE).getInt("page",0);
         setTitle("YoutubeVideoDownloader");
         if(Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},49);
@@ -70,166 +78,181 @@ public final class MainActivity extends Activity {
         checkAppUpdate(false);
     }
 
-    private void buildScreen() {
-        ScrollView scroll=new ScrollView(this);
-        LinearLayout page=new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(16),dp(12),dp(16),dp(30));
-        scroll.setFillViewport(true);
-        page.setBackgroundColor(ThemeStyle.background(this));
-        scroll.addView(page);
-        setContentView(scroll);
 
-        TextView heading=text("Скачивание видео и аудио с YouTube",21);
-        heading.setTextColor(ThemeStyle.text(this));page.addView(heading);
-        LinearLayout nav=new LinearLayout(this);nav.setOrientation(LinearLayout.HORIZONTAL);
-        page.addView(nav);
-        Button downloadTab=new Button(this);downloadTab.setText("Загрузка");
-        Button queueTab=new Button(this);queueTab.setText("Очередь");
-        Button settingsTab=new Button(this);settingsTab.setText("Настройки");
-        Button[] tabs={downloadTab,queueTab,settingsTab};
-        for(Button tab:tabs) {
-            ThemeStyle.styleButton(tab,false);
-            LinearLayout.LayoutParams tabParams=new LinearLayout.LayoutParams(0,dp(48),1);
-            tabParams.setMargins(dp(2),dp(7),dp(2),dp(8));
-            nav.addView(tab,tabParams);
+    private void buildScreen() {
+        mainScroll=new SwipeNavigationScrollView(this);
+        mainScroll.setFillViewport(true);
+        mainScroll.setBackgroundColor(ThemeStyle.background(this));
+        LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(16),dp(16),dp(16),dp(28));
+        mainScroll.addView(page);setContentView(mainScroll);
+
+        TextView heading=text("YoutubeVideoDownloader",23);
+        heading.setTypeface(null,android.graphics.Typeface.BOLD);
+        heading.setPadding(dp(2),dp(2),dp(2),0);page.addView(heading);
+        TextView subtitle=text("СКАЧИВАНИЕ ВИДЕО И МУЗЫКИ",11);
+        subtitle.setLetterSpacing(0.08f);subtitle.setTextColor(ThemeStyle.subdued(this));
+        subtitle.setPadding(dp(3),0,0,dp(13));page.addView(subtitle);
+
+        LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
+        page.addView(tabs);
+        pageTabs=new Button[]{new Button(this),new Button(this),new Button(this)};
+        String[] titles={"▶ Загрузка","☷ Очередь","⚙ Настройки"};
+        for(int i=0;i<3;i++){
+            Button tab=pageTabs[i];tab.setText(titles[i]);
+            ThemeStyle.styleButton(tab,i==currentPage);
+            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(48),1);
+            params.setMargins(dp(2),dp(4),dp(2),dp(11));tabs.addView(tab,params);
+            final int destination=i;
+            tab.setOnClickListener(v->showPage(destination));
         }
-        LinearLayout downloadPanel=new LinearLayout(this);
-        LinearLayout queuePanel=new LinearLayout(this);
-        LinearLayout settingsPanel=new LinearLayout(this);
-        for(LinearLayout panel:new LinearLayout[]{downloadPanel,queuePanel,settingsPanel}){
-            panel.setOrientation(LinearLayout.VERTICAL);page.addView(panel);
+        pagePanels=new LinearLayout[3];
+        for(int i=0;i<3;i++){
+            LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
+            pagePanels[i]=panel;page.addView(panel);
         }
-        queuePanel.setVisibility(View.GONE);settingsPanel.setVisibility(View.GONE);
-        for(int index=0;index<tabs.length;index++){
-            final int selected=index;
-            tabs[index].setOnClickListener(v->{
-                downloadPanel.setVisibility(selected==0?View.VISIBLE:View.GONE);
-                queuePanel.setVisibility(selected==1?View.VISIBLE:View.GONE);
-                settingsPanel.setVisibility(selected==2?View.VISIBLE:View.GONE);
-                for(int k=0;k<tabs.length;k++)ThemeStyle.styleButton(tabs[k],k==selected);
-                if(selected==1)refreshQueue();
-            });
-        }
-        ThemeStyle.styleButton(downloadTab,true);
-        label(downloadPanel,"Ссылка на видео");
+        mainScroll.setOnPageChange(this::showPage);
+
+        LinearLayout download=pagePanels[0];
+        LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");
+        label(linkCard,"Ссылка на видео или плейлист");
         LinearLayout linkRow=new LinearLayout(this);linkRow.setOrientation(LinearLayout.HORIZONTAL);
-        url=new EditText(this);url.setSingleLine(true);
+        url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
-        linkRow.addView(url,new LinearLayout.LayoutParams(0,dp(52),1));
-        Button clear=button(linkRow,"✕");clear.setContentDescription("Очистить ссылку");
-        clear.setLayoutParams(new LinearLayout.LayoutParams(dp(54),dp(52)));
+        linkRow.addView(url,new LinearLayout.LayoutParams(0,dp(51),1));
+        Button clear=new Button(this);clear.setText("✕");
+        clear.setContentDescription("Очистить ссылку");ThemeStyle.styleButton(clear,false);
+        LinearLayout.LayoutParams clearParams=new LinearLayout.LayoutParams(dp(51),dp(51));
+        clearParams.setMargins(dp(9),0,0,0);linkRow.addView(clear,clearParams);
         clear.setOnClickListener(v->url.setText(""));
-        downloadPanel.addView(linkRow);
-        Button paste=button(downloadPanel,"Вставить ссылку");
+        linkCard.addView(linkRow);
+        Button paste=button(linkCard,"Вставить ссылку");
         paste.setOnClickListener(v->{
             ClipboardManager cm=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount()>0)
                 url.setText(cm.getPrimaryClip().getItemAt(0).coerceToText(this));
         });
-        previewButton=button(downloadPanel,"Информация о видео");
+        previewButton=button(linkCard,"Информация о видео / плейлисте");
         previewButton.setOnClickListener(v->{
-            if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist();
+            if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
             else loadPreview();
         });
-        thumbnail=new ImageView(this);
-        thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        thumbnail.setVisibility(View.GONE);
-        downloadPanel.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(170)));
-        preview=text("",14);downloadPanel.addView(preview);
+        thumbnail=new ImageView(this);thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        thumbnail.setVisibility(View.GONE);linkCard.addView(thumbnail,new LinearLayout.LayoutParams(-1,dp(170)));
+        preview=text("",14);preview.setPadding(dp(4),dp(6),dp(4),0);linkCard.addView(preview);
 
-        label(downloadPanel,"Формат");
-        mode=spinner(downloadPanel,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
-        label(downloadPanel,"Качество видео");
-        quality=spinner(downloadPanel,new String[]{"Максимальное","2160p","1440p","1080p","720p","480p","360p"});
+        LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
+        label(formatCard,"Формат");
+        mode=spinner(formatCard,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
+        label(formatCard,"Качество видео");
+        quality=spinner(formatCard,new String[]{"Максимальное","2160p","1440p","1080p","720p","480p","360p"});
         mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
-            @Override public void onNothingSelected(android.widget.AdapterView<?> p){}
-            @Override public void onItemSelected(android.widget.AdapterView<?> p,View v,int i,long id){
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int i,long id){
                 quality.setEnabled(i==0);
             }
         });
 
-        Button enqueue=button(downloadPanel,"Добавить в очередь загрузок");
-        ThemeStyle.styleButton(enqueue,true);
-        enqueue.setOnClickListener(v->{if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist();else enqueue();});
-
-        status=text("Загрузки продолжатся при сворачивании приложения",13);
-        status.setTextColor(ThemeStyle.subdued(this));
-        status.setPadding(0,dp(8),0,dp(8));queuePanel.addView(status);
-        label(queuePanel,"Очередь загрузок");
-        queueList=new LinearLayout(this);
-        queueList.setOrientation(LinearLayout.VERTICAL);
-        queuePanel.addView(queueList);
-        Button clean=button(queuePanel,"Очистить завершённые задания");
-        clean.setOnClickListener(v->{DownloadQueue.clearFinished(this);refreshQueue();});
-
-        Button settingsToggle=button(settingsPanel,"⚙ Настройки ▾");
-        LinearLayout settings=new LinearLayout(this);
-        settings.setOrientation(LinearLayout.VERTICAL);
-        settings.setVisibility(View.GONE);
-        settingsPanel.addView(settings);
-        settingsToggle.setOnClickListener(v->{
-            boolean open=settings.getVisibility()!=View.VISIBLE;
-            settings.setVisibility(open?View.VISIBLE:View.GONE);
-            settingsToggle.setText(open?"⚙ Настройки ▴":"⚙ Настройки ▾");
+        LinearLayout actions=ThemeStyle.card(download,"Скачивание");
+        Button immediate=button(actions,"Скачать без очереди");
+        ThemeStyle.styleButton(immediate,true);
+        immediate.setOnClickListener(v->{
+            if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(true);
+            else enqueue(true);
+        });
+        Button enqueue=button(actions,"Добавить в очередь");
+        enqueue.setOnClickListener(v->{
+            if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
+            else enqueue(false);
         });
 
-        label(settings,"Внешний вид");
-        Spinner themePicker=spinner(settings,ThemeStyle.MODES);
-        int selectedTheme=getSharedPreferences("design",MODE_PRIVATE).getInt("theme",2);
-        themePicker.setSelection(selectedTheme);
+        LinearLayout queueCard=ThemeStyle.card(pagePanels[1],"Очередь загрузок");
+        status=text("Загрузки продолжаются при сворачивании приложения",13);
+        status.setTextColor(ThemeStyle.subdued(this));status.setPadding(0,0,0,dp(8));
+        queueCard.addView(status);
+        queueList=new LinearLayout(this);queueList.setOrientation(LinearLayout.VERTICAL);
+        queueCard.addView(queueList);
+        Button clean=button(queueCard,"Очистить завершённые задания");
+        clean.setOnClickListener(v->{DownloadQueue.clearFinished(this);refreshQueue();});
+
+        LinearLayout settingsPage=pagePanels[2];
+        LinearLayout look=ThemeStyle.card(settingsPage,"Внешний вид");
+        label(look,"Тема оформления");
+        Spinner themePicker=spinner(look,ThemeStyle.MODES);
+        themePicker.setSelection(getSharedPreferences("design",MODE_PRIVATE).getInt("theme",2));
         themePicker.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
-            boolean first=true;
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
-            @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id){
-                if(first){first=false;return;}
-                if(position!=getSharedPreferences("design",MODE_PRIVATE).getInt("theme",2)){
-                    getSharedPreferences("design",MODE_PRIVATE).edit().putInt("theme",position).apply();
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int value,long id){
+                if(value!=getSharedPreferences("design",MODE_PRIVATE).getInt("theme",2)){
+                    saveDraft();
+                    getSharedPreferences("design",MODE_PRIVATE).edit().putInt("theme",value).apply();
                     recreate();
                 }
             }
         });
-        proxyEnabled=new CheckBox(this);proxyEnabled.setText("Использовать HTTP/HTTPS-прокси");
-        settings.addView(proxyEnabled);
-        proxy=new EditText(this);proxy.setSingleLine(true);proxy.setHint("http://server:8118");
-        settings.addView(proxy);
-        cookieEnabled=new CheckBox(this);cookieEnabled.setText("Использовать cookies.txt");
-        settings.addView(cookieEnabled);
-        Button cookies=button(settings,"Импортировать cookies.txt");
-        cookies.setOnClickListener(v->{
-            Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            pick.addCategory(Intent.CATEGORY_OPENABLE);pick.setType("*/*");
-            startActivityForResult(pick,PICK_COOKIES);
-        });
-        cookieLabel=text("Файл cookies не выбран",13);settings.addView(cookieLabel);
 
-        label(settings,"Папка сохранения");
-        folderLabel=text("",13);settings.addView(folderLabel);
-        Button chooseFolder=button(settings,"Выбрать папку сохранения");
+        LinearLayout network=ThemeStyle.card(settingsPage,"Сетевые параметры");
+        proxyEnabled=new CheckBox(this);proxyEnabled.setText("Использовать HTTP/HTTPS-прокси");
+        proxyEnabled.setTextColor(ThemeStyle.text(this));network.addView(proxyEnabled);
+        proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
+        network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(50)));
+
+        LinearLayout save=ThemeStyle.card(settingsPage,"Сохранение файлов");
+        label(save,"Папка сохранения");
+        folderLabel=text("",14);folderLabel.setPadding(dp(3),dp(4),dp(3),dp(8));
+        save.addView(folderLabel);
+        Button chooseFolder=button(save,"Изменить папку");
         chooseFolder.setOnClickListener(v->{
             Intent tree=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             tree.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
                 Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
             startActivityForResult(tree,PICK_FOLDER);
         });
-        Button defaultFolder=button(settings,"Сохранять в папку Загрузки (по умолчанию)");
-        defaultFolder.setOnClickListener(v->{
+        defaultFolderButton=button(save,"Вернуть папку по умолчанию");
+        defaultFolderButton.setOnClickListener(v->{
             getPreferences(MODE_PRIVATE).edit().remove("folderUri").apply();
-            folderLabel.setText("Загрузки / YoutubeVideoDownloader");
+            showFolderLabel();
         });
-        Button openFolder=button(settings,"Открыть папку с файлами");
+        Button openFolder=button(save,"Открыть папку с файлами");
         openFolder.setOnClickListener(v->openFolder());
 
-        label(settings,"Движок загрузки");
-        updateEngineButton=button(settings,"Обновить yt-dlp отдельно от APK");
+        LinearLayout updates=ThemeStyle.card(settingsPage,"Обновления");
+        label(updates,"Движок yt-dlp");
+        updateEngineButton=button(updates,"Обновить yt-dlp");
         updateEngineButton.setOnClickListener(v->updateEngine());
-
-        label(settings,"Приложение v"+version());
-        checkAppButton=button(settings,"Проверить новую версию приложения");
+        label(updates,"Приложение");
+        checkAppButton=button(updates,"Проверить новую версию");
         checkAppButton.setOnClickListener(v->checkAppUpdate(true));
-        Button openReleases=button(settings,"GitHub Releases");
+
+        LinearLayout about=ThemeStyle.card(settingsPage,"О приложении");
+        TextView release=text("YoutubeVideoDownloader · v"+version(),14);
+        release.setTextColor(ThemeStyle.subdued(this));about.addView(release);
+        Button openReleases=button(about,"GitHub Releases");
         openReleases.setOnClickListener(v->startActivity(new Intent(Intent.ACTION_VIEW,
             Uri.parse("https://github.com/lKlElNlGl/YoutubeVideoDownloader/releases/latest"))));
+
+        showPage(Math.max(0,Math.min(2,currentPage)));
+    }
+
+    private void showPage(int index){
+        currentPage=Math.max(0,Math.min(2,index));
+        for(int i=0;i<pagePanels.length;i++){
+            pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
+            ThemeStyle.styleButton(pageTabs[i],i==currentPage);
+        }
+        mainScroll.setPageIndex(currentPage);
+        mainScroll.scrollTo(0,0);
+        getPreferences(MODE_PRIVATE).edit().putInt("page",currentPage).apply();
+    }
+
+    private void saveDraft(){
+        if(url==null||proxy==null)return;
+        getPreferences(MODE_PRIVATE).edit()
+            .putString("draftUrl",url.getText().toString())
+            .putString("proxy",proxy.getText().toString())
+            .putBoolean("proxyEnabled",proxyEnabled.isChecked())
+            .putInt("mode",mode.getSelectedItemPosition())
+            .putInt("quality",quality.getSelectedItemPosition()).apply();
     }
     private int dp(int value){return (int)(getResources().getDisplayMetrics().density*value+0.5f);}
     private TextView text(String value,int size){
@@ -246,7 +269,14 @@ public final class MainActivity extends Activity {
     }
     private Spinner spinner(LinearLayout parent,String[] items){
         Spinner s=new Spinner(this);
-        s.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,items));
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items){
+            @Override public View getView(int position,View convertView,android.view.ViewGroup parent){
+                TextView v=(TextView)super.getView(position,convertView,parent);
+                v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);return v;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        s.setAdapter(adapter);ThemeStyle.styleSpinner(s);
         parent.addView(s);return s;
     }
     private void loadPreferences(){
@@ -254,8 +284,7 @@ public final class MainActivity extends Activity {
         mode.setSelection(p.getInt("mode",0));quality.setSelection(p.getInt("quality",0));
         proxyEnabled.setChecked(p.getBoolean("proxyEnabled",false));
         proxy.setText(p.getString("proxy",""));
-        cookieEnabled.setChecked(p.getBoolean("cookiesEnabled",false));
-        cookieLabel.setText(new File(getFilesDir(),"cookies.txt").isFile()?"cookies.txt импортирован":"Файл cookies не выбран");
+        url.setText(p.getString("draftUrl",""));
         showFolderLabel();
     }
     private String selectedFolder(){
@@ -264,7 +293,8 @@ public final class MainActivity extends Activity {
     private void showFolderLabel(){
         String selected=selectedFolder();
         folderLabel.setText(selected.isEmpty()?"Загрузки / YoutubeVideoDownloader":
-            "Выбранная папка: "+Uri.parse(selected).getLastPathSegment());
+            "Выбрана: "+Uri.parse(selected).getLastPathSegment());
+        defaultFolderButton.setVisibility(FolderRules.isCustom(selected)?View.VISIBLE:View.GONE);
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
@@ -277,34 +307,23 @@ public final class MainActivity extends Activity {
                 getPreferences(MODE_PRIVATE).edit().putString("folderUri",chosen.toString()).apply();
                 showFolderLabel();
             }catch(Exception e){error("Выбор папки",e);}
-        }else if(request==PICK_COOKIES){
-            File file=new File(getFilesDir(),"cookies.txt");
-            try(InputStream input=getContentResolver().openInputStream(chosen);
-                OutputStream output=new FileOutputStream(file)){
-                if(input==null)throw new IOException("Файл недоступен");
-                byte[] bytes=new byte[8192];int n;
-                while((n=input.read(bytes))!=-1)output.write(bytes,0,n);
-                cookieEnabled.setChecked(true);
-                cookieLabel.setText("cookies.txt импортирован");
-            }catch(Exception e){file.delete();error("Импорт cookies",e);}
         }
     }
-    private void enqueue(){
+    private void enqueue(boolean priority){
         final String link, proxyUrl;
         try{
             link=DownloadOptions.validateUrl(url.getText().toString());
             proxyUrl=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyUrl.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
-            if(cookieEnabled.isChecked() && !new File(getFilesDir(),"cookies.txt").isFile())
-                throw new IllegalArgumentException("Сначала импортируйте cookies.txt");
             DownloadQueue.enqueue(this,link,mode.getSelectedItemPosition()==1,
-                DownloadOptions.QUALITIES[quality.getSelectedItemPosition()],proxyUrl,cookieEnabled.isChecked(),selectedFolder());
+                DownloadOptions.QUALITIES[quality.getSelectedItemPosition()],proxyUrl,selectedFolder(),priority);
         }catch(Exception e){error("Невозможно добавить загрузку",e);return;}
-        getPreferences(MODE_PRIVATE).edit().putInt("mode",mode.getSelectedItemPosition())
-            .putInt("quality",quality.getSelectedItemPosition()).putBoolean("proxyEnabled",proxyEnabled.isChecked())
-            .putString("proxy",proxy.getText().toString()).putBoolean("cookiesEnabled",cookieEnabled.isChecked()).apply();
+        saveDraft();
         refreshQueue();
-        try{DownloadService.kick(this);}catch(Exception e){error("Запуск загрузки",e);}
+        try{
+            DownloadService.kick(this);
+            Toast.makeText(this,priority?"Приоритетная загрузка добавлена":"Добавлено в очередь",Toast.LENGTH_SHORT).show();
+        }catch(Exception e){error("Запуск загрузки",e);}
     }
     private void refreshQueue(){
         queueList.removeAllViews();
@@ -394,17 +413,15 @@ public final class MainActivity extends Activity {
             }catch(Exception e){error("Файловый менеджер",e);}
         }
     }
-    private void loadPlaylist(){
+    private void loadPlaylist(boolean priority){
         if(loadingPlaylist)return;
         final String link, proxyValue;
-        final boolean cookies=cookieEnabled.isChecked();
+
         try{
             link=DownloadOptions.validateUrl(url.getText().toString());
             if(!PlaylistSupport.isPlaylist(link))throw new IllegalArgumentException("Нужна ссылка на плейлист YouTube");
             proxyValue=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyValue.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
-            if(cookies && !new File(getFilesDir(),"cookies.txt").isFile())
-                throw new IllegalArgumentException("Не найден cookies.txt");
         }catch(Exception e){error("Плейлист",e);return;}
         final boolean audio=mode.getSelectedItemPosition()==1;
         final String resolution=DownloadOptions.QUALITIES[quality.getSelectedItemPosition()];
@@ -413,12 +430,12 @@ public final class MainActivity extends Activity {
         preview.setText("Получение списка видео плейлиста…");
         uiWorker.execute(()->{
             try {
-                PlaylistRepository.Playlist data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue,cookies);
+                PlaylistRepository.Playlist data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     preview.setText("Плейлист: "+data.title+"\nДоступно видео: "+data.entries.size()+
                         (data.reportedCount>data.entries.size()?" (часть видео недоступна)":""));
-                    showPlaylistSelection(data,audio,resolution,proxyValue,cookies,directory);
+                    showPlaylistSelection(data,audio,resolution,proxyValue,directory,priority);
                 });
             }catch(Exception ex){
                 runOnUiThread(()->{
@@ -430,7 +447,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void showPlaylistSelection(PlaylistRepository.Playlist data,
-            boolean audio,String resolution,String proxyValue,boolean cookies,String directory){
+            boolean audio,String resolution,String proxyValue,String directory,boolean priority){
         int count=data.entries.size();
         CharSequence[] labels=new CharSequence[count];
         boolean[] checked=new boolean[count];
@@ -445,7 +462,7 @@ public final class MainActivity extends Activity {
             .setMultiChoiceItems(labels,checked,(d,which,value)->checked[which]=value)
             .setNegativeButton("Отмена",null)
             .setNeutralButton("Выбрать все",null)
-            .setPositiveButton("Добавить в очередь",null).create();
+            .setPositiveButton(priority?"Скачать без очереди":"Добавить в очередь",null).create();
         dialog.setOnShowListener(d->{
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{
                 boolean all=true;
@@ -457,7 +474,7 @@ public final class MainActivity extends Activity {
                 try{
                     List<Boolean> selected=new ArrayList<>();
                     for(boolean value:checked)selected.add(value);
-                    int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,cookies,directory);
+                    int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority);
                     dialog.dismiss();refreshQueue();
                     DownloadService.kick(this);
                     Toast.makeText(this,"Добавлено в очередь: "+added,Toast.LENGTH_LONG).show();
@@ -474,7 +491,7 @@ public final class MainActivity extends Activity {
         preview.setText("Получение информации о видео…");
         thumbnail.setVisibility(View.GONE);
         final String effectiveProxy=proxyEnabled.isChecked()?proxy.getText().toString():"";
-        final boolean useCookies=cookieEnabled.isChecked();
+
         uiWorker.execute(()->{
             try{
                 YoutubeDL.getInstance().init(getApplicationContext());
@@ -484,8 +501,6 @@ public final class MainActivity extends Activity {
                     String p=DownloadOptions.validateProxy(effectiveProxy);
                     if(!p.isEmpty())request.addOption("--proxy",p);
                 }
-                if(useCookies && new File(getFilesDir(),"cookies.txt").isFile())
-                    request.addOption("--cookies",new File(getFilesDir(),"cookies.txt").getAbsolutePath());
                 VideoInfo info=YoutubeDL.getInstance().getInfo(request);
                 String title=info.getTitle()==null?"Без названия":info.getTitle();
                 Set<Integer> heights=new TreeSet<>();
@@ -591,6 +606,7 @@ public final class MainActivity extends Activity {
         if(queueList!=null)refreshQueue();
     }
     @Override protected void onStop(){
+        saveDraft();
         if(receiverRegistered){unregisterReceiver(changes);receiverRegistered=false;}
         super.onStop();
     }

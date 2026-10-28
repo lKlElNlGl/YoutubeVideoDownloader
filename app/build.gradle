@@ -6,8 +6,8 @@ android {
         applicationId 'com.lklengl.youtubevideodownloader'
         minSdk 29
         targetSdk 35
-        versionCode = (project.findProperty('appVersionCode') ?: '3002').toString().toInteger()
-        versionName = (project.findProperty('appVersionName') ?: '0.3.2').toString()
+        versionCode = (project.findProperty('appVersionCode') ?: '3003').toString().toInteger()
+        versionName = (project.findProperty('appVersionName') ?: '0.3.3').toString()
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
     }
     buildTypes { release { minifyEnabled false } }

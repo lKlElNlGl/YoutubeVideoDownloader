@@ -54,9 +54,15 @@ public final class UiIcons extends Drawable {
             case "close":
                 c.drawLine(5,5,19,19,p);c.drawLine(19,5,5,19,p);break;
             case "settings":
-                c.drawCircle(12,12,4,p);
-                for(int i=0;i<8;i++){double a=i*Math.PI/4;float x=(float)Math.cos(a),y=(float)Math.sin(a);
-                    c.drawLine(12+7*x,12+7*y,12+9*x,12+9*y,p);}break;
+                Path gear=new Path();
+                for(int i=0;i<32;i++){
+                    double a=i*2*Math.PI/32-Math.PI/2;
+                    float radius=(i%4==0||i%4==3)?10.2f:7.5f;
+                    float px=12+(float)Math.cos(a)*radius;
+                    float py=12+(float)Math.sin(a)*radius;
+                    if(i==0)gear.moveTo(px,py);else gear.lineTo(px,py);
+                }
+                gear.close();c.drawPath(gear,p);c.drawCircle(12,12,3.2f,p);break;
             case "play":
                 Path triangle=new Path();triangle.moveTo(7,4);triangle.lineTo(19,12);
                 triangle.lineTo(7,20);triangle.close();c.drawPath(triangle,p);break;

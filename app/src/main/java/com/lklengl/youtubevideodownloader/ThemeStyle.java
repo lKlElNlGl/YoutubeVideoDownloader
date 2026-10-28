@@ -56,7 +56,7 @@ public final class ThemeStyle {
     }
     private static Drawable gradient(Context c){
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFFFF534A,0xFFFF2630,0xFFB6091D});
+            new int[]{0xFFFF4433,0xFFFC1F20,0xFFB50919});
         result.setCornerRadius(dp(c,11));result.setStroke(dp(c,1),0xFFFFAC9A);
         return result;
     }
@@ -71,11 +71,11 @@ public final class ThemeStyle {
         b.setSingleLine(true);
         b.setMaxLines(1);
         b.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        b.setTextSize(11);
+        b.setTextSize(12);
         b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);
         b.setPadding(dp(b.getContext(),4),0,dp(b.getContext(),4),0);
         icon(b,symbol,14);
-        b.setCompoundDrawablePadding(dp(b.getContext(),3));
+        b.setCompoundDrawablePadding(dp(b.getContext(),2));
         b.setGravity(android.view.Gravity.CENTER);
     }
     public static void styleButton(Button b,boolean primary){
@@ -83,7 +83,16 @@ public final class ThemeStyle {
         b.setAllCaps(false);b.setTextSize(14);b.setLetterSpacing(0.005f);
         b.setTextColor(primary?Color.WHITE:text(c));
         b.setBackgroundTintList(null);
-        Drawable shape=primary?gradient(c):rounded(buttonFill(c),buttonStroke(c),dp(c,11));
+        Drawable shape;
+        if(primary){
+            GradientDrawable shine=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x48FFFFFF,0x12FFFFFF,0x00FFFFFF});
+            shine.setCornerRadius(dp(c,11));
+            android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(
+                new Drawable[]{gradient(c),shine});
+            layers.setLayerInset(1,dp(c,1),dp(c,1),dp(c,1),dp(c,1));
+            shape=layers;
+        }else shape=rounded(buttonFill(c),buttonStroke(c),dp(c,11));
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(primary?0x44FFFFFF:
             (isDark(c)?0x44FFFFFF:0x33000000)),shape,null));
         b.setElevation(dp(c,primary?2:1));

@@ -277,15 +277,16 @@ public final class MainActivity extends Activity {
     private TextView statView(LinearLayout parent,String icon){
         LinearLayout cell=new LinearLayout(this);cell.setOrientation(LinearLayout.HORIZONTAL);
         cell.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(46),1);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(36),1);
         params.setMargins(0,0,dp(6),0);
-        cell.setPadding(dp(9),0,dp(5),0);
-        cell.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(9)));
+        cell.setPadding(dp(7),0,dp(4),0);
+        cell.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),
+            icon.equals("quality")?0xFF327DB4:ThemeStyle.border(this),dp(8)));
         parent.addView(cell,params);
         ImageView symbol=new ImageView(this);
-        symbol.setImageDrawable(new UiIcons(icon,ThemeStyle.RED,dp(18)));
-        cell.addView(symbol,new LinearLayout.LayoutParams(dp(18),dp(18)));
-        TextView value=text("",13);
+        symbol.setImageDrawable(new UiIcons(icon,icon.equals("clock")?ThemeStyle.RED:0xFF39A8DD,dp(16)));
+        cell.addView(symbol,new LinearLayout.LayoutParams(dp(16),dp(16)));
+        TextView value=text("",12);
         value.setMaxLines(1);value.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(0,-2,1);
         vp.setMargins(dp(6),0,0,0);cell.addView(value,vp);

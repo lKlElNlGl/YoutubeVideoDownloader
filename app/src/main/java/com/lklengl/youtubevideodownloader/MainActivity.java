@@ -263,7 +263,7 @@ public final class MainActivity extends Activity {
         updateEngineButton=button(updates,"Обновить компонент работы с YouTube");
         updateEngineButton.setTextSize(13);
         updateEngineButton.setSingleLine(false);updateEngineButton.setMaxLines(2);
-        updateEngineButton.getLayoutParams().height=dp(64);
+        // Normal button height is shared with other settings actions.
         updateEngineButton.setOnClickListener(v->updateEngine());
         label(updates,"Приложение");
         checkAppButton=button(updates,"Проверить новую версию");
@@ -394,8 +394,8 @@ public final class MainActivity extends Activity {
             @Override public View getDropDownView(int position,View old,ViewGroup parent){
                 TextView v=decorate((TextView)super.getDropDownView(position,old,parent),position);
                 v.setPadding(dp(16),dp(12),dp(16),dp(12));
-                v.setBackgroundColor(ThemeStyle.popupItemColor(MainActivity.this,
-                    position==s.getSelectedItemPosition()));
+                v.setBackground(ThemeStyle.popupRowBackground(MainActivity.this,
+                    position==s.getSelectedItemPosition(),position,getCount()));
                 return v;
             }
         };
@@ -433,8 +433,8 @@ public final class MainActivity extends Activity {
                 TextView view=(TextView)super.getDropDownView(position,convertView,parent);
                 view.setTextColor(ThemeStyle.text(MainActivity.this));
                 view.setPadding(dp(16),dp(12),dp(16),dp(12));
-                view.setBackgroundColor(ThemeStyle.popupItemColor(MainActivity.this,
-                    position==quality.getSelectedItemPosition()));
+                view.setBackground(ThemeStyle.popupRowBackground(MainActivity.this,
+                    position==quality.getSelectedItemPosition(),position,getCount()));
                 return view;
             }
         };

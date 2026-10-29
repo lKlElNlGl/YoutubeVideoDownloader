@@ -769,11 +769,12 @@ public final class MainActivity extends Activity {
                     runOnUiThread(()->updatePreviewMessage("Повторное получение списка…"));
                     data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
                 }
+                final PlaylistRepository.Playlist loaded=data;
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     if(!link.equals(url.getText().toString().trim()))return;
-                    rememberPreview(PreviewSnapshot.playlist(link,data.title,data.entries.size()),null);
-                    showPlaylistSelection(data,audio,resolution,proxyValue,directory,priority);
+                    rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
+                    showPlaylistSelection(loaded,audio,resolution,proxyValue,directory,priority);
                 });
             }catch(Exception ex){
                 runOnUiThread(()->{

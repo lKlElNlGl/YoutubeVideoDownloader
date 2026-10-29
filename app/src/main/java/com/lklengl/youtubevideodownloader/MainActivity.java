@@ -46,6 +46,8 @@ public final class MainActivity extends Activity {
     private Spinner mode, quality;
     private QualityChoices qualityChoices=QualityChoices.fallback();
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
+    private Button previewDetailsButton;
+    private String previewErrorLog="";
     private LinearLayout previewCard;
     private ImageView thumbnail;
     private LinearLayout queueList;
@@ -71,10 +73,14 @@ public final class MainActivity extends Activity {
         ThemeStyle.initialize(this);
         super.onCreate(savedInstanceState);
         UpdateAlerts.schedule(getApplicationContext());
+        EngineUpdateWorker.schedule(getApplicationContext());
         // Remove unused legacy credentials when migrating from v0.3.0.
         new File(getFilesDir(),"cookies.txt").delete();
         getPreferences(MODE_PRIVATE).edit().remove("cookiesEnabled").apply();
-        currentPage=getPreferences(MODE_PRIVATE).getInt("page",0);
+        // A fresh launch always opens Downloads; Activity recreation keeps the current tab.
+        Object previous=getLastNonConfigurationInstance();
+        currentPage=previous instanceof Integer?(Integer)previous:0;
+        getPreferences(MODE_PRIVATE).edit().remove("page").apply();
         setTitle("YoutubeVideoDownloader");
         if(Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},49);
@@ -133,6 +139,7 @@ public final class MainActivity extends Activity {
         FrameLayout linkRow=new FrameLayout(this);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
+        if(ThemeStyle.isDark(this))url.setHintTextColor(0xFF8793A5);
         url.addTextChangedListener(new TextWatcher(){
             @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
             @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview(false);}
@@ -162,6 +169,9 @@ public final class MainActivity extends Activity {
         preview=text("",14);preview.setPadding(dp(4),0,dp(4),0);
         preview.setVisibility(View.GONE);
         preview.setTextColor(ThemeStyle.subdued(this));linkCard.addView(preview);
+        previewDetailsButton=button(linkCard,"Подробности");
+        previewDetailsButton.setVisibility(View.GONE);
+        previewDetailsButton.setOnClickListener(v->showTechnicalDetails(previewErrorLog));
         previewCard=new LinearLayout(this);previewCard.setOrientation(LinearLayout.VERTICAL);
         previewCard.setPadding(dp(12),dp(13),dp(12),dp(13));
         previewCard.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.border(this),dp(12)));
@@ -346,8 +356,10 @@ public final class MainActivity extends Activity {
                 new String[]{"Загрузка","Очередь","Настройки"}[i]);
         }
         mainScroll.scrollTo(0,0);
-        getPreferences(MODE_PRIVATE).edit().putInt("page",currentPage).apply();
+        // Tab selection is intentionally not persisted across fresh launches.
     }
+
+    @Override public Object onRetainNonConfigurationInstance(){return currentPage;}
 
     private void saveDraft(){
         if(url==null||proxy==null)return;
@@ -448,6 +460,12 @@ public final class MainActivity extends Activity {
     private void updatePreviewMessage(String message){
         preview.setText(message);
         preview.setVisibility(message==null||message.isEmpty()?View.GONE:View.VISIBLE);
+        if(previewDetailsButton!=null)previewDetailsButton.setVisibility(View.GONE);
+    }
+    private void showPreviewFailure(Exception ex){
+        previewErrorLog=ex.getMessage()==null?ex.toString():ex.getMessage();
+        updatePreviewMessage(EngineRecoveryPolicy.shortMessage(previewErrorLog));
+        previewDetailsButton.setVisibility(View.VISIBLE);
     }
     private void restorePreview(){
         android.content.SharedPreferences p=getPreferences(MODE_PRIVATE);
@@ -719,7 +737,16 @@ public final class MainActivity extends Activity {
         updatePreviewMessage("Получение списка видео плейлиста…");
         uiWorker.execute(()->{
             try {
-                PlaylistRepository.Playlist data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
+                PlaylistRepository.Playlist data;
+                try{data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);}
+                catch(Exception first){
+                    if(!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
+                    runOnUiThread(()->updatePreviewMessage("Обновление компонента YouTube…"));
+                    if(EngineMaintenance.update(getApplicationContext(),false,false)!=EngineMaintenance.Result.UPDATED)
+                        throw first;
+                    runOnUiThread(()->updatePreviewMessage("Повторное получение списка…"));
+                    data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
+                }
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     if(!link.equals(url.getText().toString().trim()))return;
@@ -729,8 +756,7 @@ public final class MainActivity extends Activity {
             }catch(Exception ex){
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
-                    error("Не удалось открыть плейлист",ex);
-                    updatePreviewMessage("Не удалось прочитать плейлист");
+                    if(link.equals(url.getText().toString().trim()))showPreviewFailure(ex);
                 });
             }
         });
@@ -811,7 +837,16 @@ public final class MainActivity extends Activity {
                     String p=DownloadOptions.validateProxy(effectiveProxy);
                     if(!p.isEmpty())request.addOption("--proxy",p);
                 }
-                VideoInfo info=YoutubeDL.getInstance().getInfo(request);
+                VideoInfo info;
+                try{info=YoutubeDL.getInstance().getInfo(request);}
+                catch(Exception first){
+                    if(!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
+                    runOnUiThread(()->updatePreviewMessage("Обновление компонента YouTube…"));
+                    if(EngineMaintenance.update(getApplicationContext(),false,false)!=EngineMaintenance.Result.UPDATED)
+                        throw first;
+                    runOnUiThread(()->updatePreviewMessage("Повторное получение информации…"));
+                    info=YoutubeDL.getInstance().getInfo(request);
+                }
                 String title=info.getTitle()==null?"Без названия":info.getTitle();
                 NavigableSet<Integer> heights=new TreeSet<>();
                 if(info.getFormats()!=null)for(VideoFormat format:info.getFormats())
@@ -827,7 +862,10 @@ public final class MainActivity extends Activity {
                     rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution),picture);
                 });
             }catch(Exception e){
-                runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())updatePreviewMessage("Не удалось получить данные: "+e.getMessage());});
+                runOnUiThread(()->{
+                    if(!isFinishing()&&!isDestroyed()&&videoUrl.equals(url.getText().toString().trim()))
+                        showPreviewFailure(e);
+                });
             }finally{runOnUiThread(()->previewButton.setEnabled(true));}
         });
     }
@@ -858,12 +896,11 @@ public final class MainActivity extends Activity {
         updateEngineButton.setEnabled(false);updateEngineButton.setText("Обновление компонента…");
         uiWorker.execute(()->{
             try{
-                YoutubeDL.getInstance().init(getApplicationContext());
-                YoutubeDL.UpdateStatus response=YoutubeDL.getInstance().updateYoutubeDL(
-                    getApplicationContext(),YoutubeDL.UpdateChannel.STABLE.INSTANCE);
+                EngineMaintenance.Result response=EngineMaintenance.update(getApplicationContext(),true,false);
                 runOnUiThread(()->ThemeStyle.dialog(this).setTitle("Компонент YouTube")
-                    .setMessage(response==YoutubeDL.UpdateStatus.DONE?
-                        "Компонент обновлён.":"Уже установлена последняя версия.")
+                    .setMessage(response==EngineMaintenance.Result.UPDATED?"Компонент обновлён.":
+                        response==EngineMaintenance.Result.SKIPPED?"Обновление уже выполняется.":
+                        "Уже установлена последняя версия.")
                     .setPositiveButton("ОК",null).show());
             }catch(Exception e){runOnUiThread(()->error("Обновление yt-dlp",e));}
             finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить компонент работы с YouTube");});}

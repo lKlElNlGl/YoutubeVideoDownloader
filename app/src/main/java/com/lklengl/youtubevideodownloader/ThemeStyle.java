@@ -59,7 +59,7 @@ public final class ThemeStyle {
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
             new int[]{PremiumPalette.GRADIENT_TOP_LEFT,PremiumPalette.GRADIENT_BOTTOM_RIGHT});
         result.setCornerRadius(dp(c,11));
-        if(outlined)result.setStroke(dp(c,1),0xFFFF9CA4);
+        if(outlined)result.setStroke(dp(c,1),isDark(c)?0xFFA92A21:0xFFFF9CA4);
         return result;
     }
     private static Drawable plainRounded(Context c,int fill){
@@ -84,7 +84,7 @@ public final class ThemeStyle {
         return result;
     }
     public static int popupItemColor(Context c,boolean selected){
-        if(!isDark(c))return selected?buttonFill(c):field(c);
+        if(!isDark(c))return selected?0xFFE6E7EB:field(c);
         return selected?PremiumPalette.DARK_SELECTED:PremiumPalette.DARK_POPUP;
     }
     public static AlertDialog.Builder dialog(Activity activity){

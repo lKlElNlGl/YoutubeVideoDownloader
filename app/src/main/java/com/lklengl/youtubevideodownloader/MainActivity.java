@@ -142,7 +142,9 @@ public final class MainActivity extends Activity {
         if(ThemeStyle.isDark(this))url.setHintTextColor(0xFF8793A5);
         url.addTextChangedListener(new TextWatcher(){
             @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
-            @Override public void onTextChanged(CharSequence text,int start,int before,int count){renderPreview(false);}
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count){
+                previewErrorLog="";updatePreviewMessage("");renderPreview(false);
+            }
             @Override public void afterTextChanged(Editable value){}
         });
         url.setPadding(dp(12),0,dp(51),0);

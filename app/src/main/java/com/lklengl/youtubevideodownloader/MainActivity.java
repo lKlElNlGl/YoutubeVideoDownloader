@@ -678,13 +678,35 @@ public final class MainActivity extends Activity {
         confirm.show();
     }
     private void showTechnicalDetails(DownloadQueue.Item job){
-        TextView log=text(job.message,12);
+        showTechnicalDetails(job.message);
+    }
+    /** Keep a natural almost-fullscreen dialog for long logs; the hint never changes its height. */
+    private void showTechnicalDetails(String message){
+        FrameLayout frame=new FrameLayout(this);
+        ScrollView scroller=new ScrollView(this);
+        scroller.setFillViewport(false);
+        TextView log=text(message==null?"":message,12);
         log.setTextIsSelectable(true);
         log.setPadding(dp(16),dp(12),dp(16),dp(12));
-        ScrollView scroller=new ScrollView(this);
         scroller.addView(log);
+        frame.addView(scroller,new FrameLayout.LayoutParams(-1,-2));
+        TextView hint=text("Прокрутите вниз",12);
+        hint.setTextColor(ThemeStyle.subdued(this));
+        hint.setGravity(Gravity.CENTER);
+        hint.setPadding(dp(12),dp(4),dp(12),dp(4));
+        hint.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),
+            ThemeStyle.border(this),dp(8)));
+        FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(-2,-2,
+            Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
+        hp.bottomMargin=dp(8);
+        frame.addView(hint,hp);
+        hint.setVisibility(View.GONE);
+        Runnable refreshHint=()->hint.setVisibility(scroller.canScrollVertically(1)?
+            View.VISIBLE:View.GONE);
+        scroller.setOnScrollChangeListener((v,x,y,oldX,oldY)->refreshHint.run());
         ThemeStyle.dialog(this).setTitle("Подробности ошибки")
-            .setView(scroller).setPositiveButton("Закрыть",null).show();
+            .setView(frame).setPositiveButton("Закрыть",null).show();
+        scroller.post(refreshHint);
     }
     private String statusName(String value){
         switch(value){

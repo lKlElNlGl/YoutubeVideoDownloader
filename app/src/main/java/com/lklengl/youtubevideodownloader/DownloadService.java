@@ -122,7 +122,38 @@ public final class DownloadService extends Service {
         currentId=item.id;cancelCurrent=false;
         if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
         File temp=new File(getCacheDir(),"download-"+item.id);
-        try {
+        try{
+            attemptDownload(item,temp);
+        }catch(Exception first){
+            Exception failure=first;
+            if(!cancelCurrent && EngineRecoveryPolicy.shouldUpdate(first.getMessage())){
+                try{
+                    progress(item,"Обновление компонента YouTube…",0);
+                    EngineMaintenance.Result update=EngineMaintenance.update(
+                        getApplicationContext(),false,true);
+                    if(EngineRecoveryPolicy.shouldRetry(update==EngineMaintenance.Result.UPDATED,false)){
+                        checkCancel();
+                        deleteRecursive(temp);
+                        progress(item,"Повторная попытка загрузки…",0);
+                        attemptDownload(item,temp);
+                        return;
+                    }
+                }catch(Exception second){
+                    android.util.Log.w("YoutubeVideoDownloader","Не удалось восстановить скачивание",second);
+                    failure=second;
+                }
+            }
+            DownloadQueue.update(this,item.id,cancelCurrent?DownloadQueue.CANCELLED:DownloadQueue.ERROR,
+                cancelCurrent?"Отменено":("Ошибка: "+(failure.getMessage()==null?"неизвестная":failure.getMessage())),0,null);
+            announce();
+        }finally{
+            deleteRecursive(temp);
+            DownloadQueue.removeIfRequested(this,item.id);
+            announce();
+            currentId=null;cancelCurrent=false;
+        }
+    }
+    private void attemptDownload(DownloadQueue.Item item,File temp) throws Exception {
             if(!temp.isDirectory()&&!temp.mkdirs())throw new IOException("Невозможно создать папку загрузки");
             progress(item,"Подготовка загрузки",0);
             YoutubeDL.getInstance().init(getApplicationContext());
@@ -172,17 +203,6 @@ public final class DownloadService extends Service {
             }
             DownloadQueue.update(this,item.id,DownloadQueue.DONE,"Сохранено",100,finished.getName());
             announce();
-        } catch(Exception ex){
-            boolean cancelled=cancelCurrent;
-            DownloadQueue.update(this,item.id,cancelled?DownloadQueue.CANCELLED:DownloadQueue.ERROR,
-                cancelled?"Отменено":("Ошибка: "+(ex.getMessage()==null?"неизвестная":ex.getMessage())),0,null);
-            announce();
-        }finally{
-            deleteRecursive(temp);
-            DownloadQueue.removeIfRequested(this,item.id);
-            announce();
-            currentId=null;cancelCurrent=false;
-        }
     }
     private void checkCancel() throws IOException {
         if(cancelCurrent)throw new IOException("Загрузка отменена");

@@ -24,6 +24,16 @@ public final class UiIcons extends Drawable {
         p.setColor(color);p.setStrokeWidth(1.9f);p.setStrokeJoin(Paint.Join.ROUND);
         p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.STROKE);
         switch(name){
+            case "pause":
+                p.setStyle(Paint.Style.FILL);
+                c.drawRoundRect(new RectF(6,4,10,20),1,1,p);
+                c.drawRoundRect(new RectF(14,4,18,20),1,1,p);
+                break;
+            case "more":
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(12,5,1.8f,p);c.drawCircle(12,12,1.8f,p);
+                c.drawCircle(12,19,1.8f,p);
+                break;
             case "download":
                 c.drawLine(12,3,12,16,p);c.drawLine(7,11,12,16,p);c.drawLine(17,11,12,16,p);
                 c.drawLine(4,19,20,19,p);c.drawLine(4,19,4,16,p);c.drawLine(20,19,20,16,p);break;

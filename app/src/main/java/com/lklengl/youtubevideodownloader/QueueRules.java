@@ -12,17 +12,25 @@ public final class QueueRules {
         }
         return count;
     }
-    /** Insert urgent jobs before waiting jobs without interrupting a currently active download. */
+    /** Priority jobs outrank ordinary waiting downloads regardless of display insertions. */
     public static void prependPriority(List<DownloadQueue.Item> items,List<DownloadQueue.Item> urgent) {
+        for(DownloadQueue.Item item:urgent)item.priority=true;
+        addNewest(items,urgent);
+    }
+    /** All newly submitted items appear just under the currently running entry. */
+    public static void addNewest(List<DownloadQueue.Item> items,List<DownloadQueue.Item> urgent) {
         DownloadQueue.Item running=null;
         for(DownloadQueue.Item item:items)if(DownloadQueue.RUNNING.equals(item.status)){running=item;break;}
         if(running!=null){items.remove(running);items.add(0,running);}
         items.addAll(running==null?0:1,urgent);
     }
     public static DownloadQueue.Item nextWaiting(List<DownloadQueue.Item> items) {
-        for(DownloadQueue.Item item:items)
-            if(DownloadQueue.WAITING.equals(item.status))return item;
-        return null;
+        DownloadQueue.Item ordinary=null;
+        for(DownloadQueue.Item item:items)if(DownloadQueue.WAITING.equals(item.status)){
+            if(item.priority)return item;
+            if(ordinary==null)ordinary=item;
+        }
+        return ordinary;
     }
     public static String filenameTemplate() {return DownloadOptions.OUTPUT_TEMPLATE;}
     public static String readableDuration(int seconds) {

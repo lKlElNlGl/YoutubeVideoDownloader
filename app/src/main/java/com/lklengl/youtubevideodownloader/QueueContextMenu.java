@@ -17,7 +17,7 @@ public final class QueueContextMenu {
   int dp=ThemeStyle.dp(activity,1);
   LinearLayout content=new LinearLayout(activity);
   content.setOrientation(LinearLayout.VERTICAL);
-  content.setPadding(dp,dp,dp,dp);
+  content.setPadding(0,dp,0,dp);
   content.setBackground(ThemeStyle.popupBackground(activity));
   PopupWindow popup=new PopupWindow(content,ThemeStyle.dp(activity,250),-2,true);
   popup.setBackgroundDrawable(ThemeStyle.popupBackground(activity));
@@ -27,11 +27,11 @@ public final class QueueContextMenu {
   for(java.util.Map.Entry<String,String> action:actions.entrySet()){
    String label=action.getKey();
    boolean danger=label.equals("Удалить запись");
-   if(danger){
+   if(QueueMenuPolicy.needsSeparator(count,i,danger)){
     View divider=new View(activity);
     divider.setBackgroundColor(ThemeStyle.isDark(activity)?0xFF697385:0xFFD4D8E0);
     LinearLayout.LayoutParams line=new LinearLayout.LayoutParams(-1,ThemeStyle.dp(activity,1));
-    line.setMargins(-dp,ThemeStyle.dp(activity,3),-dp,ThemeStyle.dp(activity,3));
+    line.setMargins(0,ThemeStyle.dp(activity,3),0,ThemeStyle.dp(activity,3));
     content.addView(divider,line);
    }
    LinearLayout row=new LinearLayout(activity);row.setOrientation(LinearLayout.HORIZONTAL);
@@ -50,6 +50,18 @@ public final class QueueContextMenu {
    row.setOnClickListener(v->{popup.dismiss();chosen.accept(label);});
    i++;
   }
-  popup.showAsDropDown(anchor,0,0,Gravity.END);
+  int width=ThemeStyle.dp(activity,250);
+  int menuHeight=ThemeStyle.dp(activity,47)*count+2*dp+
+      (count>1&&actions.containsKey("Удалить запись")?ThemeStyle.dp(activity,7):0);
+  android.graphics.Rect bounds=new android.graphics.Rect();
+  activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(bounds);
+  int[] location=new int[2];anchor.getLocationOnScreen(location);
+  int left=Math.max(bounds.left+dp,Math.min(location[0]+anchor.getWidth()-width,bounds.right-width-dp));
+  int below=location[1]+anchor.getHeight();
+  int above=location[1]-menuHeight;
+  int y=below+menuHeight<=bounds.bottom?below:above>=bounds.top?above:
+      Math.max(bounds.top,Math.min(below,bounds.bottom-menuHeight));
+  popup.setClippingEnabled(true);
+  popup.showAtLocation(activity.getWindow().getDecorView(),Gravity.LEFT|Gravity.TOP,left,y);
  }
 }

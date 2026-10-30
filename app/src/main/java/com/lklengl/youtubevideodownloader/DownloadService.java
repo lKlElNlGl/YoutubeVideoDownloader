@@ -243,7 +243,18 @@ public final class DownloadService extends Service {
                 } catch(Exception ignored){}
                 checkCancel();
             }
-            DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length());
+            int duration=-1,height=0;
+            try{
+                android.media.MediaMetadataRetriever mmr=new android.media.MediaMetadataRetriever();
+                try{
+                    mmr.setDataSource(finished.getAbsolutePath());
+                    String ms=mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    String h=mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                    if(ms!=null)duration=(int)(Long.parseLong(ms)/1000L);
+                    if(h!=null)height=Integer.parseInt(h);
+                }finally{mmr.release();}
+            }catch(Exception ignored){}
+            DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length(),duration,height);
             announce();
     }
     private void checkCancel() throws IOException {

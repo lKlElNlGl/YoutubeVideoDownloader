@@ -86,6 +86,29 @@ public final class PlaylistCache {
   for(String value:qualities)a.put(PlaylistQualityPolicy.allowed(value)?value:"best");
   c.getSharedPreferences("playlist_quality",0).edit().putString(key(url),a.toString()).apply();
  }
+ public static List<String> readQualities(Context c,String url,PlaylistRepository.Playlist playlist,String fallback){
+  String saved=c.getSharedPreferences("playlist_quality_by_id",0).getString(key(url),null);
+  JSONObject obj=null;
+  try{if(saved!=null)obj=new JSONObject(saved);}catch(Exception ignored){}
+  List<String> result=new ArrayList<>();
+  for(PlaylistRepository.Entry entry:playlist.entries){
+   String value=obj==null?fallback:obj.optString(entry.id,fallback);
+   result.add(PlaylistQualityPolicy.allowed(value)?value:fallback);
+  }
+  return result;
+ }
+ public static void saveQualities(Context c,String url,PlaylistRepository.Playlist playlist,List<String> qualities){
+  if(qualities.size()!=playlist.entries.size())throw new IllegalArgumentException("Изменился список видео");
+  JSONObject saved=new JSONObject();
+  try{
+   for(int i=0;i<qualities.size();i++){
+    String v=qualities.get(i);
+    if(PlaylistQualityPolicy.allowed(v))saved.put(playlist.entries.get(i).id,v);
+   }
+   c.getSharedPreferences("playlist_quality_by_id",0).edit()
+    .putString(key(url),saved.toString()).apply();
+  }catch(Exception ex){throw new IllegalStateException("Невозможно сохранить качество",ex);}
+ }
  public static void saveSelection(Context c,String url,boolean[] flags){
   JSONArray a=new JSONArray();for(boolean b:flags)a.put(b);
   c.getSharedPreferences("playlist_choices",0).edit().putString(key(url),a.toString()).apply();

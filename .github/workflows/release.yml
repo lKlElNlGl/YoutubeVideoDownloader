@@ -75,6 +75,8 @@ jobs:
           name="YoutubeVideoDownloader-v${{ steps.version.outputs.version }}-android.apk"
           "$sdk/apksigner" sign --key "$dir/key.pk8" --cert "$dir/cert.pem" --out "dist/$name" "$dir/aligned.apk"
           "$sdk/apksigner" verify --min-sdk-version 29 --print-certs "dist/$name"
+          # A changed Android package ID is intentional for v0.4.0. Reject incorrect APKs.
+          "$sdk/aapt" dump badging "dist/$name" | grep -E "^package: name='com\\.lklelnlgl\\.youtubedownloader' "
           (cd dist && sha256sum "$name" > SHA256SUMS)
       - name: Publish directly to GitHub Releases
         env:

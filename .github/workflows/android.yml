@@ -21,5 +21,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Install launcher image tooling
+        run: python3 -m pip install --user Pillow
       - name: Test and build
         run: gradle --no-daemon testDebugUnitTest assembleDebug

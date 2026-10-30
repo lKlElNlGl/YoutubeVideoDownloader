@@ -879,22 +879,60 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("ОК",null).show();
         }
     }
+    private void removeQueueRecord(DownloadQueue.Item job){
+        boolean running=DownloadQueue.requestRemove(this,job.id);
+        if(running)DownloadService.cancel(this,job.id);
+        else DownloadService.discardPartial(this,job.id);
+        QueueThumbnails.delete(this,job.id);
+        queueSignature=null;refreshQueue();
+    }
     private void confirmRemove(DownloadQueue.Item job){
+        boolean finished=DownloadQueue.DONE.equals(job.status)&&!TextUtils.isEmpty(job.contentUri);
+        LinearLayout content=new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(22),dp(10),dp(22),dp(5));
+        TextView message=text("Запись будет удалена из очереди. Скачанный файл останется на устройстве.",14);
+        content.addView(message);
+        CheckBox deleteFile=new CheckBox(this);
+        deleteFile.setText("Также удалить скачанный файл с устройства");
+        deleteFile.setTextColor(ThemeStyle.text(this));deleteFile.setTextSize(13);
+        deleteFile.setButtonTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
+        if(finished){
+            LinearLayout.LayoutParams checkParams=new LinearLayout.LayoutParams(-1,-2);
+            checkParams.setMargins(0,dp(12),0,0);content.addView(deleteFile,checkParams);
+        }
         AlertDialog confirm=ThemeStyle.dialog(this).setTitle("Удалить запись из очереди?")
-            .setMessage("Скачанные файлы сохранятся. Если загрузка выполняется, она будет остановлена.")
+            .setView(content)
             .setNegativeButton("Отмена",null)
             .setPositiveButton("Удалить",(dialog,which)->{
-                boolean running=DownloadQueue.requestRemove(this,job.id);
-                if(running)DownloadService.cancel(this,job.id);
-                else DownloadService.discardPartial(this,job.id);
-                QueueThumbnails.delete(this,job.id);
-                queueSignature=null;refreshQueue();
+                if(!finished||!deleteFile.isChecked()){removeQueueRecord(job);return;}
+                String filename=TextUtils.isEmpty(job.filename)?"скачанный файл":job.filename;
+                AlertDialog secondary=ThemeStyle.dialog(this)
+                    .setTitle("Удалить скачанный файл?")
+                    .setMessage("Файл «"+filename+"» будет удалён из памяти телефона. Это действие нельзя отменить.")
+                    .setNegativeButton("Отмена",null)
+                    .setPositiveButton("Удалить файл",(d,w)->deleteDownloadedFile(job))
+                    .create();
+                secondary.setOnShowListener(d->secondary.getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setTextColor(ThemeStyle.RED));
+                secondary.show();
             }).create();
-        confirm.setOnShowListener(dialog->{
-            confirm.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ThemeStyle.text(this));
-            confirm.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ThemeStyle.RED);
-        });
+        confirm.setOnShowListener(d->confirm.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ThemeStyle.RED));
         confirm.show();
+    }
+    private void deleteDownloadedFile(DownloadQueue.Item job){
+        try{
+            Uri file=Uri.parse(job.contentUri);
+            boolean saf=!TextUtils.isEmpty(job.directoryUri);
+            boolean removed;
+            if(saf)removed=DocumentsContract.deleteDocument(getContentResolver(),file);
+            else removed=getContentResolver().delete(file,null,null)>0;
+            if(!removed)throw new java.io.IOException("Не удалось удалить файл");
+            removeQueueRecord(job);
+        }catch(Exception ex){
+            ThemeStyle.dialog(this).setTitle("Файл не удалён")
+                .setMessage("Не удалось удалить файл из памяти устройства. Запись в очереди сохранена.\n"+ex.getMessage())
+                .setPositiveButton("ОК",null).show();
+        }
     }
     private void showTechnicalDetails(DownloadQueue.Item job){
         showTechnicalDetails(job.message);

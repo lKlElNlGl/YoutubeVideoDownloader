@@ -56,7 +56,7 @@ public final class MainActivity extends Activity {
     private ProgressBar infoIndicator;
     private TextView infoTimer;
     private final android.os.Handler infoHandler=new android.os.Handler(android.os.Looper.getMainLooper());
-    private String activeInfoProcessId=null;
+    private volatile String activeInfoProcessId=null;
     private long infoStartedAt;
     private int infoGeneration=0;
     private final Runnable infoClock=new Runnable(){
@@ -253,8 +253,7 @@ public final class MainActivity extends Activity {
         updatePreviewButton.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString())){
                 String key=url.getText().toString().trim();
-                PlaylistCache.clear(this,key);
-                loadPlaylist(false);
+                loadPlaylist(false,true);
             }else loadPreview(true);
         });
         reopenPlaylistButton=button(previewCard,"Открыть список видео");
@@ -1087,8 +1086,9 @@ public final class MainActivity extends Activity {
         updatePreviewMessage("Запрос отменён");
         try{YoutubeDL.getInstance().destroyProcessById(id);}catch(Exception ignored){}
     }
-    private void loadPlaylist(boolean priority){
-        if(loadingPlaylist)return;
+    private void loadPlaylist(boolean priority){loadPlaylist(priority,false);}
+    private void loadPlaylist(boolean priority,boolean refresh){
+        if(loadingPlaylist||activeInfoProcessId!=null)return;
         final String link, proxyValue;
 
         try{
@@ -1098,27 +1098,28 @@ public final class MainActivity extends Activity {
             if(proxyEnabled.isChecked() && proxyValue.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
         }catch(Exception e){error("Плейлист",e);return;}
         PlaylistRepository.Playlist cached=PlaylistCache.load(this,link);
-        if(cached!=null){
+        if(cached!=null&&!refresh){
             rememberPreview(PreviewSnapshot.playlist(link,cached.title,cached.entries.size()),null);
             openPlaylist(cached,link,priority);return;
         }
-        loadingPlaylist=true;previewButton.setEnabled(false);
-        updatePreviewMessage("Получение списка видео плейлиста…");
+        loadingPlaylist=true;
+        final String requestId=beginInfo("Получение списка видео плейлиста…");
         uiWorker.execute(()->{
             try {
                 PlaylistRepository.Playlist data;
-                try{data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);}
+                try{data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue,requestId);}
                 catch(Exception first){
-                    if(!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
+                    if(!infoCurrent(requestId)||!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
                     runOnUiThread(()->updatePreviewMessage("Обновление компонента YouTube…"));
                     if(EngineMaintenance.update(getApplicationContext(),false,false)!=EngineMaintenance.Result.UPDATED)
                         throw first;
                     runOnUiThread(()->updatePreviewMessage("Повторное получение списка…"));
-                    data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue);
+                    data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue,requestId);
                 }
                 final PlaylistRepository.Playlist loaded=data;
                 runOnUiThread(()->{
-                    loadingPlaylist=false;previewButton.setEnabled(true);
+                    if(!infoCurrent(requestId))return;
+                    finishInfo(requestId);
                     if(!link.equals(url.getText().toString().trim()))return;
                     PlaylistCache.save(this,link,loaded);
                     rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
@@ -1126,7 +1127,8 @@ public final class MainActivity extends Activity {
                 });
             }catch(Exception ex){
                 runOnUiThread(()->{
-                    loadingPlaylist=false;previewButton.setEnabled(true);
+                    if(!infoCurrent(requestId))return;
+                    finishInfo(requestId);
                     if(link.equals(url.getText().toString().trim()))showPreviewFailure(ex);
                 });
             }

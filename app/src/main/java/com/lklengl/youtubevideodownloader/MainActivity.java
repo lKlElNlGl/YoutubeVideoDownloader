@@ -711,7 +711,7 @@ public final class MainActivity extends Activity {
             for(DownloadQueue.Item j:jobs)if(DownloadQueue.RUNNING.equals(j.status)){
                 activeQueueBar.setProgress(j.progress);
                 if(activeQueueInfo!=null)
-                    activeQueueInfo.setText(j.progress+"% · "+j.message);
+                    activeQueueInfo.setText(j.message);
                 return;
             }
         }
@@ -750,7 +750,7 @@ public final class MainActivity extends Activity {
                 activeQueueBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
                 LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(-1,dp(6));
                 bar.setMargins(0,dp(8),0,dp(5));card.addView(activeQueueBar,bar);
-                activeQueueInfo=compactInfo(j.progress+"% · "+j.message,12,true);
+                activeQueueInfo=compactInfo(j.message,12,true);
                 card.addView(activeQueueInfo);
             }
         }

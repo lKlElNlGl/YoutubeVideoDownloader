@@ -20,3 +20,9 @@ dependencies {
     implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
     implementation 'androidx.work:work-runtime:2.12.0'
 }
+
+tasks.register('generateLauncherIcon', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', 'scripts/generate_launcher_icon.py'
+}
+tasks.named('preBuild') { dependsOn tasks.named('generateLauncherIcon') }

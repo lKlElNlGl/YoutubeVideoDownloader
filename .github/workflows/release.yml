@@ -36,6 +36,8 @@ jobs:
             echo "::error::Set ANDROID_SIGNING_KEY_PEM and ANDROID_SIGNING_CERT_PEM in Settings / Secrets and variables / Actions. Refusing temporary signing."
             exit 1
           fi
+      - name: Install launcher image tooling
+        run: python3 -m pip install --user Pillow
       - name: Unit tests
         run: gradle --no-daemon :app:testDebugUnitTest
       - name: Compile release

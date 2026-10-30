@@ -15,7 +15,7 @@ import java.util.Set;
 /** Tiny thumbnails cached locally per queue entry; never blocks UI or downloads. */
 public final class QueueThumbnails {
     private static final ThreadPoolExecutor POOL=new ThreadPoolExecutor(2,2,0,
-        TimeUnit.SECONDS,new ArrayBlockingQueue<>(48),new ThreadPoolExecutor.DiscardPolicy());
+        TimeUnit.SECONDS,new ArrayBlockingQueue<>(48),new ThreadPoolExecutor.AbortPolicy());
     private static final Set<String> ACTIVE=ConcurrentHashMap.newKeySet();
     private QueueThumbnails(){}
     private static File file(Context c,String id){

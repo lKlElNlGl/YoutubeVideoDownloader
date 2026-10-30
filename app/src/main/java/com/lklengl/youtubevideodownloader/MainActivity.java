@@ -46,7 +46,7 @@ public final class MainActivity extends Activity {
     private Spinner mode, quality;
     private QualityChoices qualityChoices=QualityChoices.fallback();
     private FormatChoices formatChoices=FormatChoices.fallback();
-    private String queueSignature="";
+    private String queueSignature=null;
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
@@ -252,7 +252,7 @@ public final class MainActivity extends Activity {
                     QueueThumbnails.delete(this,j.id);
                     DownloadService.discardPartial(this,j.id);
                 }
-            DownloadQueue.clearFinished(this);queueSignature="";refreshQueue();
+            DownloadQueue.clearFinished(this);queueSignature=null;refreshQueue();
         });
 
         LinearLayout settingsPage=pagePanels[2];
@@ -744,7 +744,7 @@ public final class MainActivity extends Activity {
                 labels.addView(compactInfo(queueFormat(j),12,false));
                 TextView percent=compactInfo(j.progress+"%",12,true);labels.addView(percent);
                 ImageView pause=queueAction(top,"pause",ThemeStyle.text(this),"Приостановить загрузку");
-                pause.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature="";refreshQueue();});
+                pause.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
                 activeQueueBar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
                 activeQueueBar.setMax(100);activeQueueBar.setProgress(j.progress);
                 activeQueueBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
@@ -760,7 +760,7 @@ public final class MainActivity extends Activity {
         }
         if(!done.isEmpty()){
             queueHeading("Завершённые",done.size());
-            for(int n=done.size()-1;n>=0;n--)compactQueueRow(done.get(n),true);
+            for(DownloadQueue.Item j:done)compactQueueRow(j,true);
         }
         if(!problems.isEmpty()){
             queueHeading("Ошибки и отменённые",problems.size());
@@ -791,10 +791,10 @@ public final class MainActivity extends Activity {
             play.setOnClickListener(v->openDownloaded(j));
         }else if(DownloadQueue.PAUSED.equals(j.status)){
             ImageView resume=queueAction(line,"play",ThemeStyle.RED,"Продолжить загрузку");
-            resume.setOnClickListener(v->{DownloadService.resume(this,j.id);queueSignature="";refreshQueue();});
+            resume.setOnClickListener(v->{DownloadService.resume(this,j.id);queueSignature=null;refreshQueue();});
         }else if(DownloadQueue.WAITING.equals(j.status)){
             ImageView paused=queueAction(line,"pause",ThemeStyle.subdued(this),"Поставить на паузу");
-            paused.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature="";refreshQueue();});
+            paused.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
         }
         ImageView menu=queueAction(line,"more",ThemeStyle.subdued(this),"Действия с загрузкой");
         menu.setOnClickListener(v->queueMenu(menu,j));
@@ -827,7 +827,7 @@ public final class MainActivity extends Activity {
                 case "Продолжить":DownloadService.resume(this,j.id);break;
                 case "Удалить запись":confirmRemove(j);return true;
             }
-            queueSignature="";refreshQueue();return true;
+            queueSignature=null;refreshQueue();return true;
         });
         menu.show();
     }
@@ -859,7 +859,7 @@ public final class MainActivity extends Activity {
                 if(running)DownloadService.cancel(this,job.id);
                 else DownloadService.discardPartial(this,job.id);
                 QueueThumbnails.delete(this,job.id);
-                queueSignature="";refreshQueue();
+                queueSignature=null;refreshQueue();
             }).create();
         confirm.setOnShowListener(dialog->{
             confirm.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ThemeStyle.text(this));

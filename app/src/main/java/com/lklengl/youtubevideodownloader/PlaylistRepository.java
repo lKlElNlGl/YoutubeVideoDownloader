@@ -19,11 +19,14 @@ public final class PlaylistRepository {
         }
     }
     public static final class Playlist {
-        public final String title;
+        public final String title, uploader;
         public final List<Entry> entries;
         public final int reportedCount;
         Playlist(String title,List<Entry> entries,int reportedCount){
-            this.title=title;this.entries=entries;this.reportedCount=reportedCount;
+            this(title,"",entries,reportedCount);
+        }
+        Playlist(String title,String uploader,List<Entry> entries,int reportedCount){
+            this.title=title;this.uploader=uploader;this.entries=entries;this.reportedCount=reportedCount;
         }
     }
     public static Playlist fetch(Context context,String link,String proxy) throws Exception {
@@ -56,6 +59,7 @@ public final class PlaylistRepository {
         }
         if(accepted.isEmpty())throw new IllegalArgumentException("В плейлисте нет доступных видео");
         int count=data.optInt("playlist_count",entries.length());
-        return new Playlist(data.optString("title","Плейлист YouTube"),accepted,count);
+        return new Playlist(data.optString("title","Плейлист YouTube"),
+            data.optString("uploader",data.optString("channel","")),accepted,count);
     }
 }

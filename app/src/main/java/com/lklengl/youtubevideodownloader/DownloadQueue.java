@@ -18,6 +18,7 @@ public final class DownloadQueue {
         public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle, format, contentUri;
         public boolean deleteRequested;
         public boolean audio;
+        public boolean priority;
         public int progress;
         public long bytesSaved;
 
@@ -26,7 +27,7 @@ public final class DownloadQueue {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
+            j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
             return j;
         }
         static Item fromJson(JSONObject j) {
@@ -34,7 +35,7 @@ public final class DownloadQueue {
             i.quality=j.optString("quality","best");i.proxy=j.optString("proxy");
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
             i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
-            i.audio=j.optBoolean("audio");i.deleteRequested=j.optBoolean("deleteRequested");
+            i.audio=j.optBoolean("audio");i.priority=j.optBoolean("priority");i.deleteRequested=j.optBoolean("deleteRequested");
             i.progress=j.optInt("progress");return i;
         }
     }
@@ -73,8 +74,9 @@ public final class DownloadQueue {
             if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
-            QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
+            if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
+            else QueueRules.addNewest(list,java.util.Collections.singletonList(i));
             save(context,list);return i.id;
         }
     }
@@ -98,10 +100,11 @@ public final class DownloadQueue {
                 PlaylistRepository.Entry entry=playlist.entries.get(n);
                 Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
                 i.playlistTitle=playlist.title;i.quality=quality;i.proxy=proxy;i.audio=audio;
-                i.directoryUri=directoryUri;i.format=format;i.contentUri="";i.status=WAITING;i.message="Ожидает";
+                i.directoryUri=directoryUri;i.format=format;i.priority=priority;i.contentUri="";i.status=WAITING;i.message="Ожидает";
                 i.filename="";i.progress=0;added.add(i);
             }
-            QueueRules.prependPriority(list,added);
+            if(priority)QueueRules.prependPriority(list,added);
+            else QueueRules.addNewest(list,added);
             save(context,list);return count;
         }
     }

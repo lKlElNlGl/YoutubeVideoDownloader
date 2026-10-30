@@ -15,8 +15,8 @@ supersample=4
 edge=min(width,height)/128.0
 mask=Image.new("L",(width*supersample,height*supersample),0)
 drawer=ImageDraw.Draw(mask)
-inset=7.0*edge
-radius=23.0*edge
+inset=3.0*edge
+radius=27.0*edge
 drawer.rounded_rectangle(
  (round(inset*supersample),round(inset*supersample),
   round((width-1-inset)*supersample),round((height-1-inset)*supersample)),

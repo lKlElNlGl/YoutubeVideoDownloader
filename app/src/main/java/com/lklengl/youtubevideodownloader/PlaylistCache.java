@@ -29,7 +29,7 @@ public final class PlaylistCache {
  public static void save(Context c,String url,PlaylistRepository.Playlist p){
   try{
    JSONObject root=new JSONObject();
-   root.put("url",url);root.put("title",p.title);root.put("reportedCount",p.reportedCount);
+   root.put("url",url);root.put("title",p.title);root.put("uploader",p.uploader);root.put("reportedCount",p.reportedCount);
    JSONArray array=new JSONArray();
    for(PlaylistRepository.Entry e:p.entries){
     JSONObject entry=new JSONObject();entry.put("id",e.id);entry.put("title",e.title);
@@ -57,7 +57,7 @@ public final class PlaylistCache {
     JSONObject j=a.getJSONObject(i);
     entries.add(new PlaylistRepository.Entry(j.getString("id"),j.optString("title"),j.optInt("duration",-1)));
    }
-   return new PlaylistRepository.Playlist(root.optString("title"),entries,root.optInt("reportedCount",entries.size()));
+   return new PlaylistRepository.Playlist(root.optString("title"),root.optString("uploader"),entries,root.optInt("reportedCount",entries.size()));
   }catch(Exception e){return null;}
  }
  public static List<Boolean> readSelection(Context c,String url){

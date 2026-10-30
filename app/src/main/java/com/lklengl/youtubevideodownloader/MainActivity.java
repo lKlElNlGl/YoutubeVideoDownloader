@@ -51,7 +51,7 @@ public final class MainActivity extends Activity {
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
-    private Button previewDetailsButton;
+    private Button previewDetailsButton, reopenPlaylistButton;
     private String previewErrorLog="";
     private LinearLayout previewCard;
     private ImageView thumbnail;
@@ -215,6 +215,14 @@ public final class MainActivity extends Activity {
         previewAllQualities.setTextColor(ThemeStyle.subdued(this));
         previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
         previewCard.addView(previewAllQualities);
+        reopenPlaylistButton=button(previewCard,"Открыть список видео");
+        reopenPlaylistButton.setOnClickListener(v->{
+            if(previewSnapshot!=null&&previewSnapshot.playlist&&previewSnapshot.matches(url.getText().toString())){
+                PlaylistRepository.Playlist stored=PlaylistCache.load(this,previewSnapshot.source);
+                if(stored!=null)openPlaylist(stored,previewSnapshot.source,false);
+                else loadPlaylist(false);
+            }
+        });
         previewCard.setVisibility(View.GONE);
 
         LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
@@ -579,12 +587,14 @@ public final class MainActivity extends Activity {
             previewDuration.setText(previewSnapshot.videoCount+" видео");
             previewQuality.setText("Плейлист");
             previewAllQualities.setVisibility(View.GONE);
+            reopenPlaylistButton.setVisibility(View.VISIBLE);
         }else{
             previewDuration.setText(previewSnapshot.duration);
             String qualities=previewSnapshot.resolutions;
             previewQuality.setText(qualities.split(",")[0]);
             previewAllQualities.setText("Доступно: "+qualities);
             previewAllQualities.setVisibility(View.VISIBLE);
+            reopenPlaylistButton.setVisibility(View.GONE);
         }
         if(previewBitmap!=null && !previewSnapshot.playlist){
             thumbnail.setImageBitmap(previewBitmap);
@@ -1009,10 +1019,11 @@ public final class MainActivity extends Activity {
             proxyValue=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyValue.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
         }catch(Exception e){error("Плейлист",e);return;}
-        final String outputFormat=selectedFormat();
-        final boolean audio=formatChoices.isAudio(outputFormat);
-        final String resolution=selectedQuality();
-        final String directory=selectedFolder();
+        PlaylistRepository.Playlist cached=PlaylistCache.load(this,link);
+        if(cached!=null){
+            rememberPreview(PreviewSnapshot.playlist(link,cached.title,cached.entries.size()),null);
+            openPlaylist(cached,link,priority);return;
+        }
         loadingPlaylist=true;previewButton.setEnabled(false);
         updatePreviewMessage("Получение списка видео плейлиста…");
         uiWorker.execute(()->{
@@ -1031,8 +1042,9 @@ public final class MainActivity extends Activity {
                 runOnUiThread(()->{
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     if(!link.equals(url.getText().toString().trim()))return;
+                    PlaylistCache.save(this,link,loaded);
                     rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
-                    showPlaylistSelection(loaded,audio,resolution,proxyValue,directory,priority,outputFormat);
+                    openPlaylist(loaded,link,priority);
                 });
             }catch(Exception ex){
                 runOnUiThread(()->{
@@ -1042,63 +1054,16 @@ public final class MainActivity extends Activity {
             }
         });
     }
-    private void showPlaylistSelection(PlaylistRepository.Playlist data,
-            boolean audio,String resolution,String proxyValue,String directory,boolean priority,String outputFormat){
-        int count=data.entries.size();
-        CharSequence[] labels=new CharSequence[count];
-        boolean[] checked=new boolean[count];
-        java.util.Arrays.fill(checked,true);
-        for(int i=0;i<count;i++){
-            PlaylistRepository.Entry entry=data.entries.get(i);
-            labels[i]=(i+1)+". "+entry.title+
-                (entry.duration>=0?" · "+QueueRules.readableDuration(entry.duration):"");
-        }
-        AlertDialog dialog=ThemeStyle.dialog(this)
-            .setTitle(data.title+" ("+count+" видео)")
-            .setMultiChoiceItems(labels,checked,(d,which,value)->checked[which]=value)
-            .setNegativeButton("Отмена",null)
-            .setNeutralButton("Выбрать все",null)
-            .setPositiveButton(priority?"Скачать без очереди":"Добавить в очередь",null).create();
-        dialog.setOnShowListener(d->{
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{
-                boolean all=true;
-                for(boolean value:checked)if(!value){all=false;break;}
-                for(int i=0;i<count;i++){checked[i]=!all;dialog.getListView().setItemChecked(i,!all);}
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setText(all?"Выбрать все":"Снять выбор");
-            });
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
-                try{
-                    List<Boolean> selected=new ArrayList<>();
-                    for(boolean value:checked)selected.add(value);
-                    List<DownloadQueue.Item> active=DownloadQueue.all(this);
-                    int existing=0;
-                    for(int i=0;i<selected.size();i++)
-                        if(Boolean.TRUE.equals(selected.get(i)) &&
-                            QueuePolicy.hasActiveDuplicate(active,data.entries.get(i).url))existing++;
-                    if(existing>0){
-                        final int duplicates=existing;
-                        ThemeStyle.dialog(this).setTitle("Повторные видео")
-                            .setMessage("Уже в очереди: "+duplicates+". Добавить их повторно?")
-                            .setNegativeButton("Отмена",null)
-                            .setPositiveButton("Добавить",(confirm,which)->{
-                                try{addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
-                                    dialog.dismiss();
-                                }catch(Exception e){error("Очередь плейлиста",e);}
-                            }).show();
-                    }else{
-                        addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
-                        dialog.dismiss();
-                    }
-                }catch(Exception e){error("Очередь плейлиста",e);}
-            });
-        });
-        dialog.show();
-    }
-    private void addSelectedPlaylist(PlaylistRepository.Playlist data,List<Boolean> selected,
-            boolean audio,String resolution,String proxyValue,String directory,boolean priority,String outputFormat){
-        int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
-        refreshQueue();DownloadService.kick(this);
-        Toast.makeText(this,"Добавлено в очередь: "+added,Toast.LENGTH_LONG).show();
+    private void openPlaylist(PlaylistRepository.Playlist data,String link,boolean priority){
+        if(!PlaylistCache.has(this,link))PlaylistCache.save(this,link,data);
+        Intent intent=new Intent(this,PlaylistActivity.class);
+        intent.putExtra(PlaylistActivity.URL,link);
+        intent.putExtra(PlaylistActivity.QUALITY,selectedQuality());
+        intent.putExtra(PlaylistActivity.FORMAT,selectedFormat());
+        intent.putExtra(PlaylistActivity.PROXY,proxyEnabled.isChecked()?proxy.getText().toString().trim():"");
+        intent.putExtra(PlaylistActivity.FOLDER,selectedFolder());
+        intent.putExtra(PlaylistActivity.PRIORITY,priority);
+        startActivity(intent);
     }
     private void loadPreview(){
         final String videoUrl;

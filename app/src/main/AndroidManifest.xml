@@ -19,6 +19,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false"/>
+        <activity android:name="com.lklengl.youtubevideodownloader.PlaylistActivity" android:exported="false"/>
         <activity android:name="com.lklengl.youtubevideodownloader.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

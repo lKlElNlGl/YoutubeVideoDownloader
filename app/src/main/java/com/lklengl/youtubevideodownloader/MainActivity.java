@@ -644,8 +644,13 @@ public final class MainActivity extends Activity {
             String title=previewSnapshot!=null && previewSnapshot.matches(link) && !previewSnapshot.playlist?
                 previewSnapshot.title:"";
             String fmt=selectedFormat();
+            int duration=-1,height=0;
+            if(previewSnapshot!=null&&previewSnapshot.matches(link)&&!previewSnapshot.playlist){
+                duration=QueueMetadata.parseDuration(previewSnapshot.duration);
+                height=QueueMetadata.preferredHeight(previewSnapshot.resolutions,selectedQuality());
+            }
             String id=DownloadQueue.enqueue(this,link,formatChoices.isAudio(fmt),
-                selectedQuality(),proxyUrl,selectedFolder(),priority,title,fmt);
+                selectedQuality(),proxyUrl,selectedFolder(),priority,title,fmt,duration,height);
             if(previewSnapshot!=null&&previewSnapshot.matches(link)&&previewBitmap!=null)
                 QueueThumbnails.store(this,id,previewBitmap);
         }catch(Exception e){error("Невозможно добавить загрузку",e);return;}
@@ -661,9 +666,7 @@ public final class MainActivity extends Activity {
             (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
     }
     private String queueFormat(DownloadQueue.Item j){
-        String quality=j.audio?"Аудио":("best".equals(j.quality)?"Максимальное":j.quality+"p");
-        String fmt=j.format==null||j.format.isEmpty()?(j.audio?"mp3":"mp4"):j.format;
-        return quality+" · "+fmt.toUpperCase(Locale.ROOT);
+        return QueueMetadata.label(j.audio,j.quality,j.format,j.actualHeight,j.durationSeconds);
     }
     private void queueHeading(String label,int count){
         TextView header=text(label+(count>=0?" ("+count+")":""),15);
@@ -818,33 +821,34 @@ public final class MainActivity extends Activity {
         return String.format(Locale.getDefault(),"%.0f КБ",value/1024d);
     }
     private void queueMenu(View anchor,DownloadQueue.Item j){
-        PopupMenu menu=new PopupMenu(this,anchor);
+        LinkedHashMap<String,String> actions=new LinkedHashMap<>();
         if(DownloadQueue.DONE.equals(j.status)){
-            menu.getMenu().add("Открыть файл");
-            menu.getMenu().add("Открыть папку");
+            actions.put("Открыть файл","play");
+            actions.put("Открыть с помощью…","app-window");
+            actions.put("Открыть папку","folder");
         }
         if(DownloadQueue.ERROR.equals(j.status)){
-            menu.getMenu().add("Подробности");
-            menu.getMenu().add("Повторить загрузку");
+            actions.put("Подробности","info");
+            actions.put("Повторить загрузку","refresh-cw");
         }
-        if(DownloadQueue.CANCELLED.equals(j.status))menu.getMenu().add("Повторить загрузку");
-        if(DownloadQueue.PAUSED.equals(j.status))menu.getMenu().add("Продолжить");
-        menu.getMenu().add("Удалить запись");
-        menu.setOnMenuItemClickListener(option->{
-            String name=option.getTitle().toString();
+        if(DownloadQueue.CANCELLED.equals(j.status))actions.put("Повторить загрузку","refresh-cw");
+        if(DownloadQueue.PAUSED.equals(j.status))actions.put("Продолжить","play");
+        actions.put("Удалить запись","trash");
+        QueueContextMenu.show(this,anchor,actions,name->{
             switch(name){
-                case "Открыть файл":openDownloaded(j);break;
+                case "Открыть файл":openDownloaded(j,false);break;
+                case "Открыть с помощью…":openDownloaded(j,true);break;
                 case "Открыть папку":openFolderFor(j.directoryUri);break;
                 case "Подробности":showTechnicalDetails(j);break;
                 case "Повторить загрузку":DownloadQueue.retry(this,j.id);DownloadService.kick(this);break;
                 case "Продолжить":DownloadService.resume(this,j.id);break;
-                case "Удалить запись":confirmRemove(j);return true;
+                case "Удалить запись":confirmRemove(j);return;
             }
-            queueSignature=null;refreshQueue();return true;
+            queueSignature=null;refreshQueue();
         });
-        menu.show();
     }
-    private void openDownloaded(DownloadQueue.Item j){
+    private void openDownloaded(DownloadQueue.Item j){openDownloaded(j,false);}
+    private void openDownloaded(DownloadQueue.Item j,boolean chooser){
         if(TextUtils.isEmpty(j.contentUri)){
             ThemeStyle.dialog(this).setTitle("Файл")
                 .setMessage("Для загрузок, выполненных до этой версии, адрес файла не сохранён. Откройте папку загрузок.")
@@ -852,14 +856,26 @@ public final class MainActivity extends Activity {
                 .setPositiveButton("Открыть папку",(d,w)->openFolderFor(j.directoryUri)).show();
             return;
         }
+        Uri file=Uri.parse(j.contentUri);
+        try{
+            android.os.ParcelFileDescriptor fd=getContentResolver().openFileDescriptor(file,"r");
+            if(fd==null)throw new java.io.FileNotFoundException("Файл не найден");
+            fd.close();
+        }catch(Exception missing){
+            ThemeStyle.dialog(this).setTitle("Файл не найден")
+                .setMessage("Скачанный файл недоступен. Возможно, он удалён или перемещён.")
+                .setPositiveButton("ОК",null).show();return;
+        }
         String mime=j.audio?"audio/*":"video/*";
         try{
             Intent view=new Intent(Intent.ACTION_VIEW);
-            view.setDataAndType(Uri.parse(j.contentUri),mime);
+            view.setDataAndType(file,mime);
             view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(view,"Открыть скачанный файл"));
+            if(chooser)startActivity(Intent.createChooser(view,"Открыть с помощью…"));
+            else startActivity(view);
         }catch(Exception e){
-            ThemeStyle.dialog(this).setMessage("Не найден подходящий проигрыватель либо файл был перемещён.")
+            ThemeStyle.dialog(this).setTitle("Не удалось открыть файл")
+                .setMessage("Не найден подходящий проигрыватель или он не может открыть этот файл.")
                 .setPositiveButton("ОК",null).show();
         }
     }

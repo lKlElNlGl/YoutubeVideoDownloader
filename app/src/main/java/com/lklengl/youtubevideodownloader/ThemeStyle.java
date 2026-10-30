@@ -59,7 +59,7 @@ public final class ThemeStyle {
         GradientDrawable result=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
             new int[]{PremiumPalette.GRADIENT_TOP_LEFT,PremiumPalette.GRADIENT_BOTTOM_RIGHT});
         result.setCornerRadius(dp(c,11));
-        if(outlined)result.setStroke(dp(c,1),isDark(c)?0xFFA92A21:0xFFFF9CA4);
+        if(outlined)result.setStroke(dp(c,1),0xFFA92A21);
         return result;
     }
     private static Drawable plainRounded(Context c,int fill){

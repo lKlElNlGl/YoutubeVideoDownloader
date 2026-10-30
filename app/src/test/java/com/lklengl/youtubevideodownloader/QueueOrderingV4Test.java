@@ -13,6 +13,13 @@ public class QueueOrderingV4Test {
   assertEquals("old",jobs.get(2).id);
   assertEquals("completed",jobs.get(3).id);
  }
+ @Test public void ordinaryNewItemIsVisibleFirstButDoesNotStealUrgentNextSlot(){
+  java.util.List<DownloadQueue.Item> jobs=new ArrayList<>(Arrays.asList(item("old","waiting")));
+  QueueRules.prependPriority(jobs,Arrays.asList(item("urgent","waiting")));
+  QueueRules.addNewest(jobs,Arrays.asList(item("recent-normal","waiting")));
+  assertEquals("recent-normal",jobs.get(0).id);
+  assertEquals("urgent",QueueRules.nextWaiting(jobs).id);
+ }
  @Test public void pausedJobsAreNotDequeuedAndCountAsActive(){
   java.util.List<DownloadQueue.Item> list=Arrays.asList(item("paused","paused"),item("ready","waiting"));
   assertEquals("ready",QueueRules.nextWaiting(list).id);

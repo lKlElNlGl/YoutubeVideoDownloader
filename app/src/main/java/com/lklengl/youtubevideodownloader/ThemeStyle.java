@@ -22,7 +22,7 @@ public final class ThemeStyle {
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
     public static final int RED=0xFFEF2830;
     public static final int NIGHT_BG=0xFF0D1119;
-    public static final int NIGHT_CARD=PremiumPalette.DARK_CARD;
+    public static final int NIGHT_CARD=Palette051.CARD;
     public static final int DAY_BG=0xFFF5F6F9;
     public static final int DAY_CARD=0xFFFFFFFF;
     private ThemeStyle(){}
@@ -46,10 +46,10 @@ public final class ThemeStyle {
     public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}
     public static int background(Context c){return isDark(c)?NIGHT_BG:DAY_BG;}
     public static int cardColor(Context c){return isDark(c)?NIGHT_CARD:DAY_CARD;}
-    public static int border(Context c){return isDark(c)?0xFF5F6D80:0xFFD2D9E3;}
-    public static int field(Context c){return isDark(c)?0xFF252C38:0xFFF0F2F6;}
-    public static int buttonFill(Context c){return isDark(c)?0xFF353E4D:0xFFEDEFF5;}
-    public static int buttonStroke(Context c){return isDark(c)?0xFF687586:0xFFD4DAE4;}
+    public static int border(Context c){return isDark(c)?Palette051.BORDER:0xFFD2D9E3;}
+    public static int field(Context c){return isDark(c)?Palette051.FIELD:0xFFF0F2F6;}
+    public static int buttonFill(Context c){return isDark(c)?Palette051.BUTTON:0xFFEDEFF5;}
+    public static int buttonStroke(Context c){return isDark(c)?Palette051.BUTTON_BORDER:0xFFD4DAE4;}
     public static int dp(Context c,float n){return (int)(n*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int fill,int stroke,float radius){
         GradientDrawable d=new GradientDrawable();
@@ -77,15 +77,15 @@ public final class ThemeStyle {
         return row;
     }
     public static GradientDrawable popupBackground(Context c){
-        GradientDrawable result=rounded(isDark(c)?PremiumPalette.DARK_POPUP:field(c),
-            isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c),dp(c,11));
+        GradientDrawable result=rounded(isDark(c)?Palette051.POPUP:field(c),
+            isDark(c)?Palette051.POPUP_BORDER:border(c),dp(c,11));
         result.setStroke(dp(c,1),isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c));
         result.setPadding(dp(c,1),dp(c,1),dp(c,1),dp(c,1));
         return result;
     }
     public static int popupItemColor(Context c,boolean selected){
         if(!isDark(c))return selected?0xFFE6E7EB:field(c);
-        return selected?PremiumPalette.DARK_SELECTED:PremiumPalette.DARK_POPUP;
+        return selected?Palette051.SELECTED:Palette051.POPUP;
     }
     public static AlertDialog.Builder dialog(Activity activity){
         return isDark(activity)?new AlertDialog.Builder(activity,R.style.YvdDialogDark):

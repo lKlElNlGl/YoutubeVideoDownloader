@@ -30,13 +30,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** A foreground data-sync service owns the yt-dlp process and sequential queue. */
 public final class DownloadService extends Service {
     public static final String ACTION_CHANGED="com.lklengl.youtubevideodownloader.QUEUE_CHANGED";
-    private static final String ACTION_CANCEL="com.lklengl.youtubevideodownloader.CANCEL";
+    private static final String ACTION_CANCEL="com.lklelnlgl.youtubedownloader.CANCEL";
+    private static final String ACTION_PAUSE="com.lklelnlgl.youtubedownloader.PAUSE";
     private static final int NOTIFICATION_ID=40;
     private static final String CHANNEL="active_downloads";
     private final ExecutorService executor=Executors.newSingleThreadExecutor();
     private final AtomicBoolean draining=new AtomicBoolean();
     private volatile String currentId=null;
     private volatile boolean cancelCurrent=false;
+    private volatile boolean pauseCurrent=false;
     private long lastNotification=0L;
     private PowerManager.WakeLock activeLock;
 
@@ -49,6 +51,26 @@ public final class DownloadService extends Service {
         i.setAction(ACTION_CANCEL);i.putExtra("id",id);
         context.startForegroundService(i);
     }
+    public static void pause(Context context,String id){
+        DownloadQueue.pause(context,id);
+        Intent i=new Intent(context,DownloadService.class).setAction(ACTION_PAUSE).putExtra("id",id);
+        context.startForegroundService(i);
+    }
+    public static void resume(Context context,String id){
+        DownloadQueue.resume(context,id);
+        kick(context);
+    }
+    public static void discardPartial(Context context,String id){
+        File dir=new File(context.getCacheDir(),"download-"+id);
+        deletePartial(dir);
+    }
+    private static void deletePartial(File path){
+        if(path.isDirectory()){
+            File[] files=path.listFiles();
+            if(files!=null)for(File x:files)deletePartial(x);
+        }
+        if(path.exists())path.delete();
+    }
     @Override public void onCreate() {
         super.onCreate();
         NotificationManager manager=getSystemService(NotificationManager.class);
@@ -59,14 +81,14 @@ public final class DownloadService extends Service {
     private void promote(String message,int percentage) {
         Intent open=new Intent(this,MainActivity.class);
         PendingIntent content=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        Intent cancel=new Intent(this,DownloadService.class).setAction(ACTION_CANCEL).putExtra("id",currentId);
-        PendingIntent cancelAction=PendingIntent.getService(this,1,cancel,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent pause=new Intent(this,DownloadService.class).setAction(ACTION_PAUSE).putExtra("id",currentId);
+        PendingIntent pauseAction=PendingIntent.getService(this,1,pause,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder builder=new Notification.Builder(this,CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle("YoutubeVideoDownloader")
             .setContentText(message).setContentIntent(content).setOnlyAlertOnce(true)
             .setOngoing(true).setProgress(100,Math.max(0,Math.min(100,percentage)),percentage<=0);
         if(currentId!=null)builder.addAction(new Notification.Action.Builder(
-            android.R.drawable.ic_menu_close_clear_cancel,"Отменить",cancelAction).build());
+            android.R.drawable.ic_media_pause,"Пауза",pauseAction).build());
         Notification n=builder.build();
         if(Build.VERSION.SDK_INT>=29)
             startForeground(NOTIFICATION_ID,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
@@ -78,7 +100,18 @@ public final class DownloadService extends Service {
             if(id!=null){
                 DownloadQueue.cancelWaiting(this,id);
                 if(id.equals(currentId)){
-                    cancelCurrent=true;
+                    cancelCurrent=true;pauseCurrent=false;
+                    YoutubeDL.getInstance().destroyProcessById(id);
+                }else discardPartial(this,id);
+                announce();
+            }
+        }
+        if(intent!=null && ACTION_PAUSE.equals(intent.getAction())){
+            String id=intent.getStringExtra("id");
+            if(id!=null){
+                DownloadQueue.pause(this,id);
+                if(id.equals(currentId)){
+                    pauseCurrent=true;
                     YoutubeDL.getInstance().destroyProcessById(id);
                 }
                 announce();
@@ -110,6 +143,7 @@ public final class DownloadService extends Service {
         sendBroadcast(new Intent(ACTION_CHANGED).setPackage(getPackageName()));
     }
     private void progress(DownloadQueue.Item item,String text,int percentage){
+        if(pauseCurrent||cancelCurrent)return;
         DownloadQueue.update(this,item.id,DownloadQueue.RUNNING,text,percentage,null);
         announce();
         long now=android.os.SystemClock.elapsedRealtime();
@@ -119,14 +153,14 @@ public final class DownloadService extends Service {
         }
     }
     private void download(DownloadQueue.Item item){
-        currentId=item.id;cancelCurrent=false;
+        currentId=item.id;cancelCurrent=false;pauseCurrent=false;
         if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
         File temp=new File(getCacheDir(),"download-"+item.id);
         try{
             attemptDownload(item,temp);
         }catch(Exception first){
             Exception failure=first;
-            if(!cancelCurrent && EngineRecoveryPolicy.shouldUpdate(first.getMessage())){
+            if(!cancelCurrent && !pauseCurrent && EngineRecoveryPolicy.shouldUpdate(first.getMessage())){
                 try{
                     progress(item,"Обновление компонента YouTube…",0);
                     EngineMaintenance.Result update=EngineMaintenance.update(
@@ -143,14 +177,18 @@ public final class DownloadService extends Service {
                     failure=second;
                 }
             }
-            DownloadQueue.update(this,item.id,cancelCurrent?DownloadQueue.CANCELLED:DownloadQueue.ERROR,
-                cancelCurrent?"Отменено":("Ошибка: "+(failure.getMessage()==null?"неизвестная":failure.getMessage())),0,null);
+            if(pauseCurrent){
+                DownloadQueue.pause(this,item.id);
+            }else{
+                DownloadQueue.update(this,item.id,cancelCurrent?DownloadQueue.CANCELLED:DownloadQueue.ERROR,
+                    cancelCurrent?"Отменено":("Ошибка: "+(failure.getMessage()==null?"неизвестная":failure.getMessage())),0,null);
+            }
             announce();
         }finally{
-            deleteRecursive(temp);
+            if(!pauseCurrent)deleteRecursive(temp);
             DownloadQueue.removeIfRequested(this,item.id);
             announce();
-            currentId=null;cancelCurrent=false;
+            currentId=null;cancelCurrent=false;pauseCurrent=false;
         }
     }
     private void attemptDownload(DownloadQueue.Item item,File temp) throws Exception {
@@ -162,16 +200,19 @@ public final class DownloadService extends Service {
             YoutubeDLRequest request=new YoutubeDLRequest(item.url);
             request.addOption("--no-playlist");
             request.addOption("--no-overwrites");
+            request.addOption("--continue");
             request.addOption("--no-mtime");
             request.addOption("--newline");
             request.addOption("-P",temp.getAbsolutePath());
             request.addOption("-o",QueueRules.filenameTemplate());
             request.addOption("-f",DownloadOptions.format(item.audio,item.quality));
-            if(item.audio){
+            String export=item.format==null||item.format.isEmpty()?(item.audio?"mp3":"mp4"):item.format;
+            if(item.audio || export.equals("mp3") || export.equals("m4a")){
                 request.addOption("-x");
-                request.addOption("--audio-format","mp3");
-                request.addOption("--audio-quality","192K");
-            }else request.addOption("--merge-output-format","mp4");
+                request.addOption("--audio-format",export.equals("m4a")?"m4a":"mp3");
+                if(!export.equals("m4a"))request.addOption("--audio-quality","192K");
+            }else request.addOption("--merge-output-format",
+                export.equals("webm")?"webm":export.equals("mkv")?"mkv":"mp4");
             if(!item.proxy.isEmpty())request.addOption("--proxy",item.proxy);
             YoutubeDL.getInstance().execute(request,item.id,(p,eta,line) -> {
                 String output=line==null?"":line.toLowerCase(Locale.ROOT);
@@ -201,11 +242,11 @@ public final class DownloadService extends Service {
                 } catch(Exception ignored){}
                 checkCancel();
             }
-            DownloadQueue.update(this,item.id,DownloadQueue.DONE,"Сохранено",100,finished.getName());
+            DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length());
             announce();
     }
     private void checkCancel() throws IOException {
-        if(cancelCurrent)throw new IOException("Загрузка отменена");
+        if(cancelCurrent||pauseCurrent)throw new IOException(pauseCurrent?"Загрузка приостановлена":"Загрузка отменена");
     }
     private File findFinalFile(File folder){
         File[] list=folder.listFiles(f->f.isFile() && !f.getName().endsWith(".part") &&

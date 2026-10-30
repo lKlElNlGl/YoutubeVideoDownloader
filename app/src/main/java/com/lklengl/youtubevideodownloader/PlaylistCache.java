@@ -69,6 +69,23 @@ public final class PlaylistCache {
    return selected;
   }catch(Exception ignored){return null;}
  }
+ public static List<String> readQualities(Context c,String url,int count,String fallback){
+  String stored=c.getSharedPreferences("playlist_quality",0).getString(key(url),null);
+  List<String> result=new ArrayList<>();
+  try{
+   JSONArray a=stored==null?null:new JSONArray(stored);
+   for(int i=0;i<count;i++){
+    String v=a!=null&&i<a.length()?a.optString(i,fallback):fallback;
+    result.add(PlaylistQualityPolicy.allowed(v)?v:fallback);
+   }
+  }catch(Exception ex){for(int i=result.size();i<count;i++)result.add(fallback);}
+  return result;
+ }
+ public static void saveQualities(Context c,String url,List<String> qualities){
+  JSONArray a=new JSONArray();
+  for(String value:qualities)a.put(PlaylistQualityPolicy.allowed(value)?value:"best");
+  c.getSharedPreferences("playlist_quality",0).edit().putString(key(url),a.toString()).apply();
+ }
  public static void saveSelection(Context c,String url,boolean[] flags){
   JSONArray a=new JSONArray();for(boolean b:flags)a.put(b);
   c.getSharedPreferences("playlist_choices",0).edit().putString(key(url),a.toString()).apply();

@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private static final int PICK_FOLDER=42;
     private final ExecutorService uiWorker=Executors.newSingleThreadExecutor();
     private final ExecutorService updaterWorker=Executors.newSingleThreadExecutor();
+    private final ExecutorService artworkWorker=Executors.newFixedThreadPool(2);
     private EditText url, proxy;
     private CheckBox proxyEnabled;
     private Spinner mode, quality;
@@ -181,6 +182,10 @@ public final class MainActivity extends Activity {
                 .setMessage("Вместе со ссылкой будут удалены название, обложка, длительность, варианты качества и формата. Для повторного получения информации потребуется новый запрос к YouTube.")
                 .setNegativeButton("Отмена",null)
                 .setPositiveButton("Очистить",(d,w)->{
+                    if(previewSnapshot!=null){
+                        VideoPreviewCache.clear(this,previewSnapshot.source);
+                        if(previewSnapshot.playlist)PlaylistCache.clear(this,previewSnapshot.source);
+                    }
                     previewSnapshot=null;previewBitmap=null;
                     getPreferences(MODE_PRIVATE).edit()
                         .remove("previewSource").remove("previewTitle").remove("previewPlaylist")
@@ -589,6 +594,7 @@ public final class MainActivity extends Activity {
     }
     private void rememberPreview(PreviewSnapshot value,Bitmap picture){
         previewSnapshot=value;previewBitmap=picture;
+        VideoPreviewCache.save(this,value);
         getPreferences(MODE_PRIVATE).edit()
             .putString("previewSource",value.source)
             .putString("previewTitle",value.title)
@@ -1137,60 +1143,63 @@ public final class MainActivity extends Activity {
         intent.putExtra(PlaylistActivity.PRIORITY,priority);
         startActivity(intent);
     }
-    private void loadPreview(){
+    private void loadPreview(boolean force){
         final String videoUrl;
         try{videoUrl=DownloadOptions.validateUrl(url.getText().toString());}
         catch(Exception e){error("Ссылка",e);return;}
-        previewButton.setEnabled(false);
-        updatePreviewMessage("Получение информации о видео…");
+        if(!force){
+            PreviewSnapshot cached=previewSnapshot!=null&&previewSnapshot.matches(videoUrl)?
+                previewSnapshot:VideoPreviewCache.load(this,videoUrl);
+            if(cached!=null){
+                if(previewSnapshot!=cached)rememberPreview(cached,null);
+                else renderPreview(false);
+                return;
+            }
+        }else VideoPreviewCache.clear(this,videoUrl);
+        if(activeInfoProcessId!=null)return;
+        final String effectiveProxy=proxyEnabled.isChecked()?proxy.getText().toString().trim():"";
+        final String requestId=beginInfo("Получение информации о видео…");
         previewCard.setVisibility(View.GONE);
-        final String effectiveProxy=proxyEnabled.isChecked()?proxy.getText().toString():"";
-
         uiWorker.execute(()->{
             try{
-                YoutubeDL.getInstance().init(getApplicationContext());
-                YoutubeDLRequest request=new YoutubeDLRequest(videoUrl);
-                request.addOption("--no-playlist");
-                if(!effectiveProxy.isEmpty()){
-                    String p=DownloadOptions.validateProxy(effectiveProxy);
-                    if(!p.isEmpty())request.addOption("--proxy",p);
-                }
-                VideoInfo info;
-                try{info=YoutubeDL.getInstance().getInfo(request);}
-                catch(Exception first){
-                    if(!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
-                    runOnUiThread(()->updatePreviewMessage("Обновление компонента YouTube…"));
+                String verified=DownloadOptions.validateProxy(effectiveProxy);
+                VideoPreviewRepository.Result result;
+                try{
+                    result=VideoPreviewRepository.fetch(getApplicationContext(),videoUrl,verified,requestId);
+                }catch(Exception first){
+                    if(!infoCurrent(requestId)||!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||
+                        DownloadQueue.hasActive(this))throw first;
+                    runOnUiThread(()->{if(infoCurrent(requestId))updatePreviewMessage("Обновление компонента YouTube…");});
                     if(EngineMaintenance.update(getApplicationContext(),false,false)!=EngineMaintenance.Result.UPDATED)
                         throw first;
-                    runOnUiThread(()->updatePreviewMessage("Повторное получение информации…"));
-                    info=YoutubeDL.getInstance().getInfo(request);
+                    runOnUiThread(()->{if(infoCurrent(requestId))updatePreviewMessage("Повторное получение информации…");});
+                    result=VideoPreviewRepository.fetch(getApplicationContext(),videoUrl,verified,requestId);
                 }
-                String title=info.getTitle()==null?"Без названия":info.getTitle();
-                NavigableSet<Integer> heights=new TreeSet<>();
-                Set<String> availableFormats=new HashSet<>();
-                if(info.getFormats()!=null)for(VideoFormat format:info.getFormats()){
-                    String ext=format.getExt();
-                    if(ext!=null&&Arrays.asList("mp4","webm","m4a").contains(ext.toLowerCase(Locale.ROOT)))
-                        availableFormats.add(ext.toLowerCase(Locale.ROOT));
-                    if(format.getHeight()>0 && format.getVcodec()!=null && !"none".equals(format.getVcodec()))
-                        heights.add(format.getHeight());
-                }
-                String duration=QueueRules.readableDuration(info.getDuration());
-                List<String> options=new ArrayList<>();
-                for(Integer height:heights.descendingSet())options.add(height+"p");
-                String resolution=options.isEmpty()?"Не указано":TextUtils.join(", ",options);
-                Bitmap picture=loadImage(info.getThumbnail());
+                VideoPreviewRepository.Result ready=result;
                 runOnUiThread(()->{
-                    if(isFinishing()||isDestroyed()||!videoUrl.equals(url.getText().toString().trim()))return;
-                    rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution,
-                        TextUtils.join(",",availableFormats)),picture);
+                    if(!infoCurrent(requestId)||isFinishing()||isDestroyed()||
+                       !videoUrl.equals(url.getText().toString().trim()))return;
+                    // Never block metadata on optional thumbnail network latency.
+                    rememberPreview(ready.data,null);
+                    finishInfo(requestId);
+                    if(!ready.imageUrl.isEmpty())artworkWorker.execute(()->{
+                        Bitmap picture=loadImage(ready.imageUrl);
+                        if(picture!=null)runOnUiThread(()->{
+                            if(!isFinishing()&&!isDestroyed()&&previewSnapshot==ready.data&&
+                               ready.data.matches(url.getText().toString())){
+                                rememberPreview(ready.data,picture);
+                            }
+                        });
+                    });
                 });
-            }catch(Exception e){
+            }catch(Exception ex){
                 runOnUiThread(()->{
+                    if(!infoCurrent(requestId))return;
+                    finishInfo(requestId);
                     if(!isFinishing()&&!isDestroyed()&&videoUrl.equals(url.getText().toString().trim()))
-                        showPreviewFailure(e);
+                        showPreviewFailure(ex);
                 });
-            }finally{runOnUiThread(()->previewButton.setEnabled(true));}
+            }
         });
     }
     private Bitmap loadImage(String thumbnailUrl){
@@ -1292,6 +1301,9 @@ public final class MainActivity extends Activity {
         }
     }
     @Override protected void onDestroy(){
+        cancelInfo();
+        infoHandler.removeCallbacks(infoClock);
+        artworkWorker.shutdownNow();
         uiWorker.shutdownNow();
         if(updateDialog!=null)updateDialog.close();
         updaterWorker.shutdownNow();

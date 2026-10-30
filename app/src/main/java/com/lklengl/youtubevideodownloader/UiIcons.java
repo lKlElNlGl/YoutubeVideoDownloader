@@ -34,6 +34,22 @@ public final class UiIcons extends Drawable {
                 c.drawCircle(12,5,1.8f,p);c.drawCircle(12,12,1.8f,p);
                 c.drawCircle(12,19,1.8f,p);
                 break;
+            case "folder":
+                Path folder=new Path();folder.moveTo(2,7);folder.lineTo(2,19);
+                folder.quadTo(2,21,4,21);folder.lineTo(20,21);folder.quadTo(22,21,22,19);
+                folder.lineTo(22,9);folder.quadTo(22,7,20,7);folder.lineTo(11,7);
+                folder.lineTo(9,4);folder.lineTo(4,4);folder.quadTo(2,4,2,7);
+                c.drawPath(folder,p);break;
+            case "app-window":
+                c.drawRoundRect(new RectF(2,4,22,20),2,2,p);
+                c.drawLine(2,9,22,9,p);c.drawCircle(6,6.5f,0.6f,p);
+                c.drawCircle(9,6.5f,0.6f,p);break;
+            case "refresh-cw":
+                c.drawArc(new RectF(3,3,21,21),35,285,false,p);
+                c.drawLine(18,3,21,9,p);c.drawLine(21,9,15,9,p);break;
+            case "info":
+                c.drawCircle(12,12,9,p);c.drawLine(12,10,12,17,p);
+                c.drawCircle(12,7,0.8f,p);break;
             case "download":
                 c.drawLine(12,3,12,16,p);c.drawLine(7,11,12,16,p);c.drawLine(17,11,12,16,p);
                 c.drawLine(4,19,20,19,p);c.drawLine(4,19,4,16,p);c.drawLine(20,19,20,16,p);break;

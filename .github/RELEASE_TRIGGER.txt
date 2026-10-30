@@ -19,3 +19,5 @@ Publish v0.3.6: approved transparent launcher artwork, compact update button, ro
 Publish v0.3.7: approved launcher scaling, Russian preview errors and scroll hint, automatic yt-dlp maintenance, startup on Downloads.
 
 Publish v0.4.0: corrected Android package, compact queue with thumbnails, pause and playback, dynamic formats, confirmed clearing and agreed red UI.
+
+Publish v0.5.0: fullscreen cached playlist selector, responsive metadata, safe file deletion, native player default, styled menus, final theme colors, and transparent launcher icon.

@@ -51,7 +51,22 @@ public final class MainActivity extends Activity {
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
-    private Button previewDetailsButton, reopenPlaylistButton;
+    private Button previewDetailsButton, reopenPlaylistButton, updatePreviewButton, cancelInfoButton;
+    private ProgressBar infoIndicator;
+    private TextView infoTimer;
+    private final android.os.Handler infoHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private String activeInfoProcessId=null;
+    private long infoStartedAt;
+    private int infoGeneration=0;
+    private final Runnable infoClock=new Runnable(){
+        @Override public void run(){
+            if(activeInfoProcessId==null||infoTimer==null)return;
+            long secs=(android.os.SystemClock.elapsedRealtime()-infoStartedAt)/1000L;
+            infoTimer.setText(String.format(Locale.ROOT,"Прошло: %02d:%02d",secs/60,secs%60)+
+                (secs>=15?" · YouTube отвечает дольше обычного, запрос продолжается":""));
+            infoHandler.postDelayed(this,1000);
+        }
+    };
     private String previewErrorLog="";
     private LinearLayout previewCard;
     private ImageView thumbnail;
@@ -144,7 +159,7 @@ public final class MainActivity extends Activity {
         FrameLayout linkRow=new FrameLayout(this);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
-        url.setHintTextColor(ThemeStyle.isDark(this)?0xFF303847:0xFFD9DADE);
+        url.setHintTextColor(ThemeStyle.isDark(this)?0xFF404A5E:0xFFC3C4C7);
         url.addTextChangedListener(new TextWatcher(){
             @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
             @Override public void onTextChanged(CharSequence text,int start,int before,int count){
@@ -186,8 +201,22 @@ public final class MainActivity extends Activity {
         previewButton=button(linkCard,"Информация о видео / плейлисте");
         previewButton.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
-            else loadPreview();
+            else loadPreview(false);
         });
+        LinearLayout statusRow=new LinearLayout(this);
+        statusRow.setOrientation(LinearLayout.HORIZONTAL);statusRow.setGravity(Gravity.CENTER_VERTICAL);
+        linkCard.addView(statusRow);
+        infoIndicator=new ProgressBar(this);
+        infoIndicator.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
+        statusRow.addView(infoIndicator,new LinearLayout.LayoutParams(dp(25),dp(25)));
+        infoTimer=text("",12);infoTimer.setTextColor(ThemeStyle.subdued(this));
+        LinearLayout.LayoutParams timerParams=new LinearLayout.LayoutParams(0,-2,1);
+        timerParams.setMargins(dp(8),0,0,0);statusRow.addView(infoTimer,timerParams);
+        cancelInfoButton=button(linkCard,"Отмена");
+        cancelInfoButton.setOnClickListener(v->cancelInfo());
+        infoIndicator.setVisibility(View.GONE);statusRow.setVisibility(View.GONE);
+        cancelInfoButton.setVisibility(View.GONE);
+        infoIndicator.setTag(statusRow);
         preview=text("",14);preview.setPadding(dp(4),0,dp(4),0);
         preview.setVisibility(View.GONE);
         preview.setTextColor(ThemeStyle.subdued(this));linkCard.addView(preview);
@@ -215,6 +244,14 @@ public final class MainActivity extends Activity {
         previewAllQualities.setTextColor(ThemeStyle.subdued(this));
         previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
         previewCard.addView(previewAllQualities);
+        updatePreviewButton=button(previewCard,"Обновить информацию");
+        updatePreviewButton.setOnClickListener(v->{
+            if(PlaylistSupport.isPlaylist(url.getText().toString())){
+                String key=url.getText().toString().trim();
+                PlaylistCache.clear(this,key);
+                loadPlaylist(false);
+            }else loadPreview(true);
+        });
         reopenPlaylistButton=button(previewCard,"Открыть список видео");
         reopenPlaylistButton.setOnClickListener(v->{
             if(previewSnapshot!=null&&previewSnapshot.playlist&&previewSnapshot.matches(url.getText().toString())){
@@ -588,6 +625,7 @@ public final class MainActivity extends Activity {
             previewQuality.setText("Плейлист");
             previewAllQualities.setVisibility(View.GONE);
             reopenPlaylistButton.setVisibility(View.VISIBLE);
+            updatePreviewButton.setVisibility(View.VISIBLE);
         }else{
             previewDuration.setText(previewSnapshot.duration);
             String qualities=previewSnapshot.resolutions;
@@ -595,6 +633,7 @@ public final class MainActivity extends Activity {
             previewAllQualities.setText("Доступно: "+qualities);
             previewAllQualities.setVisibility(View.VISIBLE);
             reopenPlaylistButton.setVisibility(View.GONE);
+            updatePreviewButton.setVisibility(View.VISIBLE);
         }
         if(previewBitmap!=null && !previewSnapshot.playlist){
             thumbnail.setImageBitmap(previewBitmap);
@@ -1008,6 +1047,39 @@ public final class MainActivity extends Activity {
                 startActivity(picker);
             }catch(Exception e){error("Файловый менеджер",e);}
         }
+    }
+    private String beginInfo(String label){
+        if(activeInfoProcessId!=null)cancelInfo();
+        String id=UUID.randomUUID().toString();
+        activeInfoProcessId=id;infoStartedAt=android.os.SystemClock.elapsedRealtime();
+        infoGeneration++;
+        infoIndicator.setVisibility(View.VISIBLE);
+        ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);
+        cancelInfoButton.setVisibility(View.VISIBLE);
+        previewButton.setEnabled(false);infoTimer.setText(label);
+        infoHandler.removeCallbacks(infoClock);infoHandler.postDelayed(infoClock,1000);
+        updatePreviewMessage(label);
+        return id;
+    }
+    private boolean infoCurrent(String id){return id!=null&&id.equals(activeInfoProcessId);}
+    private void finishInfo(String id){
+        if(!infoCurrent(id))return;
+        infoHandler.removeCallbacks(infoClock);
+        activeInfoProcessId=null;
+        ((View)infoIndicator.getTag()).setVisibility(View.GONE);
+        cancelInfoButton.setVisibility(View.GONE);
+        previewButton.setEnabled(true);loadingPlaylist=false;
+    }
+    private void cancelInfo(){
+        String id=activeInfoProcessId;
+        if(id==null)return;
+        infoHandler.removeCallbacks(infoClock);
+        activeInfoProcessId=null;infoGeneration++;
+        ((View)infoIndicator.getTag()).setVisibility(View.GONE);
+        cancelInfoButton.setVisibility(View.GONE);
+        previewButton.setEnabled(true);loadingPlaylist=false;
+        updatePreviewMessage("Запрос отменён");
+        try{YoutubeDL.getInstance().destroyProcessById(id);}catch(Exception ignored){}
     }
     private void loadPlaylist(boolean priority){
         if(loadingPlaylist)return;

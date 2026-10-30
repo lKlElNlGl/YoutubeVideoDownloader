@@ -100,7 +100,7 @@ public final class PlaylistActivity extends Activity {
    PlaylistSelectionPolicy.resume(saved,urls,already);
   selected=new boolean[flags.size()];
   for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
-  qualities=PlaylistCache.readQualities(this,source,selected.length,quality);
+  qualities=PlaylistCache.readQualities(this,source,playlist,quality);
   heading.setText(playlist.title);
   owner.setText(playlist.uploader);
   owner.setVisibility(TextUtils.isEmpty(playlist.uploader)?View.GONE:View.VISIBLE);
@@ -310,7 +310,7 @@ public final class PlaylistActivity extends Activity {
   updateFooter();
  }
  private void persistSelection(){PlaylistCache.saveSelection(this,source,selected);}
- private void persistQualities(){PlaylistCache.saveQualities(this,source,qualities);}
+ private void persistQualities(){PlaylistCache.saveQualities(this,source,playlist,qualities);}
  private void updateFooter(){
   previouslyAddedCache=previouslyAdded();
   int count=0;for(boolean flag:selected)if(flag)count++;

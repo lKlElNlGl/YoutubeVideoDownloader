@@ -25,7 +25,7 @@ public final class PlaylistActivity extends Activity {
  private boolean[] selected;
  private ListView list;
  private BaseAdapter adapter;
- private TextView counter,selectAll,heading,subheading;
+ private TextView counter,selectAll,heading,subheading,owner;
  private Button addButton,allButton,refreshButton;
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private int dp(float n){return ThemeStyle.dp(this,n);}
@@ -72,6 +72,8 @@ public final class PlaylistActivity extends Activity {
   selected=new boolean[flags.size()];
   for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
   heading.setText(playlist.title);
+  owner.setText(playlist.uploader);
+  owner.setVisibility(playlist.uploader.isEmpty()?View.GONE:View.VISIBLE);
   long duration=0;boolean known=true;
   for(PlaylistRepository.Entry e:playlist.entries){if(e.duration<0)known=false;else duration+=e.duration;}
   subheading.setText(playlist.entries.size()+" видео"+(known?" · "+QueueRules.readableDuration((int)Math.min(Integer.MAX_VALUE,duration)):""));
@@ -105,6 +107,7 @@ public final class PlaylistActivity extends Activity {
   header.addView(details,new LinearLayout.LayoutParams(0,-2,1));
   heading=txt("",15);heading.setTypeface(null,Typeface.BOLD);heading.setMaxLines(2);
   heading.setEllipsize(TextUtils.TruncateAt.END);details.addView(heading);
+  owner=txt("",12);owner.setTextColor(ThemeStyle.subdued(this));details.addView(owner);
   subheading=txt("",12);subheading.setTextColor(ThemeStyle.subdued(this));details.addView(subheading);
   allButton=button("↓  Добавить весь плейлист",true);
   root.addView(allButton,new LinearLayout.LayoutParams(-1,dp(47)));

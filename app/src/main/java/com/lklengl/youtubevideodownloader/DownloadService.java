@@ -205,7 +205,7 @@ public final class DownloadService extends Service {
             request.addOption("--newline");
             request.addOption("-P",temp.getAbsolutePath());
             request.addOption("-o",QueueRules.filenameTemplate());
-            request.addOption("-f",DownloadOptions.format(item.audio,item.quality));
+            request.addOption("-f",DownloadOptions.formatForExport(item.audio,item.quality,item.format));
             String export=item.format==null||item.format.isEmpty()?(item.audio?"mp3":"mp4"):item.format;
             if(item.audio || export.equals("mp3") || export.equals("m4a")){
                 request.addOption("-x");

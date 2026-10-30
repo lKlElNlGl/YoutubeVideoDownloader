@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:left="13dp" android:top="13dp" android:right="13dp" android:bottom="13dp"
-        android:drawable="@drawable/ic_launcher_reference"/>
+    <item android:left="12dp" android:top="12dp" android:right="12dp" android:bottom="12dp"
+        android:drawable="@drawable/ic_launcher_clean"/>
 </layer-list>

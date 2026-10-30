@@ -226,7 +226,8 @@ public final class DownloadService extends Service {
                 long now=android.os.SystemClock.elapsedRealtime();
                 if(now-lastNotification>400) {
                     String etaText=eta>=0?" · осталось "+eta+" с":"";
-                    progress(item,"Загрузка "+percent+"%"+etaText,percent);
+                    String transfer=DownloadTelemetry.summary(line,percent);
+                    progress(item,"Загрузка "+percent+"%"+(transfer.isEmpty()?etaText:" · "+transfer),percent);
                 }
                 return kotlin.Unit.INSTANCE;
             });

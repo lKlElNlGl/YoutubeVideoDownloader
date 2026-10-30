@@ -27,6 +27,9 @@ public final class PlaylistRepository {
         }
     }
     public static Playlist fetch(Context context,String link,String proxy) throws Exception {
+        return fetch(context,link,proxy,null);
+    }
+    public static Playlist fetch(Context context,String link,String proxy,String processId) throws Exception {
         if(!PlaylistSupport.isPlaylist(link))throw new IllegalArgumentException("Не найдена ссылка на плейлист");
         YoutubeDL.getInstance().init(context.getApplicationContext());
         YoutubeDLRequest req=new YoutubeDLRequest(link);
@@ -37,7 +40,7 @@ public final class PlaylistRepository {
         req.addOption("--ignore-errors");
         req.addOption("--no-warnings");
         if(proxy!=null && !proxy.isEmpty())req.addOption("--proxy",proxy);
-        String result=YoutubeDL.getInstance().execute(req,null,null).getOut();
+        String result=YoutubeDL.getInstance().execute(req,processId,null).getOut();
         JSONObject data=new JSONObject(result);
         JSONArray entries=data.optJSONArray("entries");
         if(entries==null)throw new IllegalArgumentException("Не удалось получить список видео плейлиста");

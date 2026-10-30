@@ -45,6 +45,10 @@ public final class MainActivity extends Activity {
     private CheckBox proxyEnabled;
     private Spinner mode, quality;
     private QualityChoices qualityChoices=QualityChoices.fallback();
+    private FormatChoices formatChoices=FormatChoices.fallback();
+    private String queueSignature="";
+    private ProgressBar activeQueueBar;
+    private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
     private Button previewDetailsButton;
     private String previewErrorLog="";
@@ -139,7 +143,7 @@ public final class MainActivity extends Activity {
         FrameLayout linkRow=new FrameLayout(this);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
-        if(ThemeStyle.isDark(this))url.setHintTextColor(0xFF8793A5);
+        url.setHintTextColor(ThemeStyle.isDark(this)?0xFF303847:0xFFD9DADE);
         url.addTextChangedListener(new TextWatcher(){
             @Override public void beforeTextChanged(CharSequence a,int start,int count,int after){}
             @Override public void onTextChanged(CharSequence text,int start,int before,int count){
@@ -155,7 +159,22 @@ public final class MainActivity extends Activity {
         FrameLayout.LayoutParams clearParams=new FrameLayout.LayoutParams(dp(49),dp(49),Gravity.END|Gravity.CENTER_VERTICAL);
         clear.setPadding(dp(14),dp(14),dp(14),dp(14));
         linkRow.addView(clear,clearParams);
-        clear.setOnClickListener(v->url.setText(""));
+        clear.setOnClickListener(v->{
+            if(previewSnapshot==null){url.setText("");return;}
+            ThemeStyle.dialog(this).setTitle("Очистить ссылку и информацию о видео?")
+                .setMessage("Вместе со ссылкой будут удалены название, обложка, длительность, варианты качества и формата. Для повторного получения информации потребуется новый запрос к YouTube.")
+                .setNegativeButton("Отмена",null)
+                .setPositiveButton("Очистить",(d,w)->{
+                    previewSnapshot=null;previewBitmap=null;
+                    getPreferences(MODE_PRIVATE).edit()
+                        .remove("previewSource").remove("previewTitle").remove("previewPlaylist")
+                        .remove("previewCount").remove("previewDuration")
+                        .remove("previewQualities").remove("previewFormats").apply();
+                    new File(getFilesDir(),"preview-thumbnail.jpg").delete();
+                    url.setText("");
+                    renderPreview(false);
+                }).show();
+        });
         linkCard.addView(linkRow);
         Button paste=button(linkCard,"Вставить ссылку");
         paste.setOnClickListener(v->{
@@ -199,13 +218,13 @@ public final class MainActivity extends Activity {
 
         LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
         label(formatCard,"Формат");
-        mode=spinner(formatCard,new String[]{"Видео MP4","Аудио MP3 · 192 кбит/с"});
+        mode=spinner(formatCard,formatChoices.labels().toArray(new String[0]));
         label(formatCard,"Качество видео");
         quality=spinner(formatCard,qualityChoices.labels().toArray(new String[0]));
         mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
             @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int i,long id){
-                quality.setEnabled(i==0);
+                quality.setEnabled(!formatChoices.isAudio(selectedFormat()));
             }
         });
 
@@ -369,6 +388,7 @@ public final class MainActivity extends Activity {
             .putString("draftUrl",url.getText().toString())
             .putString("proxy",proxy.getText().toString())
             .putBoolean("proxyEnabled",proxyEnabled.isChecked())
+            .putString("formatCode",selectedFormat())
             .putInt("mode",mode.getSelectedItemPosition())
             .putInt("quality",quality.getSelectedItemPosition()).apply();
     }
@@ -429,6 +449,34 @@ public final class MainActivity extends Activity {
         arrow.setOnClickListener(v->s.performClick());
         return s;
     }
+    private String selectedFormat(){
+        int index=mode==null?0:mode.getSelectedItemPosition();
+        return index>=0&&index<formatChoices.values().size()?formatChoices.values().get(index):"mp4";
+    }
+    private void updateFormatChoices(FormatChoices next,boolean restoreSaved){
+        if(mode==null||formatChoices.values().equals(next.values()))return;
+        String previous=restoreSaved?getPreferences(MODE_PRIVATE).getString("formatCode","mp4"):selectedFormat();
+        formatChoices=next;
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,next.labels()){
+            @Override public View getView(int position,View old,ViewGroup parent){
+                TextView v=(TextView)super.getView(position,old,parent);
+                v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);return v;
+            }
+            @Override public View getDropDownView(int position,View old,ViewGroup parent){
+                TextView v=(TextView)super.getDropDownView(position,old,parent);
+                v.setTextColor(ThemeStyle.text(MainActivity.this));
+                v.setPadding(dp(16),dp(12),dp(16),dp(12));
+                v.setBackground(ThemeStyle.popupRowBackground(MainActivity.this,
+                    position==mode.getSelectedItemPosition(),position,getCount()));
+                return v;
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mode.setAdapter(adapter);
+        int index=next.values().indexOf(previous);
+        mode.setSelection(Math.max(0,index));
+        quality.setEnabled(!next.isAudio(selectedFormat()));
+    }
     private String selectedQuality(){
         int pos=quality.getSelectedItemPosition();
         List<String> values=qualityChoices.values();
@@ -479,7 +527,7 @@ public final class MainActivity extends Activity {
             previewSnapshot=PreviewSnapshot.playlist(source,title,p.getInt("previewCount",0));
         else
             previewSnapshot=PreviewSnapshot.video(source,title,p.getString("previewDuration",""),
-                p.getString("previewQualities",""));
+                p.getString("previewQualities",""),p.getString("previewFormats",""));
         if(!previewSnapshot.playlist){
             File image=new File(getFilesDir(),"preview-thumbnail.jpg");
             if(image.isFile())previewBitmap=BitmapFactory.decodeFile(image.getAbsolutePath());
@@ -494,7 +542,8 @@ public final class MainActivity extends Activity {
             .putBoolean("previewPlaylist",value.playlist)
             .putInt("previewCount",value.videoCount)
             .putString("previewDuration",value.duration)
-            .putString("previewQualities",value.resolutions).apply();
+            .putString("previewQualities",value.resolutions)
+            .putString("previewFormats",value.formats).apply();
         File thumb=new File(getFilesDir(),"preview-thumbnail.jpg");
         if(picture==null)thumb.delete();
         else try(FileOutputStream out=new FileOutputStream(thumb)){
@@ -509,10 +558,13 @@ public final class MainActivity extends Activity {
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
         if(!valid){
             updateQualityChoices(QualityChoices.fallback(),false);
+            updateFormatChoices(FormatChoices.fallback(),false);
             return;
         }
         updateQualityChoices(previewSnapshot.playlist?QualityChoices.fallback():
             QualityChoices.fromDetected(previewSnapshot.resolutions),restoreSaved);
+        updateFormatChoices(previewSnapshot.playlist?FormatChoices.fallback():
+            FormatChoices.fromDetected(previewSnapshot.formats),restoreSaved);
         previewHeader.setText(previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО");
         previewTitle.setText(previewSnapshot.title);
         if(previewSnapshot.playlist){
@@ -537,7 +589,9 @@ public final class MainActivity extends Activity {
 
     private void loadPreferences(){
         android.content.SharedPreferences p=getPreferences(MODE_PRIVATE);
-        mode.setSelection(p.getInt("mode",0));quality.setSelection(p.getInt("quality",0));
+        String savedFormat=p.getString("formatCode",p.getInt("mode",0)==1?"mp3":"mp4");
+        int modeIndex=formatChoices.values().indexOf(savedFormat);
+        mode.setSelection(Math.max(0,modeIndex));quality.setSelection(p.getInt("quality",0));
         proxyEnabled.setChecked(p.getBoolean("proxyEnabled",false));
         proxy.setText(p.getString("proxy",""));
         url.setText(p.getString("draftUrl",""));
@@ -581,8 +635,11 @@ public final class MainActivity extends Activity {
             }
             String title=previewSnapshot!=null && previewSnapshot.matches(link) && !previewSnapshot.playlist?
                 previewSnapshot.title:"";
-            DownloadQueue.enqueue(this,link,mode.getSelectedItemPosition()==1,
-                selectedQuality(),proxyUrl,selectedFolder(),priority,title);
+            String fmt=selectedFormat();
+            String id=DownloadQueue.enqueue(this,link,formatChoices.isAudio(fmt),
+                selectedQuality(),proxyUrl,selectedFolder(),priority,title,fmt);
+            if(previewSnapshot!=null&&previewSnapshot.matches(link)&&previewBitmap!=null)
+                QueueThumbnails.store(this,id,previewBitmap);
         }catch(Exception e){error("Невозможно добавить загрузку",e);return;}
         saveDraft();
         refreshQueue();
@@ -754,7 +811,8 @@ public final class MainActivity extends Activity {
             proxyValue=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyValue.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
         }catch(Exception e){error("Плейлист",e);return;}
-        final boolean audio=mode.getSelectedItemPosition()==1;
+        final String outputFormat=selectedFormat();
+        final boolean audio=formatChoices.isAudio(outputFormat);
         final String resolution=selectedQuality();
         final String directory=selectedFolder();
         loadingPlaylist=true;previewButton.setEnabled(false);
@@ -825,12 +883,12 @@ public final class MainActivity extends Activity {
                             .setMessage("Уже в очереди: "+duplicates+". Добавить их повторно?")
                             .setNegativeButton("Отмена",null)
                             .setPositiveButton("Добавить",(confirm,which)->{
-                                try{addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority);
+                                try{addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
                                     dialog.dismiss();
                                 }catch(Exception e){error("Очередь плейлиста",e);}
                             }).show();
                     }else{
-                        addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority);
+                        addSelectedPlaylist(data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
                         dialog.dismiss();
                     }
                 }catch(Exception e){error("Очередь плейлиста",e);}
@@ -839,8 +897,8 @@ public final class MainActivity extends Activity {
         dialog.show();
     }
     private void addSelectedPlaylist(PlaylistRepository.Playlist data,List<Boolean> selected,
-            boolean audio,String resolution,String proxyValue,String directory,boolean priority){
-        int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority);
+            boolean audio,String resolution,String proxyValue,String directory,boolean priority,String outputFormat){
+        int added=DownloadQueue.enqueuePlaylist(this,data,selected,audio,resolution,proxyValue,directory,priority,outputFormat);
         refreshQueue();DownloadService.kick(this);
         Toast.makeText(this,"Добавлено в очередь: "+added,Toast.LENGTH_LONG).show();
     }
@@ -874,9 +932,14 @@ public final class MainActivity extends Activity {
                 }
                 String title=info.getTitle()==null?"Без названия":info.getTitle();
                 NavigableSet<Integer> heights=new TreeSet<>();
-                if(info.getFormats()!=null)for(VideoFormat format:info.getFormats())
+                Set<String> availableFormats=new HashSet<>();
+                if(info.getFormats()!=null)for(VideoFormat format:info.getFormats()){
+                    String ext=format.getExt();
+                    if(ext!=null&&Arrays.asList("mp4","webm","m4a").contains(ext.toLowerCase(Locale.ROOT)))
+                        availableFormats.add(ext.toLowerCase(Locale.ROOT));
                     if(format.getHeight()>0 && format.getVcodec()!=null && !"none".equals(format.getVcodec()))
                         heights.add(format.getHeight());
+                }
                 String duration=QueueRules.readableDuration(info.getDuration());
                 List<String> options=new ArrayList<>();
                 for(Integer height:heights.descendingSet())options.add(height+"p");
@@ -884,7 +947,8 @@ public final class MainActivity extends Activity {
                 Bitmap picture=loadImage(info.getThumbnail());
                 runOnUiThread(()->{
                     if(isFinishing()||isDestroyed()||!videoUrl.equals(url.getText().toString().trim()))return;
-                    rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution),picture);
+                    rememberPreview(PreviewSnapshot.video(videoUrl,title,duration,resolution,
+                        TextUtils.join(",",availableFormats)),picture);
                 });
             }catch(Exception e){
                 runOnUiThread(()->{

@@ -21,13 +21,15 @@ public final class DownloadQueue {
         public boolean priority;
         public int progress;
         public long bytesSaved;
+        public int durationSeconds=-1, actualHeight;
+        public boolean metadataChecked;
 
         public Item() {}
         JSONObject toJson() throws Exception {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
+            j.put("durationSeconds",durationSeconds);j.put("actualHeight",actualHeight);j.put("metadataChecked",metadataChecked);j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
             return j;
         }
         static Item fromJson(JSONObject j) {
@@ -36,7 +38,8 @@ public final class DownloadQueue {
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
             i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
             i.audio=j.optBoolean("audio");i.priority=j.optBoolean("priority");i.deleteRequested=j.optBoolean("deleteRequested");
-            i.progress=j.optInt("progress");return i;
+            i.progress=j.optInt("progress");i.durationSeconds=j.optInt("durationSeconds",-1);
+             i.actualHeight=j.optInt("actualHeight",0);i.metadataChecked=j.optBoolean("metadataChecked");return i;
         }
     }
 
@@ -69,12 +72,16 @@ public final class DownloadQueue {
     }
     public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,
             String directoryUri,boolean priority,String title,String format) {
+        return enqueue(context,url,audio,quality,proxy,directoryUri,priority,title,format,-1,0);
+    }
+    public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,
+            String directoryUri,boolean priority,String title,String format,int duration,int height) {
         synchronized(LOCK){
             List<Item> list=read(context);
             if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.durationSeconds=duration;i.actualHeight=height;i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
             if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             else QueueRules.addNewest(list,java.util.Collections.singletonList(i));
             save(context,list);return i.id;
@@ -101,7 +108,7 @@ public final class DownloadQueue {
                 Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
                 i.playlistTitle=playlist.title;i.quality=quality;i.proxy=proxy;i.audio=audio;
                 i.directoryUri=directoryUri;i.format=format;i.priority=priority;i.contentUri="";i.status=WAITING;i.message="Ожидает";
-                i.filename="";i.progress=0;added.add(i);
+                i.filename="";i.durationSeconds=entry.duration;i.progress=0;added.add(i);
             }
             if(priority)QueueRules.prependPriority(list,added);
             else QueueRules.addNewest(list,added);
@@ -149,12 +156,29 @@ public final class DownloadQueue {
             }
         }
     }
-    public static void complete(Context context,String id,String filename,String contentUri,long bytes){
+    public static void complete(Context context,String id,String filename,String contentUri,long bytes) {
+        complete(context,id,filename,contentUri,bytes,-1,0);
+    }
+    public static void complete(Context context,String id,String filename,String contentUri,long bytes,int duration,int height){
         synchronized(LOCK){
             List<Item> list=read(context);
             for(Item i:list)if(i.id.equals(id)){
                 i.status=DONE;i.message="Готово";i.progress=100;i.filename=filename;
-                i.contentUri=contentUri;i.bytesSaved=bytes;save(context,list);return;
+                i.contentUri=contentUri;i.bytesSaved=bytes;
+                if(duration>=0)i.durationSeconds=duration;
+                if(height>0)i.actualHeight=height;
+                i.metadataChecked=true;save(context,list);return;
+            }
+        }
+    }
+    public static void metadata(Context context,String id,int duration,int height,String title){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)){
+                if(duration>=0)i.durationSeconds=duration;
+                if(height>0)i.actualHeight=height;
+                if(title!=null&&!title.isEmpty()&&(i.title==null||i.title.isEmpty()))i.title=title;
+                i.metadataChecked=true;save(context,list);return;
             }
         }
     }

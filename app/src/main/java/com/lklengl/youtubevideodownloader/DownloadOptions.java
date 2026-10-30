@@ -13,6 +13,13 @@ public final class DownloadOptions {
         if (!isQuality(quality)) throw new IllegalArgumentException("Недопустимое качество");
         return "bv*[height<=" + quality + "]+ba/b[height<=" + quality + "]";
     }
+    /** WebM output requires WebM-compatible video and audio streams. */
+    public static String formatForExport(boolean audio,String quality,String export){
+        if(!"webm".equals(export))return format(audio,quality);
+        if("best".equals(quality))return "bv*[ext=webm]+ba[ext=webm]/b[ext=webm]";
+        if(!isQuality(quality))throw new IllegalArgumentException("Недопустимое качество");
+        return "bv*[ext=webm][height<="+quality+"]+ba[ext=webm]/b[ext=webm][height<="+quality+"]";
+    }
     public static boolean isQuality(String quality) {
         if (quality == null || !quality.matches("[1-9][0-9]{1,3}")) return "best".equals(quality);
         try { int h=Integer.parseInt(quality); return h>=100 && h<=4320; }

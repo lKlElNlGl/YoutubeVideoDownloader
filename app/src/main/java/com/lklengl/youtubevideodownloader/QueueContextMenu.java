@@ -50,6 +50,6 @@ public final class QueueContextMenu {
    row.setOnClickListener(v->{popup.dismiss();chosen.accept(label);});
    i++;
   }
-  popup.showAsDropDown(anchor,-ThemeStyle.dp(activity,206),0,Gravity.END);
+  popup.showAsDropDown(anchor,0,0,Gravity.END);
  }
 }

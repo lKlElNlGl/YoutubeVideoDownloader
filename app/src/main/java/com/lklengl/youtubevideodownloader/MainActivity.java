@@ -47,6 +47,7 @@ public final class MainActivity extends Activity {
     private QualityChoices qualityChoices=QualityChoices.fallback();
     private FormatChoices formatChoices=FormatChoices.fallback();
     private String queueSignature=null;
+    private int queueVisibleCount=40;
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
@@ -756,16 +757,28 @@ public final class MainActivity extends Activity {
         }
         if(!waiting.isEmpty()){
             queueHeading("Следующие в очереди",waiting.size());
-            for(DownloadQueue.Item j:waiting)compactQueueRow(j,false);
+            for(int n=0;n<Math.min(waiting.size(),queueVisibleCount);n++)
+                compactQueueRow(waiting.get(n),false);
+            if(waiting.size()>queueVisibleCount)queueMoreButton(waiting.size()-queueVisibleCount);
         }
         if(!done.isEmpty()){
             queueHeading("Завершённые",done.size());
-            for(DownloadQueue.Item j:done)compactQueueRow(j,true);
+            for(int n=0;n<Math.min(done.size(),queueVisibleCount);n++)
+                compactQueueRow(done.get(n),true);
+            if(done.size()>queueVisibleCount)queueMoreButton(done.size()-queueVisibleCount);
         }
         if(!problems.isEmpty()){
             queueHeading("Ошибки и отменённые",problems.size());
-            for(DownloadQueue.Item j:problems)compactQueueRow(j,false);
+            for(int n=0;n<Math.min(problems.size(),queueVisibleCount);n++)
+                compactQueueRow(problems.get(n),false);
+            if(problems.size()>queueVisibleCount)queueMoreButton(problems.size()-queueVisibleCount);
         }
+    }
+    private void queueMoreButton(int remaining){
+        Button more=button(queueList,"Показать ещё ("+remaining+")");
+        more.setOnClickListener(v->{
+            queueVisibleCount+=40;queueSignature=null;refreshQueue();
+        });
     }
     private void compactQueueRow(DownloadQueue.Item j,boolean finished){
         LinearLayout card=queueCard(false);

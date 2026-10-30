@@ -965,7 +965,7 @@ public final class MainActivity extends Activity {
                     loadingPlaylist=false;previewButton.setEnabled(true);
                     if(!link.equals(url.getText().toString().trim()))return;
                     rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
-                    showPlaylistSelection(loaded,audio,resolution,proxyValue,directory,priority);
+                    showPlaylistSelection(loaded,audio,resolution,proxyValue,directory,priority,outputFormat);
                 });
             }catch(Exception ex){
                 runOnUiThread(()->{
@@ -976,7 +976,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void showPlaylistSelection(PlaylistRepository.Playlist data,
-            boolean audio,String resolution,String proxyValue,String directory,boolean priority){
+            boolean audio,String resolution,String proxyValue,String directory,boolean priority,String outputFormat){
         int count=data.entries.size();
         CharSequence[] labels=new CharSequence[count];
         boolean[] checked=new boolean[count];

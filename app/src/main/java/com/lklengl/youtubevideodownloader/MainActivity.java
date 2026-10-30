@@ -940,8 +940,14 @@ public final class MainActivity extends Activity {
         QueueThumbnails.delete(this,job.id);
         queueSignature=null;refreshQueue();
     }
+    private boolean downloadedFileAccessible(String address){
+        if(TextUtils.isEmpty(address))return false;
+        try(android.os.ParcelFileDescriptor fd=getContentResolver().openFileDescriptor(Uri.parse(address),"r")){
+            return fd!=null;
+        }catch(Exception ex){return false;}
+    }
     private void confirmRemove(DownloadQueue.Item job){
-        boolean finished=DownloadQueue.DONE.equals(job.status)&&!TextUtils.isEmpty(job.contentUri);
+        boolean finished=DownloadQueue.DONE.equals(job.status)&&!TextUtils.isEmpty(job.contentUri)&&downloadedFileAccessible(job.contentUri);
         LinearLayout content=new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(22),dp(10),dp(22),dp(5));
         TextView message=text("Запись будет удалена из очереди. Скачанный файл останется на устройстве.",14);

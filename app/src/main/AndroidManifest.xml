@@ -12,7 +12,7 @@
         android:extractNativeLibs="true"
         android:allowBackup="false">
         <provider android:name=".UpdateFileProvider"
-            android:authorities="com.lklengl.youtubevideodownloader.updates"
+            android:authorities="com.lklelnlgl.youtubedownloader.updates"
             android:exported="false"
             android:grantUriPermissions="true"/>
         <service android:name=".DownloadService"

@@ -10,29 +10,30 @@ import java.util.UUID;
 
 /** Persistent sequential queue; all read-modify-write operations are serialized. */
 public final class DownloadQueue {
-    public static final String WAITING="waiting", RUNNING="running", DONE="done", ERROR="error", CANCELLED="cancelled";
+    public static final String WAITING="waiting", RUNNING="running", DONE="done", ERROR="error", CANCELLED="cancelled", PAUSED="paused";
     private static final String PREFS="download_queue_v1", KEY="items";
     private static final Object LOCK=new Object();
 
     public static final class Item {
-        public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle;
+        public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle, format, contentUri;
         public boolean deleteRequested;
         public boolean audio;
         public int progress;
+        public long bytesSaved;
 
         public Item() {}
         JSONObject toJson() throws Exception {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("filename",filename);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
+            j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
             return j;
         }
         static Item fromJson(JSONObject j) {
             Item i=new Item();i.id=j.optString("id");i.url=j.optString("url");
             i.quality=j.optString("quality","best");i.proxy=j.optString("proxy");
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
-            i.message=j.optString("message");i.filename=j.optString("filename");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
+            i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
             i.audio=j.optBoolean("audio");i.deleteRequested=j.optBoolean("deleteRequested");
             i.progress=j.optInt("progress");return i;
         }
@@ -63,20 +64,27 @@ public final class DownloadQueue {
         return enqueue(context,url,audio,quality,proxy,directoryUri,priority,"");
     }
     public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,String directoryUri,boolean priority,String title) {
+        return enqueue(context,url,audio,quality,proxy,directoryUri,priority,title,audio?"mp3":"mp4");
+    }
+    public static String enqueue(Context context,String url,boolean audio,String quality,String proxy,
+            String directoryUri,boolean priority,String title,String format) {
         synchronized(LOCK){
             List<Item> list=read(context);
             if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
-            if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
-            else list.add(i);
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
+            QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             save(context,list);return i.id;
         }
     }
     /** Adds the selected playlist entries atomically; avoids partial playlists on capacity failures. */
     public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
             boolean audio,String quality,String proxy,String directoryUri,boolean priority) {
+        return enqueuePlaylist(context,playlist,selected,audio,quality,proxy,directoryUri,priority,audio?"mp3":"mp4");
+    }
+    public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
+            boolean audio,String quality,String proxy,String directoryUri,boolean priority,String format) {
         synchronized(LOCK) {
             if(selected.size()!=playlist.entries.size())throw new IllegalArgumentException("Выбор видео изменился");
             List<Item> list=read(context);
@@ -90,11 +98,10 @@ public final class DownloadQueue {
                 PlaylistRepository.Entry entry=playlist.entries.get(n);
                 Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
                 i.playlistTitle=playlist.title;i.quality=quality;i.proxy=proxy;i.audio=audio;
-                i.directoryUri=directoryUri;i.status=WAITING;i.message="Ожидает";
+                i.directoryUri=directoryUri;i.format=format;i.contentUri="";i.status=WAITING;i.message="Ожидает";
                 i.filename="";i.progress=0;added.add(i);
             }
-            if(priority)QueueRules.prependPriority(list,added);
-            else list.addAll(added);
+            QueueRules.prependPriority(list,added);
             save(context,list);return count;
         }
     }
@@ -120,6 +127,32 @@ public final class DownloadQueue {
                 i.status=RUNNING;i.message="Подготовка загрузки";save(context,list);return true;
             }
             return false;
+        }
+    }
+    /** User pause is distinct from cancellation. Paused jobs keep their partial files. */
+    public static void pause(Context context,String id){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id) && (RUNNING.equals(i.status)||WAITING.equals(i.status))){
+                i.status=PAUSED;i.message="На паузе";save(context,list);return;
+            }
+        }
+    }
+    public static void resume(Context context,String id){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)&&PAUSED.equals(i.status)){
+                i.status=WAITING;i.message="Ожидает продолжения";save(context,list);return;
+            }
+        }
+    }
+    public static void complete(Context context,String id,String filename,String contentUri,long bytes){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)){
+                i.status=DONE;i.message="Готово";i.progress=100;i.filename=filename;
+                i.contentUri=contentUri;i.bytesSaved=bytes;save(context,list);return;
+            }
         }
     }
     /** Remove immediately except for running jobs: defer until their download stops. */

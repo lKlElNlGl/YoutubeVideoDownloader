@@ -94,7 +94,16 @@ public final class DownloadQueue {
     }
     public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
             boolean audio,String quality,String proxy,String directoryUri,boolean priority,String format) {
+        List<String> qualities=new ArrayList<>();
+        for(int i=0;i<playlist.entries.size();i++)qualities.add(quality);
+        return enqueuePlaylist(context,playlist,selected,audio,qualities,proxy,directoryUri,priority,format);
+    }
+    public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
+            boolean audio,List<String> qualities,String proxy,String directoryUri,boolean priority,String format) {
         synchronized(LOCK) {
+            if(qualities.size()!=playlist.entries.size())throw new IllegalArgumentException("Качество видео не соответствует списку");
+            for(String q:qualities)if(!PlaylistQualityPolicy.allowed(q))
+                throw new IllegalArgumentException("Некорректное качество видео");
             if(selected.size()!=playlist.entries.size())throw new IllegalArgumentException("Выбор видео изменился");
             List<Item> list=read(context);
             int count=0;
@@ -106,7 +115,7 @@ public final class DownloadQueue {
                 if(!Boolean.TRUE.equals(selected.get(n)))continue;
                 PlaylistRepository.Entry entry=playlist.entries.get(n);
                 Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
-                i.playlistTitle=playlist.title;i.quality=quality;i.proxy=proxy;i.audio=audio;
+                i.playlistTitle=playlist.title;i.quality=qualities.get(n);i.proxy=proxy;i.audio=audio;
                 i.directoryUri=directoryUri;i.format=format;i.priority=priority;i.contentUri="";i.status=WAITING;i.message="Ожидает";
                 i.filename="";i.durationSeconds=entry.duration;i.progress=0;added.add(i);
             }

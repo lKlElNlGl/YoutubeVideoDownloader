@@ -11,15 +11,15 @@
         android:usesCleartextTraffic="false"
         android:extractNativeLibs="true"
         android:allowBackup="false">
-        <provider android:name=".UpdateFileProvider"
+        <provider android:name="com.lklengl.youtubevideodownloader.UpdateFileProvider"
             android:authorities="com.lklelnlgl.youtubedownloader.updates"
             android:exported="false"
             android:grantUriPermissions="true"/>
-        <service android:name=".DownloadService"
+        <service android:name="com.lklengl.youtubevideodownloader.DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false"/>
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name="com.lklengl.youtubevideodownloader.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

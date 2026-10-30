@@ -242,11 +242,18 @@ public final class MainActivity extends Activity {
             else enqueue(false);
         });
 
-        LinearLayout queueCard=ThemeStyle.card(pagePanels[1],"Очередь загрузок");
         queueList=new LinearLayout(this);queueList.setOrientation(LinearLayout.VERTICAL);
-        queueCard.addView(queueList);
-        Button clean=button(queueCard,"Очистить завершённые задания");
-        clean.setOnClickListener(v->{DownloadQueue.clearFinished(this);refreshQueue();});
+        pagePanels[1].addView(queueList);
+        Button clean=button(pagePanels[1],"Очистить завершённые");
+        clean.setOnClickListener(v->{
+            for(DownloadQueue.Item j:DownloadQueue.all(this))
+                if(DownloadQueue.DONE.equals(j.status)||DownloadQueue.ERROR.equals(j.status)||
+                    DownloadQueue.CANCELLED.equals(j.status)){
+                    QueueThumbnails.delete(this,j.id);
+                    DownloadService.discardPartial(this,j.id);
+                }
+            DownloadQueue.clearFinished(this);queueSignature="";refreshQueue();
+        });
 
         LinearLayout settingsPage=pagePanels[2];
         LinearLayout look=ThemeStyle.card(settingsPage,"Внешний вид");
@@ -648,77 +655,199 @@ public final class MainActivity extends Activity {
             Toast.makeText(this,priority?"Приоритетная загрузка добавлена":"Добавлено в очередь",Toast.LENGTH_SHORT).show();
         }catch(Exception e){error("Запуск загрузки",e);}
     }
+    private String queueName(DownloadQueue.Item j){
+        return !TextUtils.isEmpty(j.title)?j.title:
+            (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
+    }
+    private String queueFormat(DownloadQueue.Item j){
+        String quality=j.audio?"Аудио":("best".equals(j.quality)?"Максимальное":j.quality+"p");
+        String fmt=j.format==null||j.format.isEmpty()?(j.audio?"mp3":"mp4"):j.format;
+        return quality+" · "+fmt.toUpperCase(Locale.ROOT);
+    }
+    private void queueHeading(String label,int count){
+        TextView header=text(label+(count>=0?" ("+count+")":""),15);
+        header.setTypeface(null,android.graphics.Typeface.BOLD);
+        header.setPadding(dp(2),dp(12),dp(2),dp(7));
+        queueList.addView(header);
+    }
+    private LinearLayout queueCard(boolean active){
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(active?10:8),dp(active?10:7),dp(active?10:8),dp(active?10:7));
+        card.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),
+            ThemeStyle.border(this),dp(12)));
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
+        params.setMargins(0,0,0,dp(active?7:4));
+        queueList.addView(card,params);
+        return card;
+    }
+    private TextView compactInfo(String value,int size,boolean secondary){
+        TextView t=text(value,size);
+        if(secondary)t.setTextColor(ThemeStyle.subdued(this));
+        t.setSingleLine(true);t.setEllipsize(TextUtils.TruncateAt.END);
+        return t;
+    }
+    private ImageView queuePhoto(LinearLayout parent,DownloadQueue.Item j,int side){
+        ImageView picture=new ImageView(this);
+        parent.addView(picture,new LinearLayout.LayoutParams(dp(side),dp(side)));
+        QueueThumbnails.show(this,j,picture,dp(8));
+        return picture;
+    }
+    private ImageView queueAction(LinearLayout parent,String icon,int tint,String description){
+        ImageView action=new ImageView(this);
+        action.setImageDrawable(new UiIcons(icon,tint,dp(22)));
+        action.setContentDescription(description);
+        action.setPadding(dp(7),dp(7),dp(7),dp(7));
+        parent.addView(action,new LinearLayout.LayoutParams(dp(39),dp(39)));
+        return action;
+    }
     private void refreshQueue(){
         if(queueList==null)return;
-        queueList.removeAllViews();
         List<DownloadQueue.Item> jobs=DownloadQueue.all(this);
-        if(jobs.isEmpty()){queueList.addView(text("Очередь пуста",14));return;}
-        Map<String,int[]> playlists=new LinkedHashMap<>();
-        for(DownloadQueue.Item item:jobs){
-            if(item.playlistTitle==null||item.playlistTitle.isEmpty())continue;
-            int[] counts=playlists.computeIfAbsent(item.playlistTitle,k->new int[2]);
-            counts[1]++;
-            if(DownloadQueue.DONE.equals(item.status))counts[0]++;
+        StringBuilder key=new StringBuilder();
+        for(DownloadQueue.Item j:jobs)key.append(j.id).append('/').append(j.status).append(';');
+        String signature=key.toString();
+        if(signature.equals(queueSignature) && activeQueueBar!=null){
+            for(DownloadQueue.Item j:jobs)if(DownloadQueue.RUNNING.equals(j.status)){
+                activeQueueBar.setProgress(j.progress);
+                if(activeQueueInfo!=null)
+                    activeQueueInfo.setText(j.progress+"% · "+j.message);
+                return;
+            }
         }
-        for(Map.Entry<String,int[]> group:playlists.entrySet()){
-            int[] counts=group.getValue();
-            TextView header=text("Плейлист: "+group.getKey()+" · "+counts[0]+"/"+counts[1]+" завершено",14);
-            header.setPadding(dp(8),dp(8),dp(8),dp(8));
-            header.setTextColor(ThemeStyle.subdued(this));queueList.addView(header);
+        if(signature.equals(queueSignature)&&activeQueueBar==null)return;
+        queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;
+        queueList.removeAllViews();
+        if(jobs.isEmpty()){
+            queueList.addView(compactInfo("Очередь пуста",14,true));return;
         }
-        for(int k=jobs.size()-1;k>=0;k--){
-            DownloadQueue.Item j=jobs.get(k);
-            LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(11),dp(10),dp(11),dp(11));
-            card.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(12)));
-            LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);
-            cardParams.setMargins(0,dp(6),0,dp(9));queueList.addView(card,cardParams);
-            LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);
-            line.setGravity(Gravity.CENTER_VERTICAL);card.addView(line);
-            String name=!TextUtils.isEmpty(j.title)?j.title:
-                (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
-            TextView heading=text(name,14);heading.setTypeface(null,android.graphics.Typeface.BOLD);
-            heading.setMaxLines(2);heading.setEllipsize(TextUtils.TruncateAt.END);
-            line.addView(heading,new LinearLayout.LayoutParams(0,-2,1));
-            ImageView trash=new ImageView(this);
-            trash.setImageDrawable(new UiIcons("trash",ThemeStyle.subdued(this),dp(22)));
-            trash.setContentDescription("Удалить запись из очереди");
-            trash.setPadding(dp(12),dp(12),dp(12),dp(12));
-            line.addView(trash,new LinearLayout.LayoutParams(dp(48),dp(48)));
-            trash.setOnClickListener(v->confirmRemove(j));
-            if(!TextUtils.isEmpty(j.title)){
-                TextView source=text(j.url,11);source.setTextColor(ThemeStyle.subdued(this));
-                source.setMaxLines(1);source.setEllipsize(TextUtils.TruncateAt.MIDDLE);
-                card.addView(source);
+        List<DownloadQueue.Item> running=new ArrayList<>(),waiting=new ArrayList<>(),
+            done=new ArrayList<>(),problems=new ArrayList<>();
+        for(DownloadQueue.Item j:jobs){
+            if(DownloadQueue.RUNNING.equals(j.status))running.add(j);
+            else if(DownloadQueue.WAITING.equals(j.status)||DownloadQueue.PAUSED.equals(j.status))waiting.add(j);
+            else if(DownloadQueue.DONE.equals(j.status))done.add(j);
+            else problems.add(j);
+        }
+        if(!running.isEmpty()){
+            queueHeading("Текущая загрузка",-1);
+            for(DownloadQueue.Item j:running){
+                LinearLayout card=queueCard(true);
+                LinearLayout top=new LinearLayout(this);top.setOrientation(LinearLayout.HORIZONTAL);
+                top.setGravity(Gravity.CENTER_VERTICAL);card.addView(top);
+                queuePhoto(top,j,67);
+                LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);
+                lp.setMargins(dp(9),0,dp(4),0);top.addView(labels,lp);
+                TextView title=compactInfo(queueName(j),14,false);
+                title.setTypeface(null,android.graphics.Typeface.BOLD);labels.addView(title);
+                labels.addView(compactInfo(queueFormat(j),12,false));
+                TextView percent=compactInfo(j.progress+"%",12,true);labels.addView(percent);
+                ImageView pause=queueAction(top,"pause",ThemeStyle.text(this),"Приостановить загрузку");
+                pause.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature="";refreshQueue();});
+                activeQueueBar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+                activeQueueBar.setMax(100);activeQueueBar.setProgress(j.progress);
+                activeQueueBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
+                LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(-1,dp(6));
+                bar.setMargins(0,dp(8),0,dp(5));card.addView(activeQueueBar,bar);
+                activeQueueInfo=compactInfo(j.progress+"% · "+j.message,12,true);
+                card.addView(activeQueueInfo);
             }
-            boolean failed=DownloadQueue.ERROR.equals(j.status);
-            String info=failed?QueuePolicy.errorSummary(j.message):
-                (j.message+" · "+statusName(j.status)+(DownloadQueue.RUNNING.equals(j.status)?" ("+j.progress+"%)":""));
-            TextView state=text(info,13);
-            if(failed)state.setTextColor(ThemeStyle.RED);
-            state.setPadding(0,dp(6),0,dp(6));card.addView(state);
-            if(DownloadQueue.RUNNING.equals(j.status)){
-                ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-                progress.setMax(100);progress.setProgress(j.progress);card.addView(progress);
+        }
+        if(!waiting.isEmpty()){
+            queueHeading("Следующие в очереди",waiting.size());
+            for(DownloadQueue.Item j:waiting)compactQueueRow(j,false);
+        }
+        if(!done.isEmpty()){
+            queueHeading("Завершённые",done.size());
+            for(int n=done.size()-1;n>=0;n--)compactQueueRow(done.get(n),true);
+        }
+        if(!problems.isEmpty()){
+            queueHeading("Ошибки и отменённые",problems.size());
+            for(DownloadQueue.Item j:problems)compactQueueRow(j,false);
+        }
+    }
+    private void compactQueueRow(DownloadQueue.Item j,boolean finished){
+        LinearLayout card=queueCard(false);
+        LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);
+        line.setGravity(Gravity.CENTER_VERTICAL);card.addView(line);
+        queuePhoto(line,j,54);
+        LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);
+        lp.setMargins(dp(9),0,0,0);line.addView(labels,lp);
+        TextView title=compactInfo(queueName(j),13,false);
+        title.setTypeface(null,android.graphics.Typeface.BOLD);labels.addView(title);
+        labels.addView(compactInfo(queueFormat(j),11,false));
+        String status=finished?(j.bytesSaved>0?"Готово · "+readableBytes(j.bytesSaved):"Готово"):
+            DownloadQueue.PAUSED.equals(j.status)?"На паузе":
+            DownloadQueue.ERROR.equals(j.status)?QueuePolicy.errorSummary(j.message):
+            DownloadQueue.CANCELLED.equals(j.status)?"Отменено":"Ожидает…";
+        TextView state=compactInfo(status,11,true);
+        if(finished)state.setTextColor(0xFF4EC67B);
+        if(DownloadQueue.ERROR.equals(j.status))state.setTextColor(ThemeStyle.RED);
+        labels.addView(state);
+        if(finished){
+            ImageView play=queueAction(line,"play",0xFF4EC67B,"Открыть скачанный файл");
+            play.setOnClickListener(v->openDownloaded(j));
+        }else if(DownloadQueue.PAUSED.equals(j.status)){
+            ImageView resume=queueAction(line,"play",ThemeStyle.RED,"Продолжить загрузку");
+            resume.setOnClickListener(v->{DownloadService.resume(this,j.id);queueSignature="";refreshQueue();});
+        }else if(DownloadQueue.WAITING.equals(j.status)){
+            ImageView paused=queueAction(line,"pause",ThemeStyle.subdued(this),"Поставить на паузу");
+            paused.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature="";refreshQueue();});
+        }
+        ImageView menu=queueAction(line,"more",ThemeStyle.subdued(this),"Действия с загрузкой");
+        menu.setOnClickListener(v->queueMenu(menu,j));
+    }
+    private static String readableBytes(long value){
+        if(value>=1024L*1024*1024)return String.format(Locale.getDefault(),"%.2f ГБ",value/(1024d*1024*1024));
+        if(value>=1024*1024)return String.format(Locale.getDefault(),"%.0f МБ",value/(1024d*1024));
+        return String.format(Locale.getDefault(),"%.0f КБ",value/1024d);
+    }
+    private void queueMenu(View anchor,DownloadQueue.Item j){
+        PopupMenu menu=new PopupMenu(this,anchor);
+        if(DownloadQueue.DONE.equals(j.status)){
+            menu.getMenu().add("Открыть файл");
+            menu.getMenu().add("Открыть папку");
+        }
+        if(DownloadQueue.ERROR.equals(j.status)){
+            menu.getMenu().add("Подробности");
+            menu.getMenu().add("Повторить загрузку");
+        }
+        if(DownloadQueue.CANCELLED.equals(j.status))menu.getMenu().add("Повторить загрузку");
+        if(DownloadQueue.PAUSED.equals(j.status))menu.getMenu().add("Продолжить");
+        menu.getMenu().add("Удалить запись");
+        menu.setOnMenuItemClickListener(option->{
+            String name=option.getTitle().toString();
+            switch(name){
+                case "Открыть файл":openDownloaded(j);break;
+                case "Открыть папку":openFolderFor(j.directoryUri);break;
+                case "Подробности":showTechnicalDetails(j);break;
+                case "Повторить загрузку":DownloadQueue.retry(this,j.id);DownloadService.kick(this);break;
+                case "Продолжить":DownloadService.resume(this,j.id);break;
+                case "Удалить запись":confirmRemove(j);return true;
             }
-            if(failed || DownloadQueue.CANCELLED.equals(j.status)){
-                if(failed){
-                    Button details=button(card,"Подробности");
-                    details.setOnClickListener(v->showTechnicalDetails(j));
-                }
-                Button retry=button(card,"Повторить загрузку");
-                retry.setOnClickListener(v->{
-                    DownloadQueue.retry(this,j.id);refreshQueue();DownloadService.kick(this);
-                });
-            }else if(DownloadQueue.WAITING.equals(j.status)||DownloadQueue.RUNNING.equals(j.status)){
-                Button cancel=button(card,"Отменить");
-                cancel.setOnClickListener(v->{
-                    DownloadService.cancel(this,j.id);refreshQueue();
-                });
-            }else if(DownloadQueue.DONE.equals(j.status)){
-                Button folder=button(card,"Открыть папку");
-                folder.setOnClickListener(v->openFolderFor(j.directoryUri));
-            }
+            queueSignature="";refreshQueue();return true;
+        });
+        menu.show();
+    }
+    private void openDownloaded(DownloadQueue.Item j){
+        if(TextUtils.isEmpty(j.contentUri)){
+            ThemeStyle.dialog(this).setTitle("Файл")
+                .setMessage("Для загрузок, выполненных до этой версии, адрес файла не сохранён. Откройте папку загрузок.")
+                .setNegativeButton("Закрыть",null)
+                .setPositiveButton("Открыть папку",(d,w)->openFolderFor(j.directoryUri)).show();
+            return;
+        }
+        String mime=j.audio?"audio/*":"video/*";
+        try{
+            Intent view=new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(Uri.parse(j.contentUri),mime);
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(view,"Открыть скачанный файл"));
+        }catch(Exception e){
+            ThemeStyle.dialog(this).setMessage("Не найден подходящий проигрыватель либо файл был перемещён.")
+                .setPositiveButton("ОК",null).show();
         }
     }
     private void confirmRemove(DownloadQueue.Item job){
@@ -728,7 +857,9 @@ public final class MainActivity extends Activity {
             .setPositiveButton("Удалить",(dialog,which)->{
                 boolean running=DownloadQueue.requestRemove(this,job.id);
                 if(running)DownloadService.cancel(this,job.id);
-                refreshQueue();
+                else DownloadService.discardPartial(this,job.id);
+                QueueThumbnails.delete(this,job.id);
+                queueSignature="";refreshQueue();
             }).create();
         confirm.setOnShowListener(dialog->{
             confirm.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ThemeStyle.text(this));

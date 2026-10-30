@@ -61,7 +61,8 @@ public final class DownloadService extends Service {
         kick(context);
     }
     public static void discardPartial(Context context,String id){
-        File dir=new File(context.getCacheDir(),"download-"+id);
+        File dir=new File(new File(context.getFilesDir(),"partial-downloads"),"download-"+id);
+        deletePartial(new File(context.getCacheDir(),"download-"+id));
         deletePartial(dir);
     }
     private static void deletePartial(File path){
@@ -155,7 +156,7 @@ public final class DownloadService extends Service {
     private void download(DownloadQueue.Item item){
         currentId=item.id;cancelCurrent=false;pauseCurrent=false;
         if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
-        File temp=new File(getCacheDir(),"download-"+item.id);
+        File temp=new File(new File(getFilesDir(),"partial-downloads"),"download-"+item.id);
         try{
             attemptDownload(item,temp);
         }catch(Exception first){
@@ -330,7 +331,10 @@ public final class DownloadService extends Service {
     }
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public void onDestroy(){
-        if(currentId!=null){cancelCurrent=true;YoutubeDL.getInstance().destroyProcessById(currentId);}
+        if(currentId!=null){
+            pauseCurrent=true;
+            YoutubeDL.getInstance().destroyProcessById(currentId);
+        }
         executor.shutdownNow();super.onDestroy();
     }
 }

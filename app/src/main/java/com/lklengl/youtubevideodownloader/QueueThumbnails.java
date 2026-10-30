@@ -38,7 +38,9 @@ public final class QueueThumbnails {
         view.setTag(item.id);
         File local=file(activity,item.id);
         if(local.isFile()){
-            Bitmap b=BitmapFactory.decodeFile(local.getAbsolutePath());
+            BitmapFactory.Options options=new BitmapFactory.Options();
+            options.inSampleSize=2;
+            Bitmap b=BitmapFactory.decodeFile(local.getAbsolutePath(),options);
             if(b!=null){view.setImageBitmap(b);return;}
         }
         view.setImageDrawable(new UiIcons("play",ThemeStyle.subdued(activity),ThemeStyle.dp(activity,28)));
@@ -59,7 +61,9 @@ public final class QueueThumbnails {
                             buf.write(bytes,0,count);
                         }
                         byte[] data=buf.toByteArray();
-                        Bitmap b=BitmapFactory.decodeByteArray(data,0,data.length);
+                        BitmapFactory.Options options=new BitmapFactory.Options();
+                        options.inSampleSize=2;
+                        Bitmap b=BitmapFactory.decodeByteArray(data,0,data.length,options);
                         if(b==null)return;
                         store(activity.getApplicationContext(),item.id,b);
                         activity.runOnUiThread(()->{

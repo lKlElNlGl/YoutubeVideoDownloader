@@ -109,6 +109,28 @@ public final class PlaylistCache {
     .putString(key(url),saved.toString()).apply();
   }catch(Exception ex){throw new IllegalStateException("Невозможно сохранить качество",ex);}
  }
+ /** Video-id keyed choices survive playlist reordering. */
+ public static Map<String,Boolean> readSelectionById(Context c,String url){
+  String value=c.getSharedPreferences("playlist_choices_by_id",0).getString(key(url),null);
+  if(value==null)return null;
+  Map<String,Boolean> result=new HashMap<>();
+  try{
+   JSONObject data=new JSONObject(value);
+   Iterator<String> ids=data.keys();
+   while(ids.hasNext()){
+    String id=ids.next();result.put(id,data.getBoolean(id));
+   }
+   return result;
+  }catch(Exception e){return null;}
+ }
+ public static void saveSelectionById(Context c,String url,PlaylistRepository.Playlist playlist,boolean[] flags){
+  if(flags.length!=playlist.entries.size())throw new IllegalArgumentException("Video count mismatch");
+  JSONObject data=new JSONObject();
+  try{
+   for(int i=0;i<flags.length;i++)data.put(playlist.entries.get(i).id,flags[i]);
+   c.getSharedPreferences("playlist_choices_by_id",0).edit().putString(key(url),data.toString()).apply();
+  }catch(Exception e){throw new IllegalStateException(e);}
+ }
  public static void saveSelection(Context c,String url,boolean[] flags){
   JSONArray a=new JSONArray();for(boolean b:flags)a.put(b);
   c.getSharedPreferences("playlist_choices",0).edit().putString(key(url),a.toString()).apply();

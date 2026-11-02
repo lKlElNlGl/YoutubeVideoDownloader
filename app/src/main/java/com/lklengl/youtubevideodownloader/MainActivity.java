@@ -1103,7 +1103,19 @@ public final class MainActivity extends Activity {
     }
     /** Keep a natural almost-fullscreen dialog for long logs; the hint never changes its height. */
     private void showTechnicalDetails(String message){
+        LinearLayout detailsPage=new LinearLayout(this);
+        detailsPage.setOrientation(LinearLayout.VERTICAL);detailsPage.setPadding(dp(12),dp(7),dp(12),dp(7));
+        TextView summary=text(QueuePolicy.errorSummary(message),14);
+        summary.setPadding(dp(4),dp(8),dp(4),dp(10));detailsPage.addView(summary);
+        Button expand=button(detailsPage,"Показать технический журнал");
         FrameLayout frame=new FrameLayout(this);
+        frame.setVisibility(View.GONE);
+        detailsPage.addView(frame,new LinearLayout.LayoutParams(-1,-2));
+        expand.setOnClickListener(v->{
+            boolean open=frame.getVisibility()!=View.VISIBLE;
+            frame.setVisibility(open?View.VISIBLE:View.GONE);
+            expand.setText(UiStrings.display(this,open?"Скрыть технический журнал":"Показать технический журнал"));
+        });
         ScrollView scroller=new ScrollView(this);
         scroller.setFillViewport(false);
         TextView log=text(message==null?"":message,12);
@@ -1126,7 +1138,7 @@ public final class MainActivity extends Activity {
             View.VISIBLE:View.GONE);
         scroller.setOnScrollChangeListener((v,x,y,oldX,oldY)->refreshHint.run());
         ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Подробности ошибки"))
-            .setView(frame).setPositiveButton(UiStrings.display(MainActivity.this, "Закрыть"),null).show();
+            .setView(detailsPage).setPositiveButton(UiStrings.display(MainActivity.this, "Закрыть"),null).show();
         scroller.post(refreshHint);
     }
     private String statusName(String value){

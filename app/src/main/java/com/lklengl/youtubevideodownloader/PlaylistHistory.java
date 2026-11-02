@@ -13,6 +13,25 @@ public final class PlaylistHistory {
  public static final int NEW=0, QUEUED=1, DOWNLOADED=2;
  private PlaylistHistory(){}
  private static SharedPreferences prefs(Context c){return c.getSharedPreferences("playlist_history",0);}
+ private static SharedPreferences media(Context c){return c.getSharedPreferences("playlist_media",0);}
+ public static void markQueued(Context c,String url,String quality){
+  markQueued(c,url);
+  if(url!=null&&!url.isEmpty() && quality!=null && !quality.isEmpty())
+   media(c).edit().putString("quality_"+key(url),quality).apply();
+ }
+ public static String queuedQuality(Context c,String url){
+  if(url==null||url.isEmpty())return "best";
+  return media(c).getString("quality_"+key(url),"best");
+ }
+ public static int actualHeight(Context c,String url){
+  if(url==null||url.isEmpty())return 0;
+  return media(c).getInt("height_"+key(url),0);
+ }
+ public static void markDownloaded(Context c,String url,String contentUri,int height){
+  markDownloaded(c,url,contentUri);
+  if(url!=null&&!url.isEmpty()&&height>0)
+   media(c).edit().putInt("height_"+key(url),height).apply();
+ }
  private static String key(String url){
   try {
    byte[] hash=MessageDigest.getInstance("SHA-256").digest(url.getBytes(StandardCharsets.UTF_8));
@@ -37,6 +56,7 @@ public final class PlaylistHistory {
   SharedPreferences values=prefs(c);
   SharedPreferences.Editor changes=values.edit();
   boolean dirty=false;
+  SharedPreferences previous=media(c);SharedPreferences.Editor details=previous.edit();boolean detailsDirty=false;
   for(DownloadQueue.Item item:queue){
    if(item.url==null||item.url.isEmpty())continue;
    String key=key(item.url),old=values.getString(key,null);
@@ -45,6 +65,7 @@ public final class PlaylistHistory {
    if(!wanted.equals(old)){changes.putString(key,wanted);dirty=true;}
   }
   if(dirty)changes.apply();
+  if(detailsDirty)details.apply();
  }
  public static boolean hasAdded(Context c,String url){return prefs(c).contains(key(url));}
  public static int status(Context c,String url){

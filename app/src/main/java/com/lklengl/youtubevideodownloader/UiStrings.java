@@ -155,8 +155,12 @@ public final class UiStrings {
     public static String translate(String language,String source) {
         if(source==null)return "";
         if("ru".equals(normalizeLanguage(language)))return source;
+        if("ru".equals(normalizeLanguage(language)))return source;
         String translated=ENGLISH.get(source);
-        return translated!=null?translated:source;
+        if(translated!=null)return translated;
+        for(Map.Entry<String,String> entry:ENGLISH.entrySet())
+            if(entry.getValue().equals(source))return source;
+        return source;
     }
     public static String translate(android.content.Context context,String source) {
         String code=context.getSharedPreferences("design",android.content.Context.MODE_PRIVATE)

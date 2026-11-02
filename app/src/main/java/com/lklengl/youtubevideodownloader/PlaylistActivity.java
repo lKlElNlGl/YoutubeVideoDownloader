@@ -252,7 +252,7 @@ public final class PlaylistActivity extends Activity {
   selectAll=new CheckBox(this);
   selectAll.setText(UiStrings.display(this,"Выбрать всё"));
   selectAll.setTextColor(ThemeStyle.text(this));selectAll.setTextSize(13);
-  selectAll.setButtonTintList(checkTint());
+  UiCheckboxStyle.apply(selectAll);
   selectRow.addView(selectAll,new LinearLayout.LayoutParams(0,dp(44),1));
   selectAll.setOnClickListener(v->{
    boolean all=true;for(int i:visibleRows)if(!selected[i]){all=false;break;}
@@ -291,7 +291,7 @@ public final class PlaylistActivity extends Activity {
      row.setGravity(Gravity.CENTER_VERTICAL);
      row.setPadding(dp(1),dp(4),dp(1),dp(4));row.setMinimumHeight(dp(67));
      h.check=new CheckBox(PlaylistActivity.this);
-      h.check.setButtonTintList(checkTint());
+      UiCheckboxStyle.apply(h.check);
      row.addView(h.check,new LinearLayout.LayoutParams(dp(37),dp(43)));
      h.image=new ImageView(PlaylistActivity.this);
      row.addView(h.image,new LinearLayout.LayoutParams(dp(64),dp(53)));
@@ -482,7 +482,7 @@ public final class PlaylistActivity extends Activity {
   Spinner queued=settingsChoice(content,"Добавление в очередь",
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
   CheckBox sort=new CheckBox(this);
-  sort.setButtonTintList(checkTint());
+  UiCheckboxStyle.apply(sort);
   sort.setText(UiStrings.display(this,"Сначала отмеченные"));
   sort.setTextColor(ThemeStyle.text(this));sort.setTextSize(13);
   sort.setChecked(selectedFirst);

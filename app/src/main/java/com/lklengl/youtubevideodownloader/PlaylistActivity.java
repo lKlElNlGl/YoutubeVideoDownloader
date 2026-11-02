@@ -352,22 +352,47 @@ public final class PlaylistActivity extends Activity {
   s.setAdapter(a);s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
   return s;
  }
- private Set<String> previouslyAddedCache=new HashSet<>();
  private void toggle(int position,Row row){
-  if(position<0||position>=selected.length)return;
+  if(position<0||position>=selected.length||animatingSelection)return;
   selected[position]=!selected[position];persistSelection();
-  row.check.setChecked(selected[position]);
-  updateFooter();
+  row.check.setChecked(selected[position]);updateFooter();
+  boolean disappears=selectionFilter==1&&!selected[position]||
+    selectionFilter==2&&selected[position];
+  if(!disappears)return;
+  // Animate height so adjacent list items slide upward instead of jumping.
+  animatingSelection=true;
+  final View view=row.root;
+  final int initial=Math.max(view.getHeight(),dp(65));
+  android.animation.ValueAnimator fade=android.animation.ValueAnimator.ofInt(initial,0);
+  fade.setDuration(220);
+  fade.addUpdateListener(animation->{
+   android.view.ViewGroup.LayoutParams params=view.getLayoutParams();
+   params.height=(Integer)animation.getAnimatedValue();
+   view.setLayoutParams(params);
+   view.setAlpha(1f-animation.getAnimatedFraction());
+  });
+  fade.addListener(new android.animation.AnimatorListenerAdapter(){
+   @Override public void onAnimationEnd(android.animation.Animator animation){
+    view.setAlpha(1f);
+    android.view.ViewGroup.LayoutParams params=view.getLayoutParams();
+    params.height=-2;view.setLayoutParams(params);
+    animatingSelection=false;
+    rebuildVisible(false);
+   }
+  });
+  fade.start();
  }
  private void persistSelection(){PlaylistCache.saveSelection(this,source,selected);}
  private void persistQualities(){PlaylistCache.saveQualities(this,source,playlist,qualities);}
  private void updateFooter(){
-  previouslyAddedCache=previouslyAdded();
+  if(selected==null||selectAll==null||addButton==null)return;
   int count=0;for(boolean flag:selected)if(flag)count++;
-  counter.setText(UiStrings.display(PlaylistActivity.this, "Выбрано: "+count+" из "+selected.length));
+  sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  selectAll.setText(UiStrings.display(PlaylistActivity.this, count==selected.length?"☑  Снять выбор":"☐  Выбрать все ("+selected.length+")"));
+  boolean all=!visibleRows.isEmpty();
+  for(int i:visibleRows)if(!selected[i]){all=false;break;}
+  selectAll.setChecked(all);
  }
  private void chooseQuality(int position){
   if(position<0||position>=qualities.size())return;
@@ -377,10 +402,12 @@ public final class PlaylistActivity extends Activity {
      qualities.set(position,PlaylistQualityPolicy.VALUES[which]);
      persistQualities();
      for(int i=0;i<list.getChildCount();i++){
-      int p=list.getFirstVisiblePosition()+i;
+      int visible=list.getFirstVisiblePosition()+i;
+      if(visible>=visibleRows.size())continue;
+      int p=visibleRows.get(visible);
       if(p==position){
        Row h=(Row)list.getChildAt(i).getTag();
-       h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[which]+" ⌄"));break;
+       h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[which]));break;
       }
      }
      d.dismiss();
@@ -406,8 +433,8 @@ public final class PlaylistActivity extends Activity {
    List<Boolean> flags=new ArrayList<>();for(boolean flag:selected)flags.add(flag);
    int count=DownloadQueue.enqueuePlaylist(this,playlist,flags,
     "mp3".equals(format)||"m4a".equals(format),qualities,proxy,folder,priority,format);
-   Arrays.fill(selected,false);persistSelection();updateFooter();
-   adapter.notifyDataSetChanged();DownloadService.kick(this);
+   Arrays.fill(selected,false);persistSelection();
+   refreshStatuses();rebuildVisible(false);DownloadService.kick(this);
    Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Добавлено в очередь: "+count),Toast.LENGTH_LONG).show();
   }catch(Exception ex){
    ThemeStyle.dialog(this).setMessage(UiStrings.display(PlaylistActivity.this, ex.getMessage())).setPositiveButton(UiStrings.display(PlaylistActivity.this, "ОК"),null).show();

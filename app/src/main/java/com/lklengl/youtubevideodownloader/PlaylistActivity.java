@@ -394,6 +394,72 @@ public final class PlaylistActivity extends Activity {
   for(int i:visibleRows)if(!selected[i]){all=false;break;}
   selectAll.setChecked(all);
  }
+ private Spinner settingsChoice(LinearLayout content,String title,String[] choices,int value){
+  TextView heading=txt(title,13);
+  heading.setTextColor(ThemeStyle.subdued(this));
+  LinearLayout.LayoutParams labelSpace=margin(8,4);
+  content.addView(heading,labelSpace);
+  Spinner spinner=spinner(choices);
+  spinner.setSelection(Math.max(0,Math.min(choices.length-1,value)));
+  spinner.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(9)));
+  spinner.setPadding(dp(12),0,dp(12),0);
+  content.addView(spinner,new LinearLayout.LayoutParams(-1,dp(45)));
+  return spinner;
+ }
+ private void showListSettings(){
+  ScrollView scroll=new ScrollView(this);
+  LinearLayout content=column();
+  content.setPadding(dp(17),dp(6),dp(17),dp(9));
+  scroll.addView(content);
+  TextView info=txt("Качество для отмеченных",13);
+  info.setTypeface(null,Typeface.BOLD);
+  content.addView(info,margin(7,4));
+  Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
+  bulk.setSelection(PlaylistQualityPolicy.index(quality));
+  bulk.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(9)));
+  bulk.setPadding(dp(12),0,dp(12),0);
+  content.addView(bulk,new LinearLayout.LayoutParams(-1,dp(45)));
+  TextView applyQuality=txt("Применить качество к отмеченным",13);
+  applyQuality.setTextColor(ThemeStyle.RED);
+  applyQuality.setGravity(Gravity.CENTER);
+  content.addView(applyQuality,margin(4,8));
+  applyQuality.setOnClickListener(v->{
+   int index=bulk.getSelectedItemPosition();
+   if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
+   qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
+   quality=PlaylistQualityPolicy.VALUES[index];
+   persistQualities();adapter.notifyDataSetChanged();
+   Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
+  });
+  Spinner choose=settingsChoice(content,"Выбор видео",
+    new String[]{"Все","Только отмеченные","Только неотмеченные"},selectionFilter);
+  Spinner downloads=settingsChoice(content,"Статус загрузки",
+    new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
+  Spinner queued=settingsChoice(content,"Добавление в очередь",
+    new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
+  CheckBox sort=new CheckBox(this);
+  sort.setButtonTintList(checkTint());
+  sort.setText(UiStrings.display(this,"Сначала отмеченные"));
+  sort.setTextColor(ThemeStyle.text(this));sort.setTextSize(13);
+  sort.setChecked(selectedFirst);
+  content.addView(sort,margin(12,4));
+  ThemeStyle.dialog(this)
+    .setTitle(UiStrings.display(this,"Настройки списка видео"))
+    .setView(scroll)
+    .setNegativeButton(UiStrings.display(this,"Отмена"),null)
+    .setPositiveButton(UiStrings.display(this,"Применить"),(d,w)->{
+      selectionFilter=choose.getSelectedItemPosition();
+      downloadFilter=downloads.getSelectedItemPosition();
+      queueFilter=queued.getSelectedItemPosition();
+      selectedFirst=sort.isChecked();
+      getSharedPreferences("playlist_display",0).edit()
+       .putInt("selection",selectionFilter)
+       .putInt("download",downloadFilter)
+       .putInt("queue",queueFilter)
+       .putBoolean("selectedFirst",selectedFirst).apply();
+      rebuildVisible(true);list.setSelection(0);
+    }).show();
+ }
  private void chooseQuality(int position){
   if(position<0||position>=qualities.size())return;
   AlertDialog dialog=ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Качество для этого видео"))

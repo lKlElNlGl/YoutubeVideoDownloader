@@ -22,7 +22,7 @@ public final class ThemeStyle {
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
     public static final int RED=0xFFEF2830;
     public static final int NIGHT_BG=0xFF0D1119;
-    public static final int NIGHT_CARD=Palette051.CARD;
+    public static final int NIGHT_CARD=Palette050.NIGHT_CARD;
     public static final int DAY_BG=0xFFF5F6F9;
     public static final int DAY_CARD=0xFFFFFFFF;
     private ThemeStyle(){}
@@ -46,10 +46,10 @@ public final class ThemeStyle {
     public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}
     public static int background(Context c){return isDark(c)?NIGHT_BG:DAY_BG;}
     public static int cardColor(Context c){return isDark(c)?NIGHT_CARD:DAY_CARD;}
-    public static int border(Context c){return isDark(c)?Palette051.BORDER:0xFFD2D9E3;}
-    public static int field(Context c){return isDark(c)?Palette051.FIELD:0xFFF0F2F6;}
-    public static int buttonFill(Context c){return isDark(c)?Palette051.BUTTON:0xFFEDEFF5;}
-    public static int buttonStroke(Context c){return isDark(c)?Palette051.BUTTON_BORDER:0xFFD4DAE4;}
+    public static int border(Context c){return isDark(c)?Palette050.NIGHT_BORDER:0xFFD2D9E3;}
+    public static int field(Context c){return isDark(c)?Palette050.NIGHT_FIELD:0xFFF0F2F6;}
+    public static int buttonFill(Context c){return isDark(c)?Palette050.NIGHT_BUTTON:0xFFEDEFF5;}
+    public static int buttonStroke(Context c){return isDark(c)?Palette050.NIGHT_BUTTON_BORDER:0xFFD4DAE4;}
     public static int dp(Context c,float n){return (int)(n*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int fill,int stroke,float radius){
         GradientDrawable d=new GradientDrawable();
@@ -61,6 +61,16 @@ public final class ThemeStyle {
         result.setCornerRadius(dp(c,11));
         if(outlined)result.setStroke(dp(c,1),isDark(c)?0xFFA92A21:0xFFFF9CA4);
         return result;
+    }
+    /** Shared primary surface, so active tabs match the main download action. */
+    private static Drawable primarySurface(Context c){
+        GradientDrawable shine=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0x22FFFFFF,0x08FFFFFF,0x00FFFFFF});
+        shine.setCornerRadius(dp(c,11));
+        android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(
+            new Drawable[]{gradient(c,true),shine});
+        layers.setLayerInset(1,dp(c,1),dp(c,1),dp(c,1),dp(c,1));
+        return layers;
     }
     private static Drawable plainRounded(Context c,int fill){
         GradientDrawable result=new GradientDrawable();
@@ -77,15 +87,15 @@ public final class ThemeStyle {
         return row;
     }
     public static GradientDrawable popupBackground(Context c){
-        GradientDrawable result=rounded(isDark(c)?Palette051.POPUP:field(c),
-            isDark(c)?Palette051.POPUP_BORDER:border(c),dp(c,11));
-        result.setStroke(dp(c,1),isDark(c)?PremiumPalette.DARK_POPUP_BORDER:border(c));
+        GradientDrawable result=rounded(isDark(c)?Palette050.NIGHT_POPUP:field(c),
+            isDark(c)?Palette050.NIGHT_POPUP_BORDER:border(c),dp(c,11));
+        result.setStroke(dp(c,1),isDark(c)?Palette050.NIGHT_POPUP_BORDER:border(c));
         result.setPadding(dp(c,1),dp(c,1),dp(c,1),dp(c,1));
         return result;
     }
     public static int popupItemColor(Context c,boolean selected){
         if(!isDark(c))return selected?0xFFE6E7EB:field(c);
-        return selected?Palette051.SELECTED:Palette051.POPUP;
+        return selected?Palette050.NIGHT_POPUP_SELECTED:Palette050.NIGHT_POPUP;
     }
     public static AlertDialog.Builder dialog(Activity activity){
         return isDark(activity)?new AlertDialog.Builder(activity,R.style.YvdDialogDark):
@@ -98,7 +108,7 @@ public final class ThemeStyle {
         tab.setGravity(android.view.Gravity.CENTER);
         tab.setPadding(dp(c,4),0,dp(c,4),0);
         tab.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF),
-            selected?gradient(c,false):plainRounded(c,buttonFill(c)),null));
+            selected?primarySurface(c):plainRounded(c,buttonFill(c)),null));
         tab.setElevation(dp(c,selected?2:1));
         ImageView image=new ImageView(c);
         image.setImageDrawable(new UiIcons(symbol,selected?Color.WHITE:text(c),dp(c,16)));
@@ -136,14 +146,7 @@ public final class ThemeStyle {
         b.setTextColor(primary?Color.WHITE:text(c));
         b.setBackgroundTintList(null);
         Drawable shape;
-        if(primary){
-            GradientDrawable shine=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x22FFFFFF,0x08FFFFFF,0x00FFFFFF});
-            shine.setCornerRadius(dp(c,11));
-            android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(
-                new Drawable[]{gradient(c,true),shine});
-            layers.setLayerInset(1,dp(c,1),dp(c,1),dp(c,1),dp(c,1));
-            shape=layers;
+        if(primary){shape=primarySurface(c);
         }else shape=rounded(buttonFill(c),buttonStroke(c),dp(c,11));
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(primary?0x44FFFFFF:
             (isDark(c)?0x44FFFFFF:0x33000000)),shape,null));

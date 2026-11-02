@@ -154,8 +154,11 @@ public final class UiStrings {
     }
     public static String translate(String language,String source) {
         if(source==null)return "";
-        if("ru".equals(normalizeLanguage(language)))return source;
-        if("ru".equals(normalizeLanguage(language)))return source;
+        if("ru".equals(normalizeLanguage(language))) {
+            for(Map.Entry<String,String> entry:ENGLISH.entrySet())
+                if(entry.getValue().equals(source))return entry.getKey();
+            return source;
+        }
         String translated=ENGLISH.get(source);
         if(translated!=null)return translated;
         for(Map.Entry<String,String> entry:ENGLISH.entrySet())

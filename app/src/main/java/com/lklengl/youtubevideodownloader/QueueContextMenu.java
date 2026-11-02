@@ -43,7 +43,7 @@ public final class QueueContextMenu {
    ImageView icon=new ImageView(activity);
    icon.setImageDrawable(new UiIcons(action.getValue(),ink,ThemeStyle.dp(activity,19)));
    row.addView(icon,new LinearLayout.LayoutParams(ThemeStyle.dp(activity,23),ThemeStyle.dp(activity,23)));
-   TextView title=new TextView(activity);title.setText(label);title.setTextSize(14);title.setTextColor(ink);
+   TextView title=new TextView(activity);title.setText(UiStrings.display(activity, label));title.setTextSize(14);title.setTextColor(ink);
    LinearLayout.LayoutParams text=new LinearLayout.LayoutParams(-1,-2);
    text.setMargins(ThemeStyle.dp(activity,10),0,0,0);row.addView(title,text);
    content.addView(row,new LinearLayout.LayoutParams(-1,ThemeStyle.dp(activity,47)));

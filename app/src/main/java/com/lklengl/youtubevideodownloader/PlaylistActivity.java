@@ -413,6 +413,19 @@ public final class PlaylistActivity extends Activity {
   for(int i:visibleRows)if(!selected[i]){all=false;break;}
   selectAll.setChecked(all);
  }
+ private void addCompactSpinner(LinearLayout content,Spinner spinner){
+  FrameLayout frame=new FrameLayout(this);
+  frame.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(9)));
+  content.addView(frame,new LinearLayout.LayoutParams(-1,dp(44)));
+  spinner.setBackgroundColor(Color.TRANSPARENT);
+  spinner.setPadding(dp(12),0,dp(32),0);
+  frame.addView(spinner,new FrameLayout.LayoutParams(-1,-1));
+  ImageView arrow=new ImageView(this);
+  arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(this),dp(17)));
+  FrameLayout.LayoutParams location=new FrameLayout.LayoutParams(dp(36),-1,Gravity.END);
+  frame.addView(arrow,location);
+  arrow.setOnClickListener(v->spinner.performClick());
+ }
  private Spinner settingsChoice(LinearLayout content,String title,String[] choices,int value){
   TextView heading=txt(title,13);
   heading.setTextColor(ThemeStyle.subdued(this));
@@ -420,9 +433,8 @@ public final class PlaylistActivity extends Activity {
   content.addView(heading,labelSpace);
   Spinner spinner=spinner(choices);
   spinner.setSelection(Math.max(0,Math.min(choices.length-1,value)));
-  spinner.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(9)));
-  spinner.setPadding(dp(12),0,dp(12),0);
-  content.addView(spinner,new LinearLayout.LayoutParams(-1,dp(45)));
+  addCompactSpinner(content,spinner);
+
   return spinner;
  }
  private void showListSettings(){
@@ -435,9 +447,7 @@ public final class PlaylistActivity extends Activity {
   content.addView(info,margin(7,4));
   Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
   bulk.setSelection(PlaylistQualityPolicy.index(quality));
-  bulk.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(9)));
-  bulk.setPadding(dp(12),0,dp(12),0);
-  content.addView(bulk,new LinearLayout.LayoutParams(-1,dp(45)));
+  addCompactSpinner(content,bulk);
   TextView applyQuality=txt("Применить качество к отмеченным",13);
   applyQuality.setTextColor(ThemeStyle.RED);
   applyQuality.setGravity(Gravity.CENTER);

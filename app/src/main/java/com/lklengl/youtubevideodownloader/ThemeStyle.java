@@ -104,7 +104,7 @@ public final class ThemeStyle {
         image.setImageDrawable(new UiIcons(symbol,selected?Color.WHITE:text(c),dp(c,16)));
         tab.addView(image,new LinearLayout.LayoutParams(dp(c,16),dp(c,16)));
         TextView label=new TextView(c);
-        label.setText(title);label.setTextSize(13);
+        label.setText(UiStrings.display(c,title));label.setTextSize(13);
         label.setTextColor(selected?Color.WHITE:text(c));
         label.setTypeface(null,android.graphics.Typeface.BOLD);
         label.setSingleLine(true);label.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -174,7 +174,7 @@ public final class ThemeStyle {
         panel.setElevation(dp(c,1));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
         params.setMargins(0,dp(c,5),0,dp(c,10));parent.addView(panel,params);
-        TextView heading=new TextView(c);heading.setText(title);
+        TextView heading=new TextView(c);heading.setText(UiStrings.display(c,title));
         heading.setTextSize(16);heading.setTypeface(null,android.graphics.Typeface.BOLD);
         heading.setTextColor(text(c));heading.setPadding(dp(c,3),dp(c,4),0,dp(c,10));
         panel.addView(heading);

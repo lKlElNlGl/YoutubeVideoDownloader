@@ -143,18 +143,20 @@ public final class DownloadService extends Service {
     private void announce(){
         sendBroadcast(new Intent(ACTION_CHANGED).setPackage(getPackageName()));
     }
+    private int stableProgress=0;
     private void progress(DownloadQueue.Item item,String text,int percentage){
         if(pauseCurrent||cancelCurrent)return;
-        DownloadQueue.update(this,item.id,DownloadQueue.RUNNING,text,percentage,null);
+        stableProgress=ProgressPolicy.displayPercent(stableProgress,percentage);
+        DownloadQueue.update(this,item.id,DownloadQueue.RUNNING,text,stableProgress,null);
         announce();
         long now=android.os.SystemClock.elapsedRealtime();
         if(now-lastNotification>=500) {
-            promote(text,percentage);
+            promote(text,stableProgress);
             lastNotification=now;
         }
     }
     private void download(DownloadQueue.Item item){
-        currentId=item.id;cancelCurrent=false;pauseCurrent=false;
+        currentId=item.id;cancelCurrent=false;pauseCurrent=false;stableProgress=0;
         if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
         File temp=new File(new File(getFilesDir(),"partial-downloads"),"download-"+item.id);
         try{
@@ -228,7 +230,7 @@ public final class DownloadService extends Service {
                 if(now-lastNotification>400) {
                     String etaText=eta>=0?" · осталось "+eta+" с":"";
                     String transfer=DownloadTelemetry.summary(line,percent);
-                    progress(item,"Загрузка "+percent+"%"+(transfer.isEmpty()?etaText:" · "+transfer),percent);
+                    progress(item,"Загрузка потока "+percent+"%"+(transfer.isEmpty()?etaText:" · "+transfer),percent);
                 }
                 return kotlin.Unit.INSTANCE;
             });

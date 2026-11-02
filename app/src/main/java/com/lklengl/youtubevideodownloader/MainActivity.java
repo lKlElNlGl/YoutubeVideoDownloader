@@ -399,7 +399,7 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout network=ThemeStyle.card(settingsPage,"Сетевые параметры");
-        proxyEnabled=new CheckBox(this);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));
+        proxyEnabled=new CheckBox(this);UiCheckboxStyle.apply(proxyEnabled);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));
         proxyEnabled.setTextColor(ThemeStyle.text(this));network.addView(proxyEnabled);
         proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
         network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(50)));

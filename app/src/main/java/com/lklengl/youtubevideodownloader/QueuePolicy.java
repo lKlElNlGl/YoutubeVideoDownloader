@@ -44,6 +44,12 @@ public final class QueuePolicy {
     public static String errorSummary(String message){
         if(message==null||message.trim().isEmpty())return "Ошибка загрузки";
         String lower=message.toLowerCase(Locale.ROOT);
+        if(lower.contains("network is unreachable")||lower.contains("connection refused")||
+           lower.contains("unable to resolve")||lower.contains("temporary failure in name resolution"))
+            return "Не удалось подключиться к YouTube. Проверьте интернет и настройки прокси.";
+        if(lower.contains("confirm you're not a bot")||lower.contains("sign in to confirm")||
+           lower.contains("visitor data")||lower.contains("cookies for the authentication"))
+            return "YouTube запрашивает подтверждение доступа. Попробуйте повторить позже.";
         for(String status:new String[]{"403","404","429","401","500","503"})
             if(lower.contains("http error "+status)||lower.contains("http "+status))
                 return "Ошибка загрузки: HTTP "+status;

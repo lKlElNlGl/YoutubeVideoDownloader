@@ -15,8 +15,8 @@ supersample=4
 edge=min(width,height)/128.0
 mask=Image.new("L",(width*supersample,height*supersample),0)
 drawer=ImageDraw.Draw(mask)
-inset=4.0*edge
-radius=27.0*edge
+inset=2.5*edge
+radius=26.0*edge
 drawer.rounded_rectangle(
  (round(inset*supersample),round(inset*supersample),
   round((width-1-inset)*supersample),round((height-1-inset)*supersample)),
@@ -28,13 +28,17 @@ artwork.putalpha(ImageChops.darker(artwork.getchannel("A"),mask))
 artwork.save(target,optimize=True)
 # A transparent non-adaptive launcher asset avoids OEMs filling an adaptive
 # icon's empty background with a solid dark square.
-padding=16
+padding=0
 legacy=Image.new("RGBA",(width+padding*2,height+padding*2),(0,0,0,0))
 legacy.alpha_composite(artwork,(padding,padding))
 legacy_target=source.with_name("ic_launcher_final.png")
-legacy.save(legacy_target,optimize=True)
+legacy.resize((512,512),Image.Resampling.LANCZOS).save(legacy_target,optimize=True)
 assert legacy.getpixel((0,0))[3]==0
 assert legacy.getpixel((legacy.width-1,legacy.height-1))[3]==0
 assert artwork.getpixel((0,0))[3]==0
 assert artwork.getpixel((width//2,height//2))[3]>230
-print(f"Generated {target.name} and {legacy_target.name}: transparent background")
+assert legacy.getpixel((legacy.width//2,legacy.height//2))[3]>230
+assert legacy.getpixel((0,0))[3]==0
+assert legacy.getpixel((legacy.width-1,0))[3]==0
+assert legacy.getpixel((0,legacy.height-1))[3]==0
+print(f"Generated {target.name} and {legacy_target.name}: enlarged, alpha-tested launcher assets")

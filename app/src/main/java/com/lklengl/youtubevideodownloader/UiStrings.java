@@ -309,6 +309,24 @@ public final class UiStrings {
         strings.put("Длительность: ", "Duration: ");
         strings.put("Технические подробности", "Technical details");
         strings.put("Запрос списка отменён", "Playlist request cancelled");
+        strings.put("Вместе со ссылкой будут удалены название, обложка, длительность, варианты качества и формата. Для повторного получения информации потребуется новый запрос к YouTube.", "The URL, title, thumbnail, duration, and available quality and format options will be cleared. Fetch the video information again to restore them.");
+        strings.put("Открыть список", "Open list");
+        strings.put("Нужна ссылка на плейлист YouTube", "A YouTube playlist URL is required");
+        strings.put("Ссылка", "Link");
+        strings.put("Уже установлена последняя версия.", "The latest version is already installed.");
+        strings.put("Ожидаем ответа YouTube. Сохранённый список доступен.", "Waiting for YouTube. The saved list is still available.");
+        strings.put("Загрузки YoutubeVideoDownloader", "YoutubeVideoDownloader downloads");
+        strings.put("%.1f ГБ", "%.1f GB");
+        strings.put("%.1f МБ", "%.1f MB");
+        strings.put("/с", "/s");
+        strings.put("Не удалось удалить файл из памяти устройства. Запись в очереди сохранена.", "Could not delete the file from this device. The queue entry was kept.");
+        strings.put(". Добавить их повторно?", ". Add them again?");
+        strings.put("Продолжаем получать сведения о видео…", "Still fetching video information…");
+        strings.put("Файл не удалён", "File was not deleted");
+        strings.put("Приостановить загрузку", "Pause download");
+        strings.put("Остановить загрузку", "Stop download");
+        strings.put("Обновление плейлиста", "Playlist update");
+        strings.put("Проверить обновления", "Check for updates");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}

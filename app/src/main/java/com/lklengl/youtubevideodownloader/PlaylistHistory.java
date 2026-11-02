@@ -34,11 +34,17 @@ public final class PlaylistHistory {
  }
  public static void syncFromQueue(Context c){
   List<DownloadQueue.Item> queue=DownloadQueue.all(c);
+  SharedPreferences values=prefs(c);
+  SharedPreferences.Editor changes=values.edit();
+  boolean dirty=false;
   for(DownloadQueue.Item item:queue){
-   if(DownloadQueue.DONE.equals(item.status)&&item.contentUri!=null&&!item.contentUri.isEmpty())
-    markDownloaded(c,item.url,item.contentUri);
-   else markQueued(c,item.url);
+   if(item.url==null||item.url.isEmpty())continue;
+   String key=key(item.url),old=values.getString(key,null);
+   String wanted=DownloadQueue.DONE.equals(item.status)&&item.contentUri!=null&&
+    !item.contentUri.isEmpty()?item.contentUri:old==null?"queued":old;
+   if(!wanted.equals(old)){changes.putString(key,wanted);dirty=true;}
   }
+  if(dirty)changes.apply();
  }
  public static boolean hasAdded(Context c,String url){return prefs(c).contains(key(url));}
  public static int status(Context c,String url){

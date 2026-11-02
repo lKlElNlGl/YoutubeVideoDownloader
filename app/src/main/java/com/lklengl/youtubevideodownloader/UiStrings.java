@@ -146,6 +146,169 @@ public final class UiStrings {
         strings.put("Только уже добавленные", "Already queued only");
         strings.put("Только не добавленные", "Not queued yet");
         strings.put("Качество для отмеченных", "Quality for selected");
+        strings.put("Выбрано: ", "Selected: ");
+        strings.put(" из ", " of ");
+        strings.put("Уже добавлено: ", "Already added: ");
+        strings.put("Добавлено в очередь: ", "Added to queue: ");
+        strings.put("Добавить в очередь (", "Add to queue (");
+        strings.put("Получение списка видео плейлиста…", "Fetching playlist videos…");
+        strings.put("Обновление информации · ", "Refreshing information · ");
+        strings.put("Обновление плейлиста · ", "Refreshing playlist · ");
+        strings.put("Доступна версия ", "Version available: ");
+        strings.put("Доступно: ", "Available: ");
+        strings.put(" видео", " videos");
+        strings.put("Видео ", "Video ");
+        strings.put("Выбрана: ", "Selected: ");
+        strings.put("Загрузки / YoutubeVideoDownloader", "Downloads / YoutubeVideoDownloader");
+        strings.put("Выбор папки", "Choose folder");
+        strings.put("Укажите адрес прокси", "Enter proxy address");
+        strings.put("Видео уже в очереди", "Video already in queue");
+        strings.put("Такая ссылка уже ожидает загрузки или скачивается. Добавить ещё раз?", "This URL is already queued or downloading. Add it again?");
+        strings.put("Приоритетная загрузка добавлена", "Priority download added");
+        strings.put("Запуск загрузки", "Start download");
+        strings.put("Показать ещё (", "Show more (");
+        strings.put("Готово · ", "Done · ");
+        strings.put("Ожидает…", "Waiting…");
+        strings.put("%.2f ГБ", "%.2f GB");
+        strings.put("%.0f МБ", "%.0f MB");
+        strings.put("%.0f КБ", "%.0f KB");
+        strings.put("Открыть скачанный файл", "Open downloaded file");
+        strings.put("Не найден подходящий проигрыватель или он не может открыть этот файл.", "No compatible player was found, or it cannot open this file.");
+        strings.put("Для загрузок, выполненных до этой версии, адрес файла не сохранён. Откройте папку загрузок.", "File location was not saved for earlier downloads. Open the downloads folder.");
+        strings.put("Скачанный файл недоступен. Возможно, он удалён или перемещён.", "The downloaded file is unavailable. It may have been deleted or moved.");
+        strings.put("Запись будет удалена из очереди. Скачанный файл останется на устройстве.", "The queue entry will be deleted. The downloaded file will remain on your device.");
+        strings.put("Также удалить скачанный файл с устройства", "Also delete the downloaded file from this device");
+        strings.put("Удалить запись из очереди?", "Delete entry from queue?");
+        strings.put("скачанный файл", "downloaded file");
+        strings.put("Файл «", "File “");
+        strings.put("» будет удалён из памяти телефона. Это действие нельзя отменить.", "” will be removed from your phone. This cannot be undone.");
+        strings.put("Не удалось удалить файл", "Could not delete file");
+        strings.put("Файл не удалён", "File not deleted");
+        strings.put("Запрос отменён", "Request cancelled");
+        strings.put("Получение информации о видео…", "Fetching video information…");
+        strings.put("Повторное получение информации…", "Retrying information fetch…");
+        strings.put("Повторное получение списка…", "Fetching playlist again…");
+        strings.put("Обновление компонента YouTube…", "Updating YouTube component…");
+        strings.put("Обновление компонента…", "Updating component…");
+        strings.put("Обновление yt-dlp", "Update yt-dlp");
+        strings.put("Компонент YouTube", "YouTube component");
+        strings.put("Завершите очередь перед обновлением yt-dlp.", "Wait until the queue is idle before updating yt-dlp.");
+        strings.put("Проверить новую версию приложения", "Check for a new app version");
+        strings.put("Установить загруженное обновление?", "Install downloaded update?");
+        strings.put("Обновление ", "Update ");
+        strings.put("Не удалось сохранить очередь", "Could not save queue");
+        strings.put("Очередь ограничена 2000 активными заданиями", "Queue is limited to 2,000 active tasks");
+        strings.put("Качество видео не соответствует списку", "Video quality does not match the list");
+        strings.put("Некорректное качество видео", "Invalid video quality");
+        strings.put("Выбор видео изменился", "Video selection has changed");
+        strings.put("Выберите хотя бы одно видео", "Select at least one video");
+        strings.put("Слишком много задач в очереди (максимум 2000)", "Too many queued tasks (maximum 2,000)");
+        strings.put("Возобновление после перезапуска", "Resuming after restart");
+        strings.put("Подготовка загрузки", "Preparing download");
+        strings.put("Ожидает продолжения", "Waiting to resume");
+        strings.put("Отмена загрузки…", "Cancelling download…");
+        strings.put("Ожидание загрузок", "Waiting for downloads");
+        strings.put("Пауза", "Pause");
+        strings.put("Повторная попытка загрузки…", "Retrying download…");
+        strings.put("Не удалось восстановить скачивание", "Unable to recover download");
+        strings.put("Ошибка: ", "Error: ");
+        strings.put("неизвестная", "unknown");
+        strings.put("Невозможно создать папку загрузки", "Could not create download folder");
+        strings.put("Обработка видео и аудио", "Processing video and audio");
+        strings.put(" · осталось ", " · remaining ");
+        strings.put(" с", " s");
+        strings.put("Загрузка ", "Downloading ");
+        strings.put("Не найден файл после обработки", "No output file after processing");
+        strings.put("Сохранение файла", "Saving file");
+        strings.put("Загрузка приостановлена", "Download paused");
+        strings.put("Загрузка отменена", "Download cancelled");
+        strings.put("Не удалось создать файл. Проверьте разрешение папки.", "Could not create the file. Check folder permissions.");
+        strings.put("Нет доступа к файлу", "No access to file");
+        strings.put("Недопустимый адрес обновления", "Invalid update URL");
+        strings.put("Нет адреса перенаправления", "Missing redirect URL");
+        strings.put("Слишком много перенаправлений", "Too many redirects");
+        strings.put("Слишком большой ответ GitHub", "GitHub response is too large");
+        strings.put("Нет папки обновлений", "Update directory unavailable");
+        strings.put("Размер APK превышен", "APK exceeds size limit");
+        strings.put("Неверный размер APK", "APK size mismatch");
+        strings.put("Не совпадает SHA-256 APK", "APK SHA-256 checksum mismatch");
+        strings.put("Не удалось удалить старое обновление", "Could not delete old update");
+        strings.put("Не удалось сохранить APK", "Could not save APK");
+        strings.put("APK другого приложения", "APK belongs to a different application");
+        strings.put("Версия APK не новее установленной", "APK version is not newer than installed");
+        strings.put("Подпись не найдена", "Signature not found");
+        strings.put("Подписи не совпадают", "Signatures do not match");
+        strings.put("Подпись APK отличается от установленной", "APK signature differs from installed version");
+        strings.put("APK не найден", "APK not found");
+        strings.put("Разрешите установку APK для приложения, затем вернитесь сюда", "Allow APK installation for this app, then return here");
+        strings.put("Размер APK: %.1f МБ", "APK size: %.1f MB");
+        strings.put("Готово к скачиванию", "Ready to download");
+        strings.put("Скачать и обновить", "Download and update");
+        strings.put("Остановка скачивания…", "Stopping download…");
+        strings.put("Подождите…", "Please wait…");
+        strings.put("Скачивание APK…", "Downloading APK…");
+        strings.put("Скачано: 0%", "Downloaded: 0%");
+        strings.put("Скачано: ", "Downloaded: ");
+        strings.put("Проверка обновления…", "Verifying update…");
+        strings.put("APK проверен, открываем установщик Android…", "APK verified. Opening Android installer…");
+        strings.put("Не удалось скачать обновление", "Could not download update");
+        strings.put("Ошибка загрузки обновления", "Update download failed");
+        strings.put("Повторить", "Retry");
+        strings.put("Не удалось установить защищённое соединение. Проверьте интернет и повторите попытку.", "Could not establish a secure connection. Check your internet connection.");
+        strings.put("Соединение прервано. Проверьте интернет и повторите попытку.", "Connection interrupted. Check your internet connection.");
+        strings.put("Не удалось скачать обновление (HTTP ", "Failed to download update (HTTP ");
+        strings.put("). Повторите попытку позже.", "). Try again later.");
+        strings.put("Не удалось скачать обновление. Повторите попытку.", "Could not download update. Try again.");
+        strings.put("Новые версии YoutubeVideoDownloader", "YoutubeVideoDownloader updates");
+        strings.put("Уведомления со звуком о новых версиях APK", "Sound notifications about new APK versions");
+        strings.put("Обновление YoutubeVideoDownloader", "YoutubeVideoDownloader update");
+        strings.put("Плановая проверка yt-dlp не выполнена", "Scheduled yt-dlp check failed");
+        strings.put("Не удалось подключиться к YouTube. Проверьте интернет и повторите попытку.", "Could not connect to YouTube. Check your internet and try again.");
+        strings.put("Не удалось загрузить видео. Проверьте обновление компонента YouTube.", "Video could not be downloaded. Try updating the YouTube component.");
+        strings.put("YouTube отказал в доступе (HTTP 403). Попробуйте повторить позже.", "YouTube denied access (HTTP 403). Try again later.");
+        strings.put("YouTube временно ограничил запросы (HTTP 429). Повторите позже.", "YouTube temporarily rate-limited requests (HTTP 429). Try again later.");
+        strings.put("Не удалось получить информацию о видео. Откройте подробности ошибки.", "Could not fetch video information. Open error details.");
+        strings.put("Недопустимое качество", "Invalid quality");
+        strings.put("Введите ссылку", "Enter a URL");
+        strings.put("Нужна HTTPS-ссылка на YouTube", "A YouTube HTTPS URL is required");
+        strings.put("Некорректная ссылка", "Invalid URL");
+        strings.put("Укажите HTTP(S)-прокси с портом", "Enter an HTTP(S) proxy and port");
+        strings.put("Некорректный адрес прокси", "Invalid proxy address");
+        strings.put("Не найдена ссылка на плейлист", "No playlist link found");
+        strings.put("Не удалось получить список видео плейлиста", "Could not retrieve playlist videos");
+        strings.put("В плейлисте нет доступных видео", "No available videos in this playlist");
+        strings.put("Плейлист YouTube", "YouTube playlist");
+        strings.put("Не удалось сохранить плейлист", "Could not save playlist");
+        strings.put("Изменился список видео", "Video list has changed");
+        strings.put("Невозможно сохранить качество", "Could not save quality settings");
+        strings.put("Неизвестное качество", "Unknown quality");
+        strings.put("Несовпадение количества видео", "Video count mismatch");
+        strings.put("Недопустимый идентификатор видео", "Invalid video ID");
+        strings.put("Ошибка загрузки", "Download error");
+        strings.put("Ошибка загрузки: HTTP ", "Download error: HTTP ");
+        strings.put("Ошибка сети (SSL)", "Network error (SSL)");
+        strings.put("Превышено время ожидания", "Timed out");
+        strings.put("Без названия", "Untitled");
+        strings.put("Не указано", "Not specified");
+        strings.put("Неверная версия: ", "Invalid version: ");
+        strings.put("Все видео", "All videos");
+        strings.put("Только скачанные", "Downloaded only");
+        strings.put("Только нескачанные", "Not downloaded only");
+        strings.put("Ещё не добавленные", "Not queued yet");
+        strings.put("Уже добавленные", "Already queued");
+        strings.put("Фильтры", "Filters");
+        strings.put("Настройки списка", "List settings");
+        strings.put("Настройки списка видео", "Video list settings");
+        strings.put("Выбор видео", "Video selection");
+        strings.put("Статус загрузки", "Download status");
+        strings.put("Добавление в очередь", "Queue history");
+        strings.put("Включён фильтр", "Filter active");
+        strings.put("Нет видео, соответствующих фильтру", "No videos match your filters");
+        strings.put("Все подходящие видео отмечены", "All matching videos are selected");
+        strings.put("Снять выбор", "Deselect all");
+        strings.put("Длительность: ", "Duration: ");
+        strings.put("Технические подробности", "Technical details");
+        strings.put("Запрос списка отменён", "Playlist request cancelled");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}
@@ -172,14 +335,30 @@ public final class UiStrings {
     }
     /** Translate labels and formatted status strings without touching queue identifiers. */
     public static String display(android.content.Context context,String source) {
-        String result=translate(context,source);
-        if(!result.equals(source)||"ru".equals(context.getSharedPreferences("design",0).getString("language","en")))return result;
-        for(Map.Entry<String,String> e:ENGLISH.entrySet()){
-            String old=e.getKey();
-            if(source.startsWith(old)&&source.length()>old.length()&&
-                (old.endsWith(" ")||old.endsWith("…")||old.endsWith(": ")))
-                return e.getValue()+source.substring(old.length());
+        if(source==null)return "";
+        String language=context.getSharedPreferences("design",0).getString("language","en");
+        return displayLanguage(language,source);
+    }
+    public static String displayLanguage(String language,String source) {
+        if(source==null || "ru".equals(normalizeLanguage(language)))return source;
+        String exact=ENGLISH.get(source);
+        if(exact!=null)return exact;
+        if(!containsCyrillic(source))return source;
+        java.util.List<Map.Entry<String,String>> entries=new java.util.ArrayList<>(ENGLISH.entrySet());
+        entries.sort((a,b)->Integer.compare(b.getKey().length(),a.getKey().length()));
+        String translated=source;
+        for(Map.Entry<String,String> entry:entries){
+            String fragment=entry.getKey();
+            if(fragment.length()>=3 && containsCyrillic(fragment) && translated.contains(fragment))
+                translated=translated.replace(fragment,entry.getValue());
         }
-        return source;
+        return translated;
+    }
+    private static boolean containsCyrillic(String source){
+        for(int i=0;i<source.length();i++){
+            char c=source.charAt(i);
+            if(c>='А'&&c<='я' || c=='Ё'||c=='ё')return true;
+        }
+        return false;
     }
 }

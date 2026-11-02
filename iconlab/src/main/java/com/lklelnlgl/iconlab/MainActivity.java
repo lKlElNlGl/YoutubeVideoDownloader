@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("Clean C — исходный образец.\\n"
+        description.setText("Clean C — исходный образец.\n"
                 + "C1–C3: очистка верхней каймы и нейтральный серый блик. "
                 + "Размер и низ как у Clean C.");
         layout.addView(description, new LinearLayout.LayoutParams(
@@ -51,7 +51,7 @@ public final class MainActivity extends Activity {
                             PackageManager.DONT_KILL_APP);
                     completed++;
                 }
-                description.setText("Все 4 варианта включены.\\n"
+                description.setText("Все 4 варианта включены.\n"
                         + "Найдите Clean C, C1, C2 и C3 в списке приложений. "
                         + "Сравните верхнюю кайму и цвет блика.");
                 Toast.makeText(this, "Включены Clean C — Clean C3", Toast.LENGTH_LONG).show();

@@ -69,8 +69,8 @@ class IconLabTests(unittest.TestCase):
         alphas = [v.getchannel("A") for v in versions]
         for earlier, later in zip(alphas, alphas[1:]):
             self.assertLessEqual(
-                sum(later.crop((0, 0, 128, 44)).getdata()),
-                sum(earlier.crop((0, 0, 128, 44)).getdata()))
+                sum(later.crop((0, 0, 128, 44)).get_flattened_data()),
+                sum(earlier.crop((0, 0, 128, 44)).get_flattened_data()))
 
     def test_four_distinct_transparent_icons_and_no_stale_files(self):
         with tempfile.TemporaryDirectory() as td:

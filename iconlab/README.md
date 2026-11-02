@@ -1,4 +1,4 @@
-# Icon Lab v0.3.1 — clean upper contour, neutral reflection
+# Icon Lab v0.3.2 — clean upper contour, neutral reflection
 
 ## Approved immutable reference
 
@@ -25,7 +25,7 @@ not erased.
 ## Test
 
 1. Uninstall earlier Icon Lab to avoid debug-signature incompatibility.
-2. Install `IconLab-v0.3.1.apk`, launch it, tap `Показать 4 варианта`.
+2. Install `IconLab-v0.3.2.apk`, launch it, tap `Показать 4 варианта`.
 3. Compare Clean C, Clean C1, Clean C2, Clean C3 in the app drawer.
 4. Choose the least reddish icon with a clean top edge and intact button.
 

@@ -49,18 +49,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.3.1.apk
-          tag=iconlab-v0.3.1
+          cp "$apk" dist/IconLab-v0.3.2.apk
+          tag=iconlab-v0.3.2
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.3.1.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.3.2.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.3.1.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.3.1" \
+            gh release create "$tag" dist/IconLab-v0.3.2.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.3.2" \
               --notes "Four variants: Clean C is the untouched approved baseline. C1-C3 clean only the outer top edge and neutralize the red/brown tint on the top-left glossy reflection. All keep the same Icon 04b scale and original legacy 192px xxxhdpi resources. Standalone tester; uninstall the previous Icon Lab first. The main downloader remains unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.3.1
+          name: IconLab-v0.3.2
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

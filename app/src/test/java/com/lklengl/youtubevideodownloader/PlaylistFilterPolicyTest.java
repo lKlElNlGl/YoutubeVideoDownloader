@@ -17,7 +17,7 @@ public class PlaylistFilterPolicyTest {
  }
  @Test public void downloadAndQueueFiltersAreIndependent() {
   assertEquals(Arrays.asList(1), PlaylistFilterPolicy.visible(
-   new boolean[]{false,false,false},new int[]{0,1,2},0,2,2,false));
+   new boolean[]{false,false,false},new int[]{0,1,2},0,2,1,false));
   assertEquals(Arrays.asList(2), PlaylistFilterPolicy.visible(
    new boolean[]{false,false,false},new int[]{0,1,2},0,1,0,false));
  }

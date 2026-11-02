@@ -397,6 +397,9 @@ public final class UiStrings {
             if(fragment.length()>=3 && containsCyrillic(fragment) && translated.contains(fragment))
                 translated=translated.replace(fragment,entry.getValue());
         }
+        translated=translated.replace("/с","/s");
+        // ETA is a number followed by a Russian seconds suffix.
+        translated=translated.replaceAll("([0-9]+) с(?=\\\\W|$)","$1 s");
         return translated;
     }
     private static boolean containsCyrillic(String source){

@@ -53,7 +53,7 @@ public final class PlaylistActivity extends Activity {
  };
  private int dp(float v){return ThemeStyle.dp(this,v);}
  private TextView txt(String t,int size){
-  TextView view=new TextView(this);view.setText(t);view.setTextSize(size);
+  TextView view=new TextView(this);view.setText(UiStrings.display(this,t));view.setTextSize(size);
   view.setTextColor(ThemeStyle.text(this));return view;
  }
  private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
@@ -315,7 +315,7 @@ public final class PlaylistActivity extends Activity {
   previouslyAddedCache=previouslyAdded();
   int count=0;for(boolean flag:selected)if(flag)count++;
   counter.setText("Выбрано: "+count+" из "+selected.length);
-  addButton.setText("Добавить в очередь ("+count+")");
+  addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
   selectAll.setText(count==selected.length?"☑  Снять выбор":"☐  Выбрать все ("+selected.length+")");
  }

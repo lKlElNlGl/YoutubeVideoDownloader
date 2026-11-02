@@ -32,5 +32,7 @@ public class UiStringsTest {
     }
     @Test public void russianModeKeepsOriginalDynamicLabels() {
         assertEquals("Выбрано: 8 из 554", UiStrings.displayLanguage("ru", "Выбрано: 8 из 554"));
+    }    @Test public void formatsTransferUnitsAsEnglish() {
+        assertEquals("Downloaded: 20.5 MB/s", UiStrings.displayLanguage("en","Скачано: 20.5 МБ/с"));
     }
 }

@@ -812,7 +812,7 @@ public final class MainActivity extends Activity {
         refreshQueue();
         try{
             DownloadService.kick(this);
-            Toast.makeText(this,UiStrings.display(MainActivity.this, priority?"Приоритетная загрузка добавлена":"Добавлено в очередь"),Toast.LENGTH_SHORT).show();
+            QueueNotice.show(this,QueueNotice.message(1,priority));
         }catch(Exception e){error("Запуск загрузки",e);}
     }
     private String queueName(DownloadQueue.Item j){
@@ -1055,7 +1055,7 @@ public final class MainActivity extends Activity {
         CheckBox deleteFile=new CheckBox(this);
         deleteFile.setText(UiStrings.display(MainActivity.this, "Также удалить скачанный файл с устройства"));
         deleteFile.setTextColor(ThemeStyle.text(this));deleteFile.setTextSize(13);
-        deleteFile.setButtonTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
+        UiCheckboxStyle.apply(deleteFile);
         if(finished){
             LinearLayout.LayoutParams checkParams=new LinearLayout.LayoutParams(-1,-2);
             checkParams.setMargins(0,dp(12),0,0);content.addView(deleteFile,checkParams);
@@ -1211,51 +1211,20 @@ public final class MainActivity extends Activity {
             rememberPreview(PreviewSnapshot.playlist(link,cached.title,cached.entries.size()),null);
             openPlaylist(cached,link,priority);return;
         }
-        if(refresh){
-            if(!PlaylistRefreshManager.start(getApplicationContext(),link,proxyValue)){
-                ThemeStyle.dialog(this).setMessage(UiStrings.display(this,"Другой плейлист уже обновляется"))
-                    .setPositiveButton(UiStrings.display(this,"ОК"),null).show();
-                return;
-            }
-            openPlaylistAfterRefresh=true;
-            watchedSharedRefresh=true;
-            updatePreviewMessage("");
-            infoHandler.removeCallbacks(sharedPlaylistClock);
-            sharedPlaylistClock.run();
+
+        if(!PlaylistRefreshManager.start(getApplicationContext(),link,proxyValue)){
+            ThemeStyle.dialog(this)
+                .setMessage(UiStrings.display(this,"Другой плейлист уже обновляется"))
+                .setPositiveButton(UiStrings.display(this,"ОК"),null).show();
             return;
         }
-        loadingPlaylist=true;
-        final String requestId=beginInfo("Получение списка видео плейлиста…");
-        uiWorker.execute(()->{
-            try {
-                PlaylistRepository.Playlist data;
-                try{data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue,requestId);}
-                catch(Exception first){
-                    if(!infoCurrent(requestId)||!EngineRecoveryPolicy.shouldUpdate(first.getMessage())||DownloadQueue.hasActive(this))throw first;
-                    runOnUiThread(()->updatePreviewMessage("Обновление компонента YouTube…"));
-                    if(EngineMaintenance.update(getApplicationContext(),false,false)!=EngineMaintenance.Result.UPDATED)
-                        throw first;
-                    runOnUiThread(()->updatePreviewMessage("Повторное получение списка…"));
-                    data=PlaylistRepository.fetch(getApplicationContext(),link,proxyValue,requestId);
-                }
-                final PlaylistRepository.Playlist loaded=data;
-                runOnUiThread(()->{
-                    if(!infoCurrent(requestId))return;
-                    finishInfo(requestId);
-                    if(!link.equals(url.getText().toString().trim()))return;
-                    PlaylistCache.save(this,link,loaded);
-                    rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
-                    openPlaylist(loaded,link,priority);
-                });
-            }catch(Exception ex){
-                runOnUiThread(()->{
-                    if(!infoCurrent(requestId))return;
-                    finishInfo(requestId);
-                    if(link.equals(url.getText().toString().trim()))showPreviewFailure(ex);
-                });
-            }
-        });
+        openPlaylistAfterRefresh=true;
+        watchedSharedRefresh=true;
+        processedRefreshRevision=-1;
+        infoHandler.removeCallbacks(sharedPlaylistClock);
+        sharedPlaylistClock.run();
     }
+
     private void openPlaylist(PlaylistRepository.Playlist data,String link,boolean priority){
         if(!PlaylistCache.has(this,link))PlaylistCache.save(this,link,data);
         Intent intent=new Intent(this,PlaylistActivity.class);

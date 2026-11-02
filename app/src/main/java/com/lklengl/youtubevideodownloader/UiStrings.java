@@ -337,6 +337,12 @@ public final class UiStrings {
         strings.put("Добавить в очередь", "Add to queue");
         strings.put("Скачанные", "Downloaded");
         strings.put("Нескачанные", "Not downloaded");
+        strings.put(" МБ", " MB");
+        strings.put(" ГБ", " GB");
+        strings.put(" КБ", " KB");
+        strings.put(" кбит/с", " kbps");
+        strings.put(" из ", " of ");
+        strings.put(" с", " s");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}

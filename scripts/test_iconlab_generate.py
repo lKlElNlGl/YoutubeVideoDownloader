@@ -1,4 +1,4 @@
-"""Regression suite for Clean C baseline and three clean upper-edge variants."""
+"""8 upper-rim variants, immutable Clean C2 and no accidental resizing."""
 import sys
 import tempfile
 import unittest
@@ -6,105 +6,116 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from generate_iconlab_icons import (
-    TOP_STYLES, APPROVED_SCALE, OUTPUT_SIZE, apply_cleanup,
-    apply_top_cleanup, fit_canvas_subpixel, neutralize_upper_left_bezel,
-    remove_external_matte, render_variants,
-)
-
-ROOT = Path(__file__).resolve().parents[1]
-LABELS = ["C", "C1", "C2", "C3"]
+    VARIANTS, SOURCE, APPROVED_SCALE, OUTPUT_SIZE, remove_external_matte,
+    apply_cleanup, apply_top_cleanup, neutralize_upper_left_bezel,
+    clean_c2_reference, repair_upper_rim, extend_upper_black,
+    fit_canvas_subpixel, render_variants)
+ROOT=Path(__file__).resolve().parents[1]
+LABELS=[f"{n:02d}" for n in range(1,9)]
 
 
 def fixture():
-    img = Image.new("RGBA", (128, 128), (48, 47, 46, 255))
-    img.putpixel((18, 14), (125, 70, 74, 255))
-    img.putpixel((20, 12), (199, 130, 136, 255))
-    img.putpixel((64, 32), (240, 30, 35, 255))
-    img.putpixel((64, 64), (255, 255, 255, 255))
-    return img
+    im=Image.new("RGBA",(128,128),(54,55,59,255))
+    for x in range(10,118):
+        for y in range(3,10):
+            im.putpixel((x,y),(122,121,121,255))
+    for x in range(28,100):
+        for y in range(24,95):
+            im.putpixel((x,y),(230,35,39,255))
+    for x in range(52,78):
+        for y in range(53,76):
+            im.putpixel((x,y),(249,249,249,255))
+    im.putpixel((18,14),(125,70,74,255))
+    im.putpixel((20,12),(199,130,136,255))
+    return im
 
 
 class IconLabTests(unittest.TestCase):
-    def test_four_named_styles_at_original_04b_scale(self):
-        self.assertEqual(list(TOP_STYLES), LABELS)
-        self.assertEqual(OUTPUT_SIZE, 192)
-        self.assertAlmostEqual(APPROVED_SCALE, 1.06 * 0.9975)
+    def test_four_same_size_and_four_gradual_extensions(self):
+        self.assertEqual([v[0] for v in VARIANTS],LABELS)
+        self.assertEqual([v[2] for v in VARIANTS],[0,0,0,0,.5,1,1.5,2])
+        self.assertEqual([v[1] for v in VARIANTS[:4]],[0,.35,.65,.95])
+        self.assertEqual(OUTPUT_SIZE,192)
+        self.assertAlmostEqual(APPROVED_SCALE,1.06*.9975)
 
-    def test_clean_c_is_pixel_identical_to_v030_reference(self):
-        base = apply_cleanup(remove_external_matte(fixture()), 2, 16, 0)
-        expected = fit_canvas_subpixel(base, OUTPUT_SIZE, APPROVED_SCALE)
+    def test_first_icon_pixel_identical_to_clean_c2_previous_version(self):
+        old_c=apply_cleanup(remove_external_matte(fixture()),2,16,0)
+        old_c2=apply_top_cleanup(neutralize_upper_left_bezel(old_c),1.0,0)
+        self.assertEqual(clean_c2_reference(fixture()).tobytes(),old_c2.tobytes())
+        expected=fit_canvas_subpixel(old_c2,192,APPROVED_SCALE)
         with tempfile.TemporaryDirectory() as td:
-            render_variants(fixture(), Path(td))
-            with Image.open(Path(td) / "mipmap-xxxhdpi/lab_clean_c.png") as actual:
-                self.assertEqual(actual.tobytes(), expected.tobytes())
+            render_variants(fixture(),Path(td))
+            with Image.open(Path(td)/"mipmap-xxxhdpi/lab_top_01.png") as got:
+                self.assertEqual(got.tobytes(),expected.tobytes())
 
-    def test_muted_and_bright_warm_reflection_become_neutral_without_dimming(self):
-        base = apply_cleanup(remove_external_matte(fixture()), 2, 16, 0)
-        changed = neutralize_upper_left_bezel(base)
-        for pos in [(18, 14), (20, 12)]:
-            original = base.getpixel(pos)
-            fixed = changed.getpixel(pos)
-            self.assertGreater(original[0], original[1])
-            self.assertEqual(fixed[0], fixed[1])
-            self.assertEqual(fixed[1], fixed[2])
-            self.assertGreater(fixed[0], 0)
-            self.assertEqual(fixed[3], original[3])
-        self.assertEqual(changed.getpixel((20, 12))[:3], (145, 145, 145))
-        self.assertEqual(changed.getpixel((64, 32)), base.getpixel((64, 32)))
-        self.assertEqual(changed.getpixel((64, 64)), base.getpixel((64, 64)))
+    def test_rim_recolor_reduces_gray_brightness_with_exact_alpha_and_body(self):
+        base=clean_c2_reference(fixture())
+        variants=[repair_upper_rim(base,s) for s in [0,.35,.65,.95]]
+        sums=[sum(sum(img.getpixel((64,y))[:3]) for y in range(12))
+              for img in variants]
+        self.assertTrue(all(a>b for a,b in zip(sums,sums[1:])),sums)
+        for im in variants:
+            self.assertEqual(im.getchannel("A").tobytes(),
+                             base.getchannel("A").tobytes())
+            self.assertEqual(im.getpixel((64,36)),base.getpixel((64,36)))
+            self.assertEqual(im.getpixel((64,66)),base.getpixel((64,66)))
 
-    def test_upper_trims_never_change_bottom_or_red_and_white_center(self):
-        base = apply_cleanup(remove_external_matte(fixture()), 2, 16, 0)
-        versions = [base]
-        for label in LABELS[1:]:
-            a, b = TOP_STYLES[label]
-            trimmed = apply_top_cleanup(neutralize_upper_left_bezel(base), a, b)
-            versions.append(trimmed)
-            for y in range(50, 128):
-                for x in (4, 20, 64, 105, 123):
-                    self.assertEqual(trimmed.getpixel((x, y)), base.getpixel((x, y)))
-            self.assertEqual(trimmed.getpixel((64, 32)), base.getpixel((64, 32)))
-        alphas = [v.getchannel("A") for v in versions]
-        for earlier, later in zip(alphas, alphas[1:]):
-            self.assertLessEqual(
-                sum(later.crop((0, 0, 128, 44)).get_flattened_data()),
-                sum(earlier.crop((0, 0, 128, 44)).get_flattened_data()))
+    def test_extension_does_not_shift_any_pixel_below_red_panel_or_on_sides(self):
+        base=repair_upper_rim(clean_c2_reference(fixture()),.95)
+        variants=[extend_upper_black(base,g) for g in [.5,1,1.5,2]]
+        for im in variants:
+            for y in range(23,128):
+                for x in range(128):
+                    self.assertEqual(im.getpixel((x,y)),base.getpixel((x,y)))
+            for y in range(23):
+                for x in list(range(11))+list(range(117,128)):
+                    self.assertEqual(im.getpixel((x,y)),base.getpixel((x,y)))
+        area=lambda im:sum(im.getchannel("A").crop((40,0,88,15)).getdata())
+        self.assertGreater(area(variants[-1]),area(variants[0]))
 
-    def test_four_distinct_transparent_icons_and_no_stale_files(self):
+    def test_eight_distinct_transparent_192px_png_files_no_stale_images(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            stale = root / "mipmap-xxxhdpi/lab_clean_a.png"
+            d=Path(td)
+            stale=d/"mipmap-xxxhdpi/lab_clean_c2.png"
             stale.parent.mkdir(parents=True)
-            stale.write_bytes(b"obsolete")
-            render_variants(fixture(), root)
+            stale.write_bytes(b"stale")
+            render_variants(fixture(),d)
             self.assertFalse(stale.exists())
-            icons = sorted((root / "mipmap-xxxhdpi").glob("lab_clean_*.png"))
-            self.assertEqual([i.stem for i in icons],
-                             ["lab_clean_c", "lab_clean_c1", "lab_clean_c2", "lab_clean_c3"])
-            outputs = []
-            for path in icons:
-                with Image.open(path) as image:
-                    self.assertEqual(image.size, (192, 192))
-                    self.assertEqual(image.getpixel((0, 0))[3], 0)
-                    self.assertEqual(image.getpixel((191, 191))[3], 0)
-                    self.assertGreater(image.getpixel((96, 96))[3], 230)
-                    outputs.append(image.tobytes())
-            self.assertEqual(len(set(outputs)), 4)
+            files=sorted((d/"mipmap-xxxhdpi").glob("lab_top_*.png"))
+            self.assertEqual([p.stem for p in files],[f"lab_top_{n}" for n in LABELS])
+            seen=set()
+            for p in files:
+                with Image.open(p) as im:
+                    self.assertEqual(im.size,(192,192))
+                    self.assertEqual(im.mode,"RGBA")
+                    self.assertEqual(im.getpixel((0,0))[3],0)
+                    self.assertEqual(im.getpixel((191,191))[3],0)
+                    self.assertGreater(im.getpixel((96,96))[3],225)
+                    seen.add(im.tobytes())
+            self.assertEqual(len(seen),8)
 
-    def test_manifest_has_four_disabled_launcher_aliases_in_approved_order(self):
-        xml = ET.parse(ROOT / "iconlab/src/main/AndroidManifest.xml").getroot()
-        ns = "{http://schemas.android.com/apk/res/android}"
-        aliases = xml.find("application").findall("activity-alias")
-        self.assertEqual([a.attrib[ns + "label"] for a in aliases],
-                         ["Clean C", "Clean C1", "Clean C2", "Clean C3"])
-        for alias, label in zip(aliases, LABELS):
-            self.assertEqual(alias.attrib[ns + "enabled"], "false")
-            self.assertEqual(alias.attrib[ns + "icon"],
-                             f"@mipmap/lab_clean_{label.lower()}")
-            self.assertEqual(alias.attrib[ns + "name"], f".LabClean{label}")
+    def test_launcher_aliases_order_and_labels(self):
+        doc=ET.parse(ROOT/"iconlab/src/main/AndroidManifest.xml").getroot()
+        ns="{http://schemas.android.com/apk/res/android}"
+        aliases=doc.find("application").findall("activity-alias")
+        self.assertEqual(len(aliases),8)
+        for a,n in zip(aliases,LABELS):
+            self.assertTrue(a.attrib[ns+"label"].startswith(n+" "))
+            self.assertEqual(a.attrib[ns+"name"],f".LabTop{n}")
+            self.assertEqual(a.attrib[ns+"enabled"],"false")
+            self.assertEqual(a.attrib[ns+"icon"],f"@mipmap/lab_top_{n}")
 
+    def test_actual_art_not_opaque_cutoff_across_top_png_edge(self):
+        if not SOURCE.is_file():
+            self.skipTest("requires real source from GitHub")
+        with Image.open(SOURCE) as original,tempfile.TemporaryDirectory() as td:
+            render_variants(original,Path(td))
+            for n in LABELS:
+                with Image.open(Path(td)/"mipmap-xxxhdpi"/f"lab_top_{n}.png") as im:
+                    self.assertLess(max(im.getchannel("A")
+                                       .crop((0,0,192,1)).getdata()),48,n)
 
-if __name__ == "__main__":
+if __name__=="__main__":
     unittest.main()

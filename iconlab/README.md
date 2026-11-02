@@ -1,33 +1,34 @@
-# Icon Lab v0.3.2 — clean upper contour, neutral reflection
+# Icon Lab v0.4.0 — восемь вариантов верхнего чёрного контура
 
-## Approved immutable reference
+Референс **01 Clean C2** сохраняется **пиксель в пиксель**, как Clean C2 из
+Icon Lab v0.3.2. Старый Clean C остаётся доступным в истории Git.
 
-**Clean C** in first position is the exact same generated bitmap as Clean C in
-v0.3.0. It is our fixed reference: the user chose its scale, black button,
-white symbols and bottom-edge treatment. The original warm-tinted reflection
-also remains unchanged on the reference so comparisons are fair.
+| Иконка | Обработка серой полосы сверху | Наращивание верхней части |
+|---|---|---|
+| **01 Clean C2** | нет, оригинал | нет |
+| 02 Контур | затемнение на 35% | нет |
+| 03 Контур | затемнение на 65% | нет |
+| 04 Контур | затемнение на 95% | нет |
+| 05 +0,5 px | как 04 | +0,5 px |
+| 06 +1 px | как 04 | +1 px |
+| 07 +1,5 px | как 04 | +1,5 px |
+| 08 +2 px | как 04 | +2 px |
 
-| Icon | Difference relative to Clean C |
-|---|---|
-| Clean C | Identical unmodified reference (warm highlight included) |
-| Clean C1 | Neutral-color (gray) upper-left glossy reflection; minimal 0.5 px upper exterior trim |
-| Clean C2 | Same neutral highlight; stronger 1.0 px upper exterior trim |
-| Clean C3 | Same neutral highlight; 1.0 px top trim plus 2 px upper corner radius adjustment |
+Пиксели считаются в исходнике 128×128. У 02–04 не меняется
+непрозрачность и силуэт корпуса: только серый оттенок самого верхнего
+внешнего контура заменяется оттенком близлежащей чёрной рамки.
 
-All use original **Icon 04b scale**, 192×192 legacy `mipmap-xxxhdpi`
-resource, transparent outside, and exactly the same lower edge. No modifications
-to the red Play button, white arrow, black body volume or position.
+У 05–08 верхняя часть чёрной рамки плавно наращивается вверх, без
+растяжения всей иконки. Красная кнопка и белые символы остаются на
+исходных местах, нижний край и стороны тоже не меняются. Сохраняется
+нейтрализация красно-коричневого оттенка блика из Clean C2.
 
-Only alpha pixels near the *upper* exterior contour are cut; reflection color is
-neutralized without changing its luminance. The approved glossy reflection is
-not erased.
+Сохраняем утверждённый размер 04b и legacy ресурс PNG 192×192
+в mipmap-xxxhdpi. Не используем adaptive background или nodpi.
 
-## Test
+Проверка: удалить прежнее Icon Lab, если Android сообщает о конфликте
+подписи; установить IconLab-v0.4.0.apk; нажать «Показать 8 вариантов»;
+сравнить 01–08 на рабочем столе, особенно серую линию и баланс
+отступов над и под красной кнопкой.
 
-1. Uninstall earlier Icon Lab to avoid debug-signature incompatibility.
-2. Install `IconLab-v0.3.2.apk`, launch it, tap `Показать 4 варианта`.
-3. Compare Clean C, Clean C1, Clean C2, Clean C3 in the app drawer.
-4. Choose the least reddish icon with a clean top edge and intact button.
-
-Launcher-specific edge treatment must still be checked visually on the
-user's phone. This is a disposable standalone tester without downloader dependencies.
+Основное приложение YoutubeVideoDownloader не затрагивается.

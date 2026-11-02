@@ -10,9 +10,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Locale;
 
 public final class MainActivity extends Activity {
-    private static final int VARIANT_COUNT = 4;
+    private static final int VARIANT_COUNT = 8;
 
     @Override
     public void onCreate(Bundle state) {
@@ -25,14 +26,15 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("Clean C — исходный образец.\n"
-                + "C1–C3: очистка верхней каймы и нейтральный серый блик. "
-                + "Размер и низ как у Clean C.");
+        description.setText("01 — точный Clean C2.\n"
+                + "02–04 — затемнение серой каймы без увеличения.\n"
+                + "05–08 — увеличение верхней чёрной части от 0,5 до 2 px.\n"
+                + "Красная кнопка, белые символы и нижний край неизменны.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button button = new Button(this);
-        button.setText("Показать 4 варианта");
+        button.setText("Показать 8 вариантов");
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         buttonParams.topMargin = dp(24);
@@ -43,18 +45,18 @@ public final class MainActivity extends Activity {
             PackageManager pm = getPackageManager();
             int completed = 0;
             try {
-                for (int i = 0; i < VARIANT_COUNT; i++) {
-                    String alias = getPackageName() + ".LabClean" + (i == 0 ? "C" : "C" + i);
+                for (int i = 1; i <= VARIANT_COUNT; i++) {
+                    String alias = getPackageName() + ".LabTop"
+                            + String.format(Locale.US, "%02d", i);
                     pm.setComponentEnabledSetting(
                             new ComponentName(this, alias),
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                             PackageManager.DONT_KILL_APP);
                     completed++;
                 }
-                description.setText("Все 4 варианта включены.\n"
-                        + "Найдите Clean C, C1, C2 и C3 в списке приложений. "
-                        + "Сравните верхнюю кайму и цвет блика.");
-                Toast.makeText(this, "Включены Clean C — Clean C3", Toast.LENGTH_LONG).show();
+                description.setText("Включены все 8 вариантов.\n"
+                        + "Сравните значки 01–08 на рабочем столе и в меню приложений.");
+                Toast.makeText(this, "Включены значки 01–08", Toast.LENGTH_LONG).show();
             } catch (RuntimeException exception) {
                 Toast.makeText(this, "Включено " + completed
                         + " значков. Ошибка: " + exception.getClass().getSimpleName(),

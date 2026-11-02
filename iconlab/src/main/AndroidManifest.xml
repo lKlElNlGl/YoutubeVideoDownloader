@@ -13,10 +13,10 @@
         </activity>
 
         <activity-alias
-            android:name=".LabCleanC"
+            android:name=".LabTop01"
             android:targetActivity=".MainActivity"
-            android:label="Clean C"
-            android:icon="@mipmap/lab_clean_c"
+            android:label="01 Clean C2"
+            android:icon="@mipmap/lab_top_01"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -26,10 +26,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanC1"
+            android:name=".LabTop02"
             android:targetActivity=".MainActivity"
-            android:label="Clean C1"
-            android:icon="@mipmap/lab_clean_c1"
+            android:label="02 Контур"
+            android:icon="@mipmap/lab_top_02"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -39,10 +39,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanC2"
+            android:name=".LabTop03"
             android:targetActivity=".MainActivity"
-            android:label="Clean C2"
-            android:icon="@mipmap/lab_clean_c2"
+            android:label="03 Контур"
+            android:icon="@mipmap/lab_top_03"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -52,10 +52,62 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanC3"
+            android:name=".LabTop04"
             android:targetActivity=".MainActivity"
-            android:label="Clean C3"
-            android:icon="@mipmap/lab_clean_c3"
+            android:label="04 Контур"
+            android:icon="@mipmap/lab_top_04"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabTop05"
+            android:targetActivity=".MainActivity"
+            android:label="05 +0,5 px"
+            android:icon="@mipmap/lab_top_05"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabTop06"
+            android:targetActivity=".MainActivity"
+            android:label="06 +1 px"
+            android:icon="@mipmap/lab_top_06"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabTop07"
+            android:targetActivity=".MainActivity"
+            android:label="07 +1,5 px"
+            android:icon="@mipmap/lab_top_07"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabTop08"
+            android:targetActivity=".MainActivity"
+            android:label="08 +2 px"
+            android:icon="@mipmap/lab_top_08"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

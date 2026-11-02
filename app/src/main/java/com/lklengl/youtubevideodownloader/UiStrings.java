@@ -330,6 +330,11 @@ public final class UiStrings {
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}
+    public static java.util.List<String> translateLabels(android.content.Context context,java.util.List<String> labels) {
+        java.util.List<String> result=new java.util.ArrayList<>();
+        for(String label:labels)result.add(display(context,label));
+        return result;
+    }
     public static String[] translateChoices(android.content.Context context,String[] original) {
         if(original==LANGUAGE_NAMES)return original;
         String[] result=new String[original.length];

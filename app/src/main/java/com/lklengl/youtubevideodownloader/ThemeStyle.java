@@ -37,10 +37,27 @@ public final class ThemeStyle {
     public static void initialize(Activity activity){
         boolean dark=isDark(activity);
         activity.setTheme(dark?R.style.YvdDark:android.R.style.Theme_Material_Light_NoActionBar);
+        activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|
+            android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        activity.getWindow().getDecorView().setBackgroundColor(dark?0xFF090B0E:0xFFE8EAF0);
         activity.getWindow().setStatusBarColor(dark?0xFF090B0E:0xFFE8EAF0);
         activity.getWindow().setNavigationBarColor(dark?0xFF090B0E:0xFFE8EAF0);
         activity.getWindow().getDecorView().setSystemUiVisibility(dark?0:
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    }
+    /** Android 15 forces edge-to-edge at target 35; reserve opaque system bar areas. */
+    public static void applySystemBarInsets(Activity activity){
+        if(android.os.Build.VERSION.SDK_INT<35)return;
+        android.view.View content=activity.findViewById(android.R.id.content);
+        if(content==null)return;
+        content.setOnApplyWindowInsetsListener((v,insets)->{
+            android.graphics.Insets status=insets.getInsets(android.view.WindowInsets.Type.statusBars());
+            android.graphics.Insets nav=insets.getInsets(android.view.WindowInsets.Type.navigationBars());
+            v.setPadding(0,status.top,0,nav.bottom);
+            return insets;
+        });
+        content.requestApplyInsets();
     }
     public static int text(Context c){return isDark(c)?0xFFF4F5F8:0xFF171C25;}
     public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}

@@ -1,11 +1,12 @@
-"""Generate nine ultra-close true launcher icons based on the approved Icon 04.
+"""Generate Icon 04a..04i as true legacy launcher icons, preserving old density.
 
-Icon 04 was the original transparent legacy icon at scale 1.06. All variants
-use the SAME approved original WebP with the same matte removal algorithm.
-04a = 100% of the Icon 04 scale; 04b..04i decrease by 0.25% each.
+The original, visually approved Icon 04 used 192x192 PNG in mipmap-xxxhdpi.
+v0.2.0 accidentally changed that to 1024x1024 mipmap-nodpi, leading to
+launcher-added white icon tiles. 04a here is PIXEL-IDENTICAL to the v0.1.0
+Icon 04 bitmap, and b..i change only its scale in 0.25% steps.
 
-Render at 1024 px with nodpi resources, to avoid rounding the fine changes
-away at the old 192 px output size. Never rescale a previously clipped icon.
+The slight adjustments use 8x supersampling so increments smaller than one
+192px output pixel remain distinct. We never scale an already clipped bitmap.
 """
 from pathlib import Path
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
@@ -16,7 +17,8 @@ RES = ROOT / "iconlab/src/main/res"
 BASE_SCALE = 1.06
 STEP = 0.0025
 COUNT = 9
-OUTPUT_SIZE = 1024
+OUTPUT_SIZE = 192
+SUPER_SAMPLE = 8
 
 
 def remove_external_matte(source):
@@ -39,12 +41,25 @@ def remove_external_matte(source):
 
 
 def fit_canvas(artwork, size, scale):
+    """Original v0.1.0 implementation: must not change for 04a."""
     side = max(1, round(size * scale))
     resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     offset = (size - side) // 2
     image.paste(resized, (offset, offset))
     return image
+
+
+def fit_canvas_subpixel(artwork, size, scale):
+    """Scale to an 8x canvas, crop symmetrically, then downsample with LANCZOS."""
+    big = size * SUPER_SAMPLE
+    side = max(1, round(big * scale))
+    resized = artwork.resize((side, side), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    # Use integer centering at high resolution for fractional-pixel changes.
+    offset = (big - side) // 2
+    canvas.paste(resized, (offset, offset))
+    return canvas.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def variant_scales():
@@ -55,20 +70,24 @@ def variant_scales():
 
 
 def render_variants(source, output_dir):
-    icon_dir = output_dir / "mipmap-nodpi"
+    # Keep the same Android icon density qualifier as v0.1.0, NOT nodpi.
+    icon_dir = output_dir / "mipmap-xxxhdpi"
     icon_dir.mkdir(parents=True, exist_ok=True)
 
-    # Prevent stale v0.1 icons when building in a reused working tree.
-    for stale_dir in ("mipmap-xxxhdpi", "mipmap-anydpi-v26", "drawable-nodpi"):
-        directory = output_dir / stale_dir
-        if directory.exists():
-            for pattern in ("lab_icon_*.png", "lab_icon_*.xml", "lab_foreground_*.png"):
-                for old in directory.glob(pattern):
-                    old.unlink()
+    # Delete accidentally generated nodpi files from v0.2.0 if locally present.
+    obsolete = output_dir / "mipmap-nodpi"
+    if obsolete.exists():
+        for path in obsolete.glob("lab_icon_*.png"):
+            path.unlink()
+    for path in icon_dir.glob("lab_icon_*.png"):
+        path.unlink()
 
     clean = remove_external_matte(source)
-    for name, scale in variant_scales().items():
-        icon = fit_canvas(clean, OUTPUT_SIZE, scale)
+    for index, (name, scale) in enumerate(variant_scales().items()):
+        # 04a is exactly v0.1.0's trusted Icon 04 in size, res folder and bytes.
+        icon = (fit_canvas(clean, OUTPUT_SIZE, BASE_SCALE)
+                if index == 0 else
+                fit_canvas_subpixel(clean, OUTPUT_SIZE, scale))
         icon.save(icon_dir / f"lab_icon_{name}.png", optimize=True)
     return clean
 
@@ -78,4 +97,4 @@ if __name__ == "__main__":
         clean = render_variants(source, RES)
     assert clean.getpixel((0, 0))[3] == 0
     assert clean.getpixel((clean.width // 2, clean.height // 2))[3] > 230
-    print("Generated 9 Icon 04 variants: 04a (100%) through 04i (98%), step 0.25%")
+    print("Generated nine 192px legacy xxxhdpi icons: 04a matches v0.1.0 Icon 04")

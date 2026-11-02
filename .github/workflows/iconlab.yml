@@ -33,35 +33,34 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test 9 icon scales and launcher aliases
+      - name: Regression tests
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
-      - name: Verify APK contents and small size
+      - name: Verify package and small size
         run: |
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           test -s "$apk"
           test "$(stat -c '%s' "$apk")" -lt 5000000
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep "package: name='com.lklelnlgl.iconlab'"
-      - name: Publish standalone prerelease without changing latest main app release
+      - name: Publish separate prerelease
         run: |
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
-          test -s "$apk"
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.2.0.apk
-          tag=iconlab-v0.2.0
+          cp "$apk" dist/IconLab-v0.2.1.apk
+          tag=iconlab-v0.2.1
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.2.0.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.2.1.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.2.0.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.2.0" \
-              --notes "Nine ultra-close launcher icons based on Icon 04: Icon 04a = 100% of original Icon 04 scale, Icon 04b..04i shrink by 0.25% to 98%. Standalone APK; uninstall Icon Lab v0.1.0 first. Main downloader release unchanged." \
+            gh release create "$tag" dist/IconLab-v0.2.1.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.2.1" \
+              --notes "Fixed Icon 04a..04i launcher resource density (192px xxxhdpi, as successful v0.1.0 Icon 04). 04a is pixel-identical to v0.1.0 04. The other 8 versions shrink in 0.25% increments with supersampling. Uninstall v0.2.0 before installing. Main app release remains unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.2.0
+          name: IconLab-v0.2.1
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

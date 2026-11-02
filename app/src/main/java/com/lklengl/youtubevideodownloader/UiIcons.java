@@ -50,6 +50,13 @@ public final class UiIcons extends Drawable {
             case "info":
                 c.drawCircle(12,12,9,p);c.drawLine(12,10,12,17,p);
                 c.drawCircle(12,7,0.8f,p);break;
+            case "plus":
+                c.drawLine(12,4,12,20,p);c.drawLine(4,12,20,12,p);break;
+            case "sliders":
+                c.drawLine(3,6,21,6,p);c.drawLine(3,12,21,12,p);
+                c.drawLine(3,18,21,18,p);
+                p.setStyle(Paint.Style.FILL);c.drawCircle(8,6,3,p);
+                c.drawCircle(16,12,3,p);c.drawCircle(10,18,3,p);break;
             case "download":
                 c.drawLine(12,3,12,16,p);c.drawLine(7,11,12,16,p);c.drawLine(17,11,12,16,p);
                 c.drawLine(4,19,20,19,p);c.drawLine(4,19,4,16,p);c.drawLine(20,19,20,16,p);break;

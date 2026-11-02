@@ -1,37 +1,33 @@
-# Icon Lab v0.3.0 — clean-grey-strip comparison
+# Icon Lab v0.3.1 — clean upper contour, neutral reflection
 
-**Purpose:** choose a grey-strip-free Android launcher icon using the EXACT
-scale of Icon 04b from Icon Lab v0.2.1, without changing the app's artwork.
+## Approved immutable reference
 
-## Test specification
+**Clean C** in first position is the exact same generated bitmap as Clean C in
+v0.3.0. It is our fixed reference: the user chose its scale, black button,
+white symbols and bottom-edge treatment. The original warm-tinted reflection
+also remains unchanged on the reference so comparisons are fair.
 
-- One button, `Показать 6 вариантов`, enables six real launcher icons.
-- All variants use the same 192px PNG in `mipmap-xxxhdpi`, the same
-  scale `1.06 * 0.9975`, the same position, and transparent corners.
-- No adaptive icon, white background, red-button edits or size changes.
-- Only the transparency mask along the lower edge/corners and the faint
-  exterior alpha pixels changes.
-
-| Icon | Change to baseline Icon 04b |
+| Icon | Difference relative to Clean C |
 |---|---|
-| Clean A | Exact Icon 04b, unmodified reference |
-| Clean B | Minimal trim of the lower transparent/grey fringe |
-| Clean C | Minimal lower trim plus faint outer halo removal |
-| Clean D | Stronger lower fringe trim |
-| Clean E | Stronger bottom trim with slightly tighter rounded corners |
-| Clean F | Maximum conservative trim, corner and faint-halo cleanup |
+| Clean C | Identical unmodified reference (warm highlight included) |
+| Clean C1 | Neutral-color (gray) upper-left glossy reflection; minimal 0.5 px upper exterior trim |
+| Clean C2 | Same neutral highlight; stronger 1.0 px upper exterior trim |
+| Clean C3 | Same neutral highlight; 1.0 px top trim plus 2 px upper corner radius adjustment |
 
-## How to check
+All use original **Icon 04b scale**, 192×192 legacy `mipmap-xxxhdpi`
+resource, transparent outside, and exactly the same lower edge. No modifications
+to the red Play button, white arrow, black body volume or position.
 
-1. **Uninstall the previous Icon Lab** first (debug signing may differ).
-2. Install `IconLab-v0.3.0.apk` from the separate prerelease.
-3. Open **Icon Lab** and press **Показать 6 вариантов**.
-4. Compare Clean A .. Clean F in the app drawer or on your home screen.
-5. Choose the cleanest outer edge that preserves the complete black button.
+Only alpha pixels near the *upper* exterior contour are cut; reflection color is
+neutralized without changing its luminance. The approved glossy reflection is
+not erased.
 
-Android launcher normalization can differ from source transparency, so
-visual verification **on your phone** is mandatory before porting the winning
-icon to the main YouTube downloader.
+## Test
 
-No yt-dlp, ffmpeg, network, cookies or downloader functionality is included.
-This test package has a separate applicationId.
+1. Uninstall earlier Icon Lab to avoid debug-signature incompatibility.
+2. Install `IconLab-v0.3.1.apk`, launch it, tap `Показать 4 варианта`.
+3. Compare Clean C, Clean C1, Clean C2, Clean C3 in the app drawer.
+4. Choose the least reddish icon with a clean top edge and intact button.
+
+Launcher-specific edge treatment must still be checked visually on the
+user's phone. This is a disposable standalone tester without downloader dependencies.

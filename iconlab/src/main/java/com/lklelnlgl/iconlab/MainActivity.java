@@ -12,7 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public final class MainActivity extends Activity {
-    private static final int VARIANT_COUNT = 6;
+    private static final int VARIANT_COUNT = 4;
 
     @Override
     public void onCreate(Bundle state) {
@@ -25,13 +25,14 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("Шесть вариантов очистки серой полосы.\n"
-                + "Масштаб у всех одинаковый — как Icon 04b.");
+        description.setText("Clean C — исходный образец.\\n"
+                + "C1–C3: очистка верхней каймы и нейтральный серый блик. "
+                + "Размер и низ как у Clean C.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button button = new Button(this);
-        button.setText("Показать 6 вариантов");
+        button.setText("Показать 4 варианта");
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         buttonParams.topMargin = dp(24);
@@ -43,17 +44,17 @@ public final class MainActivity extends Activity {
             int completed = 0;
             try {
                 for (int i = 0; i < VARIANT_COUNT; i++) {
-                    String alias = getPackageName() + ".LabClean" + (char) ('A' + i);
+                    String alias = getPackageName() + ".LabClean" + (i == 0 ? "C" : "C" + i);
                     pm.setComponentEnabledSetting(
                             new ComponentName(this, alias),
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                             PackageManager.DONT_KILL_APP);
                     completed++;
                 }
-                description.setText("Все 6 вариантов включены.\n"
-                        + "Найдите Clean A — Clean F в списке приложений. "
-                        + "Сравните серую полосу под чёрной кнопкой.");
-                Toast.makeText(this, "Включены Clean A — Clean F", Toast.LENGTH_LONG).show();
+                description.setText("Все 4 варианта включены.\\n"
+                        + "Найдите Clean C, C1, C2 и C3 в списке приложений. "
+                        + "Сравните верхнюю кайму и цвет блика.");
+                Toast.makeText(this, "Включены Clean C — Clean C3", Toast.LENGTH_LONG).show();
             } catch (RuntimeException exception) {
                 Toast.makeText(this, "Включено " + completed
                         + " значков. Ошибка: " + exception.getClass().getSimpleName(),

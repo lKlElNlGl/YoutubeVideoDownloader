@@ -13,32 +13,6 @@
         </activity>
 
         <activity-alias
-            android:name=".LabCleanA"
-            android:targetActivity=".MainActivity"
-            android:label="Clean A"
-            android:icon="@mipmap/lab_clean_a"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabCleanB"
-            android:targetActivity=".MainActivity"
-            android:label="Clean B"
-            android:icon="@mipmap/lab_clean_b"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
             android:name=".LabCleanC"
             android:targetActivity=".MainActivity"
             android:label="Clean C"
@@ -52,10 +26,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanD"
+            android:name=".LabCleanC1"
             android:targetActivity=".MainActivity"
-            android:label="Clean D"
-            android:icon="@mipmap/lab_clean_d"
+            android:label="Clean C1"
+            android:icon="@mipmap/lab_clean_c1"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -65,10 +39,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanE"
+            android:name=".LabCleanC2"
             android:targetActivity=".MainActivity"
-            android:label="Clean E"
-            android:icon="@mipmap/lab_clean_e"
+            android:label="Clean C2"
+            android:icon="@mipmap/lab_clean_c2"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -78,10 +52,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabCleanF"
+            android:name=".LabCleanC3"
             android:targetActivity=".MainActivity"
-            android:label="Clean F"
-            android:icon="@mipmap/lab_clean_f"
+            android:label="Clean C3"
+            android:icon="@mipmap/lab_clean_c3"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

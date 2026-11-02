@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test clean-edge variants
+      - name: Test upper-edge cleanup and color preservation
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -49,18 +49,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.3.0.apk
-          tag=iconlab-v0.3.0
+          cp "$apk" dist/IconLab-v0.3.1.apk
+          tag=iconlab-v0.3.1
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.3.0.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.3.1.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.3.0.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.3.0" \
-              --notes "Six bottom-edge and halo cleanups A..F, all at the exact approved Icon 04b scale and original legacy 192px xxxhdpi resource type. Clean A reproduces the reference image. Standalone tester; uninstall the previous Icon Lab first. The main downloader remains unchanged." \
+            gh release create "$tag" dist/IconLab-v0.3.1.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.3.1" \
+              --notes "Four variants: Clean C is the untouched approved baseline. C1-C3 clean only the outer top edge and neutralize the red/brown tint on the top-left glossy reflection. All keep the same Icon 04b scale and original legacy 192px xxxhdpi resources. Standalone tester; uninstall the previous Icon Lab first. The main downloader remains unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.3.0
+          name: IconLab-v0.3.1
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

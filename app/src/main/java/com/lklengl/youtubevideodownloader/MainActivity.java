@@ -76,6 +76,48 @@ public final class MainActivity extends Activity {
             infoHandler.postDelayed(this,1000);
         }
     };
+    private boolean watchedSharedRefresh=false,openPlaylistAfterRefresh=false;
+    private long processedRefreshRevision=-1;
+    private final Runnable sharedPlaylistClock=new Runnable(){
+        @Override public void run(){
+            if(url!=null&&infoIndicator!=null){
+                PlaylistRefreshManager.Snapshot state=PlaylistRefreshManager.current();
+                String link=url.getText().toString().trim();
+                boolean matches=link.equals(state.url)&&PlaylistSupport.isPlaylist(link);
+                if(matches&&state.running()){
+                    watchedSharedRefresh=true;
+                    ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);
+                    infoIndicator.setVisibility(View.VISIBLE);
+                    previewButton.setEnabled(false);updatePreviewButton.setEnabled(false);
+                    long elapsed=Math.max(0,(android.os.SystemClock.elapsedRealtime()-state.startedMs)/1000);
+                    infoTimer.setText(UiStrings.display(MainActivity.this,
+                        "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",elapsed/60,elapsed%60)+
+                        "\n"+state.message));
+                }else if(watchedSharedRefresh||matches&&state.stage==PlaylistRefreshManager.Stage.DONE&&processedRefreshRevision!=state.revision){
+                    watchedSharedRefresh=false;
+                    if(activeInfoProcessId==null){
+                        ((View)infoIndicator.getTag()).setVisibility(View.GONE);
+                        previewButton.setEnabled(true);
+                    }
+                    updatePreviewButton.setEnabled(true);loadingPlaylist=false;
+                    if(matches&&state.stage==PlaylistRefreshManager.Stage.DONE&&processedRefreshRevision!=state.revision){
+                        processedRefreshRevision=state.revision;
+                        PlaylistRepository.Playlist loaded=PlaylistCache.load(MainActivity.this,link);
+                        if(loaded!=null){
+                            rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
+                            if(openPlaylistAfterRefresh)openPlaylist(loaded,link,false);
+                        }
+                    }else if(matches&&state.stage==PlaylistRefreshManager.Stage.ERROR){
+                        showPreviewFailure(new IllegalStateException(state.error));
+                    }else if(matches&&state.stage==PlaylistRefreshManager.Stage.CANCELLED){
+                        updatePreviewMessage(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                    }
+                    openPlaylistAfterRefresh=false;
+                }
+            }
+            infoHandler.postDelayed(this,800);
+        }
+    };
     private String previewErrorLog="";
     private LinearLayout previewCard;
     private ImageView thumbnail;
@@ -126,6 +168,16 @@ public final class MainActivity extends Activity {
         checkAppUpdate(false);
     }
 
+
+    @Override protected void onResume(){
+        super.onResume();
+        infoHandler.removeCallbacks(sharedPlaylistClock);
+        infoHandler.post(sharedPlaylistClock);
+    }
+    @Override protected void onPause(){
+        infoHandler.removeCallbacks(sharedPlaylistClock);
+        super.onPause();
+    }
 
     private void buildScreen() {
         mainScroll=new ScrollView(this);
@@ -1135,6 +1187,10 @@ public final class MainActivity extends Activity {
         previewButton.setEnabled(true);loadingPlaylist=false;
     }
     private void cancelInfo(){
+        PlaylistRefreshManager.Snapshot state=PlaylistRefreshManager.current();
+        if(state.running()&&url!=null&&url.getText().toString().trim().equals(state.url)){
+            PlaylistRefreshManager.cancel(state.url);return;
+        }
         String id=activeInfoProcessId;
         if(id==null)return;
         infoHandler.removeCallbacks(infoClock);
@@ -1159,6 +1215,19 @@ public final class MainActivity extends Activity {
         if(cached!=null&&!refresh){
             rememberPreview(PreviewSnapshot.playlist(link,cached.title,cached.entries.size()),null);
             openPlaylist(cached,link,priority);return;
+        }
+        if(refresh){
+            if(!PlaylistRefreshManager.start(getApplicationContext(),link,proxyValue)){
+                ThemeStyle.dialog(this).setMessage(UiStrings.display(this,"Другой плейлист уже обновляется"))
+                    .setPositiveButton(UiStrings.display(this,"ОК"),null).show();
+                return;
+            }
+            openPlaylistAfterRefresh=true;
+            watchedSharedRefresh=true;
+            updatePreviewMessage("");
+            infoHandler.removeCallbacks(sharedPlaylistClock);
+            sharedPlaylistClock.run();
+            return;
         }
         loadingPlaylist=true;
         final String requestId=beginInfo("Получение списка видео плейлиста…");

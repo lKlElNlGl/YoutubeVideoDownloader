@@ -248,18 +248,20 @@ public final class PlaylistActivity extends Activity {
   listFrame.addView(empty,new FrameLayout.LayoutParams(-1,-1));
   list.setEmptyView(empty);
   adapter=new BaseAdapter(){
-   @Override public int getCount(){return playlist.entries.size();}
-   @Override public Object getItem(int i){return playlist.entries.get(i);}
-   @Override public long getItemId(int i){return i;}
+   @Override public int getCount(){return visibleRows.size();}
+   @Override public Object getItem(int i){return playlist.entries.get(visibleRows.get(i));}
+   @Override public long getItemId(int i){return visibleRows.get(i);}
+   @Override public boolean hasStableIds(){return true;}
    @Override public View getView(int pos,View old,android.view.ViewGroup parent){
     Row h;
     if(old==null){
      h=new Row();
      LinearLayout row=new LinearLayout(PlaylistActivity.this);
      row.setGravity(Gravity.CENTER_VERTICAL);
-     row.setPadding(dp(1),dp(7),dp(1),dp(7));row.setMinimumHeight(dp(77));
+     row.setPadding(dp(1),dp(4),dp(1),dp(4));row.setMinimumHeight(dp(67));
      h.check=new CheckBox(PlaylistActivity.this);
-     row.addView(h.check,new LinearLayout.LayoutParams(dp(37),dp(48)));
+      h.check.setButtonTintList(checkTint());
+     row.addView(h.check,new LinearLayout.LayoutParams(dp(37),dp(43)));
      h.image=new ImageView(PlaylistActivity.this);
      row.addView(h.image,new LinearLayout.LayoutParams(dp(64),dp(53)));
      LinearLayout description=column();
@@ -272,20 +274,24 @@ public final class PlaylistActivity extends Activity {
      description.addView(h.duration);
      h.quality=txt("",11);
      h.quality.setTextColor(ThemeStyle.text(PlaylistActivity.this));
-     h.quality.setPadding(dp(8),dp(5),dp(8),dp(5));
-     h.quality.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(PlaylistActivity.this),
-       ThemeStyle.buttonStroke(PlaylistActivity.this),dp(7)));
-     LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(-2,-2);
-     qp.setMargins(0,dp(3),0,0);description.addView(h.quality,qp);
-     h.already=txt("Уже добавлено",10);h.already.setTextColor(0xFF4EC67B);
+     h.quality.setPadding(dp(7),dp(3),dp(5),dp(3));
+      h.quality.setMinHeight(dp(27));
+      h.quality.setCompoundDrawablesWithIntrinsicBounds(null,null,
+        new UiIcons("chevron",ThemeStyle.subdued(PlaylistActivity.this),dp(12)),null);
+      h.quality.setCompoundDrawablePadding(dp(4));
+      h.quality.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(PlaylistActivity.this),
+        ThemeStyle.buttonStroke(PlaylistActivity.this),dp(6)));
+      LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(-2,dp(29));
+      qp.setMargins(0,dp(3),0,0);description.addView(h.quality,qp);
+      h.already=txt("",10);
      description.addView(h.already);
      row.setTag(h);h.root=row;old=row;
      row.setOnClickListener(v->toggle(h.position,h));
      h.check.setOnClickListener(v->toggle(h.position,h));
      h.quality.setOnClickListener(v->chooseQuality(h.position));
     }else h=(Row)old.getTag();
-    h.position=pos;
-    PlaylistRepository.Entry entry=playlist.entries.get(pos);
+    h.position=visibleRows.get(pos);
+     PlaylistRepository.Entry entry=playlist.entries.get(h.position);
     String imageKey="playlist-"+entry.id;
     if(!imageKey.equals(h.imageId)){
      h.imageId=imageKey;
@@ -293,12 +299,15 @@ public final class PlaylistActivity extends Activity {
      imageItem.id=imageKey;imageItem.url=entry.url;
      QueueThumbnails.show(PlaylistActivity.this,imageItem,h.image,dp(7));
     }
-    h.check.setButtonTintList(ColorStateList.valueOf(ThemeStyle.RED));
-    h.check.setChecked(selected[pos]);
+    h.check.setChecked(selected[h.position]);
     h.name.setText(entry.title);
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
-    h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(qualities.get(pos))]+" ⌄"));
-    h.already.setVisibility(previouslyAddedCache.contains(entry.url)?View.VISIBLE:View.GONE);
+    h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(qualities.get(h.position))]));
+    int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
+     h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
+     h.already.setText(UiStrings.display(PlaylistActivity.this,
+       status==PlaylistHistory.DOWNLOADED?"Уже скачано":"Уже добавлено"));
+     h.already.setTextColor(status==PlaylistHistory.DOWNLOADED?0xFF4EC67B:0xFFE5AD38);
     return old;
    }
   };
@@ -312,11 +321,10 @@ public final class PlaylistActivity extends Activity {
   list.post(()->list.setSelection(Math.max(0,getPreferences(MODE_PRIVATE)
    .getInt("scroll_"+source.hashCode(),0))));
 
-  LinearLayout bottom=panel();root.addView(bottom,margin(6,0));
-  counter=txt("",12);bottom.addView(counter);
+  LinearLayout bottom=column();root.addView(bottom,margin(7,0));
   addButton=new Button(this);addButton.setText(UiStrings.display(PlaylistActivity.this, "Добавить в очередь"));
   ThemeStyle.styleButton(addButton,true);
-  ThemeStyle.icon(addButton,"download",18);
+  ThemeStyle.icon(addButton,"plus",18);
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(49)));
   addButton.setOnClickListener(v->addSelected());
  }

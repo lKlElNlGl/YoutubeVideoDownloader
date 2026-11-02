@@ -561,7 +561,7 @@ public final class MainActivity extends Activity {
         if(mode==null||formatChoices.values().equals(next.values()))return;
         String previous=restoreSaved?getPreferences(MODE_PRIVATE).getString("formatCode","mp4"):selectedFormat();
         formatChoices=next;
-        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,next.labels()){
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,UiStrings.translateLabels(this,next.labels())){
             @Override public View getView(int position,View old,ViewGroup parent){
                 TextView v=(TextView)super.getView(position,old,parent);
                 v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);return v;
@@ -589,7 +589,7 @@ public final class MainActivity extends Activity {
     private void updateQualityChoices(QualityChoices next,boolean restoreSaved){
         if(quality==null || qualityChoices.values().equals(next.values()))return;
         qualityChoices=next;
-        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,next.labels()){
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,UiStrings.translateLabels(this,next.labels())){
             @Override public View getView(int position,View convertView,ViewGroup parent){
                 TextView view=(TextView)super.getView(position,convertView,parent);
                 view.setTextColor(ThemeStyle.text(MainActivity.this));view.setTextSize(14);

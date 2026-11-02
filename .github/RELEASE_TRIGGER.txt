@@ -25,3 +25,5 @@ Publish v0.5.0: fullscreen cached playlist selector, responsive metadata, safe f
 Publish v0.5.1: intermediate palette 051, full playlist redesign, per-video quality, persistent choices, rotating progress, fixed queue popup and 11dp transparent icon.
 
 Publish v0.5.2: Russian and English localization, approved playlist browsing and filters, shared refresh, 050 palette, corrected popup borders, red action styles and transparent launcher artwork.
+
+Publish v0.5.3: stable playlist selections by ID, unified metadata refresh, queue notices, stream-progress fixes, friendly network errors, consistent controls, actual resolutions, insets, and transparent adaptive icon.

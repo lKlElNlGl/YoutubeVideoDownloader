@@ -19,10 +19,8 @@ import java.util.concurrent.*;
 public final class PlaylistActivity extends Activity {
  public static final String URL="playlist_url", QUALITY="quality", FORMAT="output_format",
   PROXY="proxy", FOLDER="folder", PRIORITY="priority";
+ private boolean priority;
  private String source,quality,format,proxy,folder;
- private volatile String activeRefreshId;
- private boolean priority,loading=false,ignoreBulk=true;
- private long refreshStart;
  private PlaylistRepository.Playlist playlist;
  private boolean[] selected;
  private List<String> qualities;
@@ -37,9 +35,9 @@ public final class PlaylistActivity extends Activity {
  private boolean selectedFirst=false,animatingSelection=false;
  private LinearLayout progressPanel;
  private Button addButton;
- 
+ private long refreshStart;
+ private boolean observedRunning=false;
  private final Handler handler=new Handler(Looper.getMainLooper());
- private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final String[] waitingMessages={
   "Запрашиваем список видео с YouTube…",
   "Ожидаем ответа YouTube. Сохранённый список доступен.",
@@ -49,12 +47,33 @@ public final class PlaylistActivity extends Activity {
  };
  private final Runnable tick=new Runnable(){
   @Override public void run(){
-   if(activeRefreshId==null)return;
-   long seconds=(SystemClock.elapsedRealtime()-refreshStart)/1000L;
-   int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
-   progressText.setText(UiStrings.display(PlaylistActivity.this, "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)
-    +"\n"+waitingMessages[index]));
-   handler.postDelayed(this,1000);
+   PlaylistRefreshManager.Snapshot state=PlaylistRefreshManager.current();
+   boolean running=source!=null&&source.equals(state.url)&&state.running();
+   if(running){
+    observedRunning=true;refreshStart=state.startedMs;
+    progressPanel.setVisibility(View.VISIBLE);refreshControl.setEnabled(false);
+    long seconds=Math.max(0,(SystemClock.elapsedRealtime()-refreshStart)/1000L);
+    int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
+    progressText.setText(UiStrings.display(PlaylistActivity.this,
+      "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)+
+       "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
+   }else{
+    progressPanel.setVisibility(View.GONE);refreshControl.setEnabled(true);
+    if(observedRunning&&source.equals(state.url)){
+     if(state.stage==PlaylistRefreshManager.Stage.DONE){
+      refreshData(true);
+      Toast.makeText(PlaylistActivity.this,UiStrings.display(PlaylistActivity.this,
+       "Плейлист обновлён"),Toast.LENGTH_SHORT).show();
+     }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){
+      ThemeStyle.dialog(PlaylistActivity.this)
+       .setTitle(UiStrings.display(PlaylistActivity.this,"Не удалось обновить плейлист"))
+       .setMessage(UiStrings.display(PlaylistActivity.this,state.error))
+       .setPositiveButton(UiStrings.display(PlaylistActivity.this,"ОК"),null).show();
+     }
+    }
+    observedRunning=false;
+   }
+   handler.postDelayed(this,600);
   }
  };
  private int dp(float v){return ThemeStyle.dp(this,v);}
@@ -507,42 +526,18 @@ public final class PlaylistActivity extends Activity {
   }
  }
  private void updatePlaylist(){
-  if(loading)return;
-  loading=true;refreshStart=SystemClock.elapsedRealtime();
-  String id=UUID.randomUUID().toString();activeRefreshId=id;
-  progressPanel.setVisibility(View.VISIBLE);refreshControl.setEnabled(false);
+  if(!PlaylistRefreshManager.start(getApplicationContext(),source,proxy)){
+   Toast.makeText(this,UiStrings.display(this,"Другой плейлист уже обновляется"),Toast.LENGTH_LONG).show();
+   return;
+  }
   handler.removeCallbacks(tick);tick.run();
-  worker.execute(()->{
-   try{
-    PlaylistRepository.Playlist updated=PlaylistRepository.fetch(getApplicationContext(),source,proxy,id);
-    if(!id.equals(activeRefreshId))return;
-    PlaylistCache.save(getApplicationContext(),source,updated);
-    runOnUiThread(()->{
-     if(!id.equals(activeRefreshId)||isFinishing()||isDestroyed())return;
-     finishRefresh();refreshData(true);
-     Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Плейлист обновлён"),Toast.LENGTH_SHORT).show();
-    });
-   }catch(Exception ex){
-    runOnUiThread(()->{
-     if(!id.equals(activeRefreshId)||isFinishing()||isDestroyed())return;
-     finishRefresh();
-     ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Не удалось обновить плейлист"))
-      .setMessage(UiStrings.display(PlaylistActivity.this, ex.getMessage())).setPositiveButton(UiStrings.display(PlaylistActivity.this, "ОК"),null).show();
-    });
-   }
-  });
  }
- private void finishRefresh(){
-  activeRefreshId=null;loading=false;handler.removeCallbacks(tick);
-  progressPanel.setVisibility(View.GONE);refreshControl.setEnabled(true);
+ private void cancelRefresh(){PlaylistRefreshManager.cancel(source);}
+ @Override protected void onResume(){
+  super.onResume();
+  if(progressPanel!=null){handler.removeCallbacks(tick);tick.run();}
  }
- private void cancelRefresh(){
-  String id=activeRefreshId;if(id==null)return;
-  finishRefresh();
-  try{com.yausername.youtubedl_android.YoutubeDL.getInstance().destroyProcessById(id);}
-  catch(Exception ignored){}
- }
- @Override protected void onDestroy(){
-  cancelRefresh();worker.shutdownNow();handler.removeCallbacks(tick);super.onDestroy();
- }
+ @Override protected void onPause(){handler.removeCallbacks(tick);super.onPause();}
+ @Override protected void onDestroy(){handler.removeCallbacks(tick);super.onDestroy();}
+
 }

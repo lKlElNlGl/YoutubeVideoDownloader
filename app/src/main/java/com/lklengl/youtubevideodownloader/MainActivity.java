@@ -71,8 +71,8 @@ public final class MainActivity extends Activity {
             if(activeInfoProcessId==null||infoTimer==null)return;
             long secs=(android.os.SystemClock.elapsedRealtime()-infoStartedAt)/1000L;
             int index=secs<12?0:1+(int)((secs-12)/9%(waitMessages.length-1));
-            infoTimer.setText("Обновление информации · "+
-                String.format(Locale.ROOT,"%02d:%02d",secs/60,secs%60)+"\n"+waitMessages[index]);
+            infoTimer.setText(UiStrings.display(MainActivity.this, "Обновление информации · "+
+                String.format(Locale.ROOT,"%02d:%02d",secs/60,secs%60)+"\n"+waitMessages[index]));
             infoHandler.postDelayed(this,1000);
         }
     };
@@ -180,16 +180,16 @@ public final class MainActivity extends Activity {
         linkRow.addView(url,new FrameLayout.LayoutParams(-1,dp(51)));
         ImageView clear=new ImageView(this);
         clear.setImageDrawable(new UiIcons("close",ThemeStyle.subdued(this),dp(18)));
-        clear.setContentDescription("Очистить ссылку");
+        clear.setContentDescription(UiStrings.display(MainActivity.this, "Очистить ссылку"));
         FrameLayout.LayoutParams clearParams=new FrameLayout.LayoutParams(dp(49),dp(49),Gravity.END|Gravity.CENTER_VERTICAL);
         clear.setPadding(dp(14),dp(14),dp(14),dp(14));
         linkRow.addView(clear,clearParams);
         clear.setOnClickListener(v->{
             if(previewSnapshot==null){url.setText("");return;}
-            ThemeStyle.dialog(this).setTitle("Очистить ссылку и информацию о видео?")
-                .setMessage("Вместе со ссылкой будут удалены название, обложка, длительность, варианты качества и формата. Для повторного получения информации потребуется новый запрос к YouTube.")
-                .setNegativeButton("Отмена",null)
-                .setPositiveButton("Очистить",(d,w)->{
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Очистить ссылку и информацию о видео?"))
+                .setMessage(UiStrings.display(MainActivity.this, "Вместе со ссылкой будут удалены название, обложка, длительность, варианты качества и формата. Для повторного получения информации потребуется новый запрос к YouTube."))
+                .setNegativeButton(UiStrings.display(MainActivity.this, "Отмена"),null)
+                .setPositiveButton(UiStrings.display(MainActivity.this, "Очистить"),(d,w)->{
                     if(previewSnapshot!=null){
                         VideoPreviewCache.clear(this,previewSnapshot.source);
                         if(previewSnapshot.playlist)PlaylistCache.clear(this,previewSnapshot.source);
@@ -228,7 +228,7 @@ public final class MainActivity extends Activity {
         infoTimer=text("",12);infoTimer.setTextColor(ThemeStyle.subdued(this));
         LinearLayout.LayoutParams timerParams=new LinearLayout.LayoutParams(0,-2,1);
         timerParams.setMargins(dp(8),0,0,0);statusRow.addView(infoTimer,timerParams);
-        cancelInfoButton=new Button(this);cancelInfoButton.setText("Отмена");
+        cancelInfoButton=new Button(this);cancelInfoButton.setText(UiStrings.display(MainActivity.this, "Отмена"));
         ThemeStyle.styleButton(cancelInfoButton,false);cancelInfoButton.setTextSize(12);
         statusRow.addView(cancelInfoButton,new LinearLayout.LayoutParams(dp(78),dp(38)));
         cancelInfoButton.setOnClickListener(v->cancelInfo());
@@ -537,7 +537,7 @@ public final class MainActivity extends Activity {
         arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(this),dp(20)));
         FrameLayout.LayoutParams arrParams=new FrameLayout.LayoutParams(dp(40),-1,Gravity.END|Gravity.CENTER_VERTICAL);
         arrow.setPadding(dp(10),0,dp(10),0);
-        arrow.setContentDescription("Открыть список");
+        arrow.setContentDescription(UiStrings.display(MainActivity.this, "Открыть список"));
         shell.addView(arrow,arrParams);
         arrow.setOnClickListener(v->s.performClick());
         return s;
@@ -612,7 +612,7 @@ public final class MainActivity extends Activity {
         else quality.setSelection(0);
     }
     private void updatePreviewMessage(String message){
-        preview.setText(message);
+        preview.setText(UiStrings.display(MainActivity.this, message));
         preview.setVisibility(message==null||message.isEmpty()?View.GONE:View.VISIBLE);
         if(previewDetailsButton!=null)previewDetailsButton.setVisibility(View.GONE);
     }
@@ -670,19 +670,19 @@ public final class MainActivity extends Activity {
             QualityChoices.fromDetected(previewSnapshot.resolutions),restoreSaved);
         updateFormatChoices(previewSnapshot.playlist?FormatChoices.fallback():
             FormatChoices.fromDetected(previewSnapshot.formats),restoreSaved);
-        previewHeader.setText(previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО");
+        previewHeader.setText(UiStrings.display(MainActivity.this, previewSnapshot.playlist?"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ":"ИНФОРМАЦИЯ О ВИДЕО"));
         previewTitle.setText(previewSnapshot.title);
         if(previewSnapshot.playlist){
-            previewDuration.setText(previewSnapshot.videoCount+" видео");
-            previewQuality.setText("Плейлист");
+            previewDuration.setText(UiStrings.display(MainActivity.this, previewSnapshot.videoCount+" видео"));
+            previewQuality.setText(UiStrings.display(MainActivity.this, "Плейлист"));
             previewAllQualities.setVisibility(View.GONE);
             reopenPlaylistButton.setVisibility(View.VISIBLE);
             updatePreviewButton.setVisibility(View.VISIBLE);
         }else{
-            previewDuration.setText(previewSnapshot.duration);
+            previewDuration.setText(UiStrings.display(MainActivity.this, previewSnapshot.duration));
             String qualities=previewSnapshot.resolutions;
-            previewQuality.setText(qualities.split(",")[0]);
-            previewAllQualities.setText("Доступно: "+qualities);
+            previewQuality.setText(UiStrings.display(MainActivity.this, qualities.split(",")[0]));
+            previewAllQualities.setText(UiStrings.display(MainActivity.this, "Доступно: "+qualities));
             previewAllQualities.setVisibility(View.VISIBLE);
             reopenPlaylistButton.setVisibility(View.GONE);
             updatePreviewButton.setVisibility(View.VISIBLE);
@@ -717,8 +717,8 @@ public final class MainActivity extends Activity {
     }
     private void showFolderLabel(){
         String selected=selectedFolder();
-        folderLabel.setText(selected.isEmpty()?"Загрузки / YoutubeVideoDownloader":
-            "Выбрана: "+Uri.parse(selected).getLastPathSegment());
+        folderLabel.setText(UiStrings.display(MainActivity.this, selected.isEmpty()?"Загрузки / YoutubeVideoDownloader":
+            "Выбрана: "+Uri.parse(selected).getLastPathSegment()));
         defaultFolderButton.setVisibility(FolderRules.isCustom(selected)?View.VISIBLE:View.GONE);
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
@@ -742,10 +742,10 @@ public final class MainActivity extends Activity {
             proxyUrl=proxyEnabled.isChecked()?DownloadOptions.validateProxy(proxy.getText().toString()):"";
             if(proxyEnabled.isChecked() && proxyUrl.isEmpty())throw new IllegalArgumentException("Укажите адрес прокси");
             if(!approvedDuplicate && QueuePolicy.hasActiveDuplicate(DownloadQueue.all(this),link)){
-                ThemeStyle.dialog(this).setTitle("Видео уже в очереди")
-                    .setMessage("Такая ссылка уже ожидает загрузки или скачивается. Добавить ещё раз?")
-                    .setNegativeButton("Отмена",null)
-                    .setPositiveButton("Добавить",(dialog,which)->enqueue(priority,true)).show();
+                ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Видео уже в очереди"))
+                    .setMessage(UiStrings.display(MainActivity.this, "Такая ссылка уже ожидает загрузки или скачивается. Добавить ещё раз?"))
+                    .setNegativeButton(UiStrings.display(MainActivity.this, "Отмена"),null)
+                    .setPositiveButton(UiStrings.display(MainActivity.this, "Добавить"),(dialog,which)->enqueue(priority,true)).show();
                 return;
             }
             String title=previewSnapshot!=null && previewSnapshot.matches(link) && !previewSnapshot.playlist?
@@ -765,7 +765,7 @@ public final class MainActivity extends Activity {
         refreshQueue();
         try{
             DownloadService.kick(this);
-            Toast.makeText(this,priority?"Приоритетная загрузка добавлена":"Добавлено в очередь",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,UiStrings.display(MainActivity.this, priority?"Приоритетная загрузка добавлена":"Добавлено в очередь"),Toast.LENGTH_SHORT).show();
         }catch(Exception e){error("Запуск загрузки",e);}
     }
     private String queueName(DownloadQueue.Item j){
@@ -807,7 +807,7 @@ public final class MainActivity extends Activity {
     private ImageView queueAction(LinearLayout parent,String icon,int tint,String description){
         ImageView action=new ImageView(this);
         action.setImageDrawable(new UiIcons(icon,tint,dp(22)));
-        action.setContentDescription(description);
+        action.setContentDescription(UiStrings.display(MainActivity.this, description));
         action.setPadding(dp(7),dp(7),dp(7),dp(7));
         parent.addView(action,new LinearLayout.LayoutParams(dp(39),dp(39)));
         return action;
@@ -822,7 +822,7 @@ public final class MainActivity extends Activity {
             for(DownloadQueue.Item j:jobs)if(DownloadQueue.RUNNING.equals(j.status)){
                 activeQueueBar.setProgress(j.progress);
                 if(activeQueueInfo!=null)
-                    activeQueueInfo.setText(j.message);
+                    activeQueueInfo.setText(UiStrings.display(MainActivity.this, j.message));
                 return;
             }
         }
@@ -957,10 +957,10 @@ public final class MainActivity extends Activity {
     private void openDownloaded(DownloadQueue.Item j){openDownloaded(j,false);}
     private void openDownloaded(DownloadQueue.Item j,boolean chooser){
         if(TextUtils.isEmpty(j.contentUri)){
-            ThemeStyle.dialog(this).setTitle("Файл")
-                .setMessage("Для загрузок, выполненных до этой версии, адрес файла не сохранён. Откройте папку загрузок.")
-                .setNegativeButton("Закрыть",null)
-                .setPositiveButton("Открыть папку",(d,w)->openFolderFor(j.directoryUri)).show();
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Файл"))
+                .setMessage(UiStrings.display(MainActivity.this, "Для загрузок, выполненных до этой версии, адрес файла не сохранён. Откройте папку загрузок."))
+                .setNegativeButton(UiStrings.display(MainActivity.this, "Закрыть"),null)
+                .setPositiveButton(UiStrings.display(MainActivity.this, "Открыть папку"),(d,w)->openFolderFor(j.directoryUri)).show();
             return;
         }
         Uri file=Uri.parse(j.contentUri);
@@ -969,9 +969,9 @@ public final class MainActivity extends Activity {
             if(fd==null)throw new java.io.FileNotFoundException("Файл не найден");
             fd.close();
         }catch(Exception missing){
-            ThemeStyle.dialog(this).setTitle("Файл не найден")
-                .setMessage("Скачанный файл недоступен. Возможно, он удалён или перемещён.")
-                .setPositiveButton("ОК",null).show();return;
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Файл не найден"))
+                .setMessage(UiStrings.display(MainActivity.this, "Скачанный файл недоступен. Возможно, он удалён или перемещён."))
+                .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();return;
         }
         String mime=j.audio?"audio/*":"video/*";
         try{
@@ -981,9 +981,9 @@ public final class MainActivity extends Activity {
             if(chooser)startActivity(Intent.createChooser(view,"Открыть с помощью…"));
             else startActivity(view);
         }catch(Exception e){
-            ThemeStyle.dialog(this).setTitle("Не удалось открыть файл")
-                .setMessage("Не найден подходящий проигрыватель или он не может открыть этот файл.")
-                .setPositiveButton("ОК",null).show();
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Не удалось открыть файл"))
+                .setMessage(UiStrings.display(MainActivity.this, "Не найден подходящий проигрыватель или он не может открыть этот файл."))
+                .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();
         }
     }
     private void removeQueueRecord(DownloadQueue.Item job){
@@ -1006,24 +1006,24 @@ public final class MainActivity extends Activity {
         TextView message=text("Запись будет удалена из очереди. Скачанный файл останется на устройстве.",14);
         content.addView(message);
         CheckBox deleteFile=new CheckBox(this);
-        deleteFile.setText("Также удалить скачанный файл с устройства");
+        deleteFile.setText(UiStrings.display(MainActivity.this, "Также удалить скачанный файл с устройства"));
         deleteFile.setTextColor(ThemeStyle.text(this));deleteFile.setTextSize(13);
         deleteFile.setButtonTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
         if(finished){
             LinearLayout.LayoutParams checkParams=new LinearLayout.LayoutParams(-1,-2);
             checkParams.setMargins(0,dp(12),0,0);content.addView(deleteFile,checkParams);
         }
-        AlertDialog confirm=ThemeStyle.dialog(this).setTitle("Удалить запись из очереди?")
+        AlertDialog confirm=ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Удалить запись из очереди?"))
             .setView(content)
-            .setNegativeButton("Отмена",null)
-            .setPositiveButton("Удалить",(dialog,which)->{
+            .setNegativeButton(UiStrings.display(MainActivity.this, "Отмена"),null)
+            .setPositiveButton(UiStrings.display(MainActivity.this, "Удалить"),(dialog,which)->{
                 if(!finished||!deleteFile.isChecked()){removeQueueRecord(job);return;}
                 String filename=TextUtils.isEmpty(job.filename)?"скачанный файл":job.filename;
                 AlertDialog secondary=ThemeStyle.dialog(this)
-                    .setTitle("Удалить скачанный файл?")
-                    .setMessage("Файл «"+filename+"» будет удалён из памяти телефона. Это действие нельзя отменить.")
-                    .setNegativeButton("Отмена",null)
-                    .setPositiveButton("Удалить файл",(d,w)->deleteDownloadedFile(job))
+                    .setTitle(UiStrings.display(MainActivity.this, "Удалить скачанный файл?"))
+                    .setMessage(UiStrings.display(MainActivity.this, "Файл «"+filename+"» будет удалён из памяти телефона. Это действие нельзя отменить."))
+                    .setNegativeButton(UiStrings.display(MainActivity.this, "Отмена"),null)
+                    .setPositiveButton(UiStrings.display(MainActivity.this, "Удалить файл"),(d,w)->deleteDownloadedFile(job))
                     .create();
                 secondary.setOnShowListener(d->secondary.getButton(AlertDialog.BUTTON_POSITIVE)
                     .setTextColor(ThemeStyle.RED));
@@ -1042,9 +1042,9 @@ public final class MainActivity extends Activity {
             if(!removed)throw new java.io.IOException("Не удалось удалить файл");
             removeQueueRecord(job);
         }catch(Exception ex){
-            ThemeStyle.dialog(this).setTitle("Файл не удалён")
-                .setMessage("Не удалось удалить файл из памяти устройства. Запись в очереди сохранена.\n"+ex.getMessage())
-                .setPositiveButton("ОК",null).show();
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Файл не удалён"))
+                .setMessage(UiStrings.display(MainActivity.this, "Не удалось удалить файл из памяти устройства. Запись в очереди сохранена.\n"+ex.getMessage()))
+                .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();
         }
     }
     private void showTechnicalDetails(DownloadQueue.Item job){
@@ -1074,8 +1074,8 @@ public final class MainActivity extends Activity {
         Runnable refreshHint=()->hint.setVisibility(scroller.canScrollVertically(1)?
             View.VISIBLE:View.GONE);
         scroller.setOnScrollChangeListener((v,x,y,oldX,oldY)->refreshHint.run());
-        ThemeStyle.dialog(this).setTitle("Подробности ошибки")
-            .setView(frame).setPositiveButton("Закрыть",null).show();
+        ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Подробности ошибки"))
+            .setView(frame).setPositiveButton(UiStrings.display(MainActivity.this, "Закрыть"),null).show();
         scroller.post(refreshHint);
     }
     private String statusName(String value){
@@ -1119,7 +1119,7 @@ public final class MainActivity extends Activity {
         infoGeneration++;
         infoIndicator.setVisibility(View.VISIBLE);
         ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);
-        previewButton.setEnabled(false);infoTimer.setText(label);
+        previewButton.setEnabled(false);infoTimer.setText(UiStrings.display(MainActivity.this, label));
         infoHandler.removeCallbacks(infoClock);infoHandler.postDelayed(infoClock,1000);
         // The compact progress row already describes the request; do not duplicate it below.
         updatePreviewMessage("");
@@ -1282,20 +1282,20 @@ public final class MainActivity extends Activity {
     }
     private void updateEngine(){
         if(DownloadQueue.hasActive(this)){
-            ThemeStyle.dialog(this).setMessage("Завершите очередь перед обновлением yt-dlp.")
-                .setPositiveButton("ОК",null).show();return;
+            ThemeStyle.dialog(this).setMessage(UiStrings.display(MainActivity.this, "Завершите очередь перед обновлением yt-dlp."))
+                .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();return;
         }
-        updateEngineButton.setEnabled(false);updateEngineButton.setText("Обновление компонента…");
+        updateEngineButton.setEnabled(false);updateEngineButton.setText(UiStrings.display(MainActivity.this, "Обновление компонента…"));
         uiWorker.execute(()->{
             try{
                 EngineMaintenance.Result response=EngineMaintenance.update(getApplicationContext(),true,false);
-                runOnUiThread(()->ThemeStyle.dialog(this).setTitle("Компонент YouTube")
-                    .setMessage(response==EngineMaintenance.Result.UPDATED?"Компонент обновлён.":
+                runOnUiThread(()->ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Компонент YouTube"))
+                    .setMessage(UiStrings.display(MainActivity.this, response==EngineMaintenance.Result.UPDATED?"Компонент обновлён.":
                         response==EngineMaintenance.Result.SKIPPED?"Обновление уже выполняется.":
-                        "Уже установлена последняя версия.")
-                    .setPositiveButton("ОК",null).show());
+                        "Уже установлена последняя версия."))
+                    .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show());
             }catch(Exception e){runOnUiThread(()->error("Обновление yt-dlp",e));}
-            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText("Обновить компонент работы с YouTube");});}
+            finally{runOnUiThread(()->{updateEngineButton.setEnabled(true);updateEngineButton.setText(UiStrings.display(MainActivity.this, "Обновить компонент работы с YouTube"));});}
         });
     }
     private String version(){
@@ -1303,13 +1303,13 @@ public final class MainActivity extends Activity {
         catch(Exception ignored){return "?";}
     }
     private void error(String title,Exception e){
-        ThemeStyle.dialog(this).setTitle(title).setMessage(e.getMessage())
-            .setPositiveButton("ОК",null).show();
+        ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, title)).setMessage(UiStrings.display(MainActivity.this, e.getMessage()))
+            .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();
     }
     private void checkAppUpdate(boolean manual){
         if(updateBusy)return;
         updateBusy=true;checkAppButton.setEnabled(false);
-        checkAppButton.setText("Проверка…");
+        checkAppButton.setText(UiStrings.display(MainActivity.this, "Проверка…"));
         updaterWorker.execute(()->{
             try{
                 GithubUpdater.Candidate candidate=new GithubUpdater(this).check();
@@ -1323,11 +1323,11 @@ public final class MainActivity extends Activity {
                         });
                         updateDialog.show();
                     }
-                    else if(manual)ThemeStyle.dialog(this).setMessage("Установлена последняя версия.")
-                        .setPositiveButton("ОК",null).show();
+                    else if(manual)ThemeStyle.dialog(this).setMessage(UiStrings.display(MainActivity.this, "Установлена последняя версия."))
+                        .setPositiveButton(UiStrings.display(MainActivity.this, "ОК"),null).show();
                 });
             }catch(Exception e){if(manual)runOnUiThread(()->error("Проверка обновлений",e));}
-            finally{runOnUiThread(()->{updateBusy=false;checkAppButton.setEnabled(true);checkAppButton.setText("Проверить новую версию приложения");});}
+            finally{runOnUiThread(()->{updateBusy=false;checkAppButton.setEnabled(true);checkAppButton.setText(UiStrings.display(MainActivity.this, "Проверить новую версию приложения"));});}
         });
     }
     private void installAppUpdate(){
@@ -1354,9 +1354,9 @@ public final class MainActivity extends Activity {
         super.onResume();
         if(pendingUpdate!=null&&pendingUpdate.isFile()&&getPackageManager().canRequestPackageInstalls()){
             File cached=pendingUpdate;pendingUpdate=null;
-            ThemeStyle.dialog(this).setTitle("Установить загруженное обновление?")
-                .setNegativeButton("Позже",null)
-                .setPositiveButton("Установить",(d,w)->{pendingUpdate=cached;installAppUpdate();}).show();
+            ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Установить загруженное обновление?"))
+                .setNegativeButton(UiStrings.display(MainActivity.this, "Позже"),null)
+                .setPositiveButton(UiStrings.display(MainActivity.this, "Установить"),(d,w)->{pendingUpdate=cached;installAppUpdate();}).show();
         }
     }
     @Override protected void onDestroy(){

@@ -312,6 +312,12 @@ public final class UiStrings {
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}
+    public static String[] translateChoices(android.content.Context context,String[] original) {
+        if(original==LANGUAGE_NAMES)return original;
+        String[] result=new String[original.length];
+        for(int i=0;i<original.length;i++)result[i]=display(context,original[i]);
+        return result;
+    }
     public static String normalizeLanguage(String value) {
         return "ru".equals(value)?"ru":"en";
     }

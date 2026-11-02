@@ -20,4 +20,7 @@ public class Palette051Test {
   assertEquals(0xFFF4F5F8,Palette050.NIGHT_TEXT);
   assertEquals(0xFFF5F6F9,Palette050.DAY_BACKGROUND);
  }
+ @Test public void activeDarkSurfacesUseApproved050Palette() {
+  assertEquals(Palette050.NIGHT_CARD,ThemeStyle.NIGHT_CARD);
+ }
 }

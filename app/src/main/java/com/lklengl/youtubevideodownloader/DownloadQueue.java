@@ -85,7 +85,7 @@ public final class DownloadQueue {
             if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             else QueueRules.addNewest(list,java.util.Collections.singletonList(i));
             save(context,list);
-            PlaylistHistory.markQueued(context,url);
+            PlaylistHistory.markQueued(context,url,quality);
             return i.id;
         }
     }
@@ -124,7 +124,7 @@ public final class DownloadQueue {
             if(priority)QueueRules.prependPriority(list,added);
             else QueueRules.addNewest(list,added);
             save(context,list);
-            for(Item item:added)PlaylistHistory.markQueued(context,item.url);
+            for(Item item:added)PlaylistHistory.markQueued(context,item.url,item.quality);
             return count;
         }
     }

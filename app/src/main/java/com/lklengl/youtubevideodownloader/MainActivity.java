@@ -169,11 +169,6 @@ public final class MainActivity extends Activity {
     }
 
 
-    @Override protected void onResume(){
-        super.onResume();
-        infoHandler.removeCallbacks(sharedPlaylistClock);
-        infoHandler.post(sharedPlaylistClock);
-    }
     @Override protected void onPause(){
         infoHandler.removeCallbacks(sharedPlaylistClock);
         super.onPause();
@@ -1422,6 +1417,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume(){
         super.onResume();
+        infoHandler.removeCallbacks(sharedPlaylistClock);
+        infoHandler.post(sharedPlaylistClock);
         if(pendingUpdate!=null&&pendingUpdate.isFile()&&getPackageManager().canRequestPackageInstalls()){
             File cached=pendingUpdate;pendingUpdate=null;
             ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Установить загруженное обновление?"))
@@ -1430,7 +1427,10 @@ public final class MainActivity extends Activity {
         }
     }
     @Override protected void onDestroy(){
-        cancelInfo();
+        if(activeInfoProcessId!=null){
+            try{YoutubeDL.getInstance().destroyProcessById(activeInfoProcessId);}catch(Exception ignored){}
+        }
+        infoHandler.removeCallbacks(sharedPlaylistClock);
         infoHandler.removeCallbacks(infoClock);
         artworkWorker.shutdownNow();
         uiWorker.shutdownNow();

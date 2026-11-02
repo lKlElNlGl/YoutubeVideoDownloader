@@ -1025,7 +1025,7 @@ public final class MainActivity extends Activity {
             Intent view=new Intent(Intent.ACTION_VIEW);
             view.setDataAndType(file,mime);
             view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            if(chooser)startActivity(Intent.createChooser(view,"Открыть с помощью…"));
+            if(chooser)startActivity(Intent.createChooser(view,UiStrings.display(this,"Открыть с помощью…")));
             else startActivity(view);
         }catch(Exception e){
             ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Не удалось открыть файл"))

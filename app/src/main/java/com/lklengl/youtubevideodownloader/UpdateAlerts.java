@@ -37,7 +37,7 @@ public final class UpdateAlerts {
         NotificationManager manager=c.getSystemService(NotificationManager.class);
         NotificationChannel channel=new NotificationChannel(CHANNEL,"Новые версии YoutubeVideoDownloader",
             NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription("Уведомления со звуком о новых версиях APK");
+        channel.setDescription(UiStrings.display(c, "Уведомления со звуком о новых версиях APK"));
         channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
             new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
@@ -52,8 +52,8 @@ public final class UpdateAlerts {
         Intent i=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pending=PendingIntent.getActivity(c,2001,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n=new Notification.Builder(c,CHANNEL).setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Обновление YoutubeVideoDownloader")
-            .setContentText("Доступна версия "+candidate.tag).setContentIntent(pending)
+            .setContentTitle(UiStrings.display(c, "Обновление YoutubeVideoDownloader"))
+            .setContentText(UiStrings.display(c, "Доступна версия "+candidate.tag)).setContentIntent(pending)
             .setAutoCancel(true).build();
         try{manager.notify(2211,n);prefs.edit().putString("last_notified",candidate.tag).apply();}
         catch(SecurityException ignored){}

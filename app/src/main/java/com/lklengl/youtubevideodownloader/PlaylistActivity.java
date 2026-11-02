@@ -111,7 +111,7 @@ public final class PlaylistActivity extends Activity {
   downloadFilter=display.getInt("download",0);
   queueFilter=display.getInt("queue",0);
   selectedFirst=display.getBoolean("selectedFirst",false);
-  buildScreen();refreshData(false);
+  buildScreen();ThemeStyle.applySystemBarInsets(this);refreshData(false);
  }
  private Set<String> previouslyAdded(){
   Set<String> urls=new HashSet<>();

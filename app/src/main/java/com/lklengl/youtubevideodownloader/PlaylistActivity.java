@@ -215,39 +215,38 @@ public final class PlaylistActivity extends Activity {
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
   listCard.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
 
-  selectAll=txt("☑  Выбрать все",13);selectAll.setGravity(Gravity.CENTER_VERTICAL);
-  selectAll.setPadding(dp(7),0,0,0);
-  root.addView(selectAll,new LinearLayout.LayoutParams(-1,dp(43)));
+  LinearLayout selectRow=new LinearLayout(this);
+  selectRow.setGravity(Gravity.CENTER_VERTICAL);
+  listCard.addView(selectRow,new LinearLayout.LayoutParams(-1,dp(46)));
+  selectAll=new CheckBox(this);
+  selectAll.setText(UiStrings.display(this,"Выбрать всё"));
+  selectAll.setTextColor(ThemeStyle.text(this));selectAll.setTextSize(13);
+  selectAll.setButtonTintList(checkTint());
+  selectRow.addView(selectAll,new LinearLayout.LayoutParams(0,dp(44),1));
   selectAll.setOnClickListener(v->{
-   boolean all=true;for(boolean b:selected)if(!b){all=false;break;}
-   Arrays.fill(selected,!all);persistSelection();adapter.notifyDataSetChanged();updateFooter();
+   boolean all=true;for(int i:visibleRows)if(!selected[i]){all=false;break;}
+   for(int i:new ArrayList<>(visibleRows))selected[i]=!all;
+   persistSelection();
+   if(selectionFilter!=0)rebuildVisible(false);
+   else{adapter.notifyDataSetChanged();updateFooter();}
   });
-
-  LinearLayout bulk=new LinearLayout(this);bulk.setGravity(Gravity.CENTER_VERTICAL);
-  bulk.setPadding(dp(9),dp(6),dp(9),dp(6));
-  bulk.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.border(this),dp(10)));
-  root.addView(bulk,margin(0,7));
-  TextView qlabel=txt("Качество для отмеченных",12);
-  qlabel.setTextColor(ThemeStyle.subdued(this));
-  bulk.addView(qlabel,new LinearLayout.LayoutParams(0,-2,1));
-  bulkQuality=spinner(PlaylistQualityPolicy.LABELS);
-  bulk.addView(bulkQuality,new LinearLayout.LayoutParams(dp(126),dp(43)));
-  bulkQuality.setSelection(PlaylistQualityPolicy.index(quality));
-  bulkQuality.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
-   @Override public void onNothingSelected(android.widget.AdapterView<?> view){}
-   @Override public void onItemSelected(android.widget.AdapterView<?> view,View item,int position,long id){
-    if(ignoreBulk){ignoreBulk=false;return;}
-    qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[position]);
-    persistQualities();adapter.notifyDataSetChanged();
-   }
-  });
-
+  filterIcon=new ImageView(this);filterIcon.setScaleType(ImageView.ScaleType.CENTER);
+  filterIcon.setContentDescription(UiStrings.display(this,"Настройки списка видео"));
+  selectRow.addView(filterIcon,new LinearLayout.LayoutParams(dp(42),dp(38)));
+  filterIcon.setOnClickListener(v->showListSettings());
+  updateFilterIcon();
   list=new ListView(this);
   list.setDivider(new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)));
   list.setDividerHeight(dp(1));list.setCacheColorHint(Color.TRANSPARENT);
-  list.setBackgroundColor(ThemeStyle.background(this));
+  list.setBackgroundColor(ThemeStyle.cardColor(this));
   list.setVerticalScrollBarEnabled(true);
-  root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+  FrameLayout listFrame=new FrameLayout(this);
+  listCard.addView(listFrame,new LinearLayout.LayoutParams(-1,0,1));
+  listFrame.addView(list,new FrameLayout.LayoutParams(-1,-1));
+  TextView empty=txt("Нет видео, соответствующих фильтру",13);
+  empty.setGravity(Gravity.CENTER);
+  listFrame.addView(empty,new FrameLayout.LayoutParams(-1,-1));
+  list.setEmptyView(empty);
   adapter=new BaseAdapter(){
    @Override public int getCount(){return playlist.entries.size();}
    @Override public Object getItem(int i){return playlist.entries.get(i);}

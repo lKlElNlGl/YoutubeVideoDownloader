@@ -24,6 +24,25 @@ public final class UiIcons extends Drawable {
         p.setColor(color);p.setStrokeWidth(1.9f);p.setStrokeJoin(Paint.Join.ROUND);
         p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.STROKE);
         switch(name){
+            case "check":
+                Path tick=new Path();tick.moveTo(4,12);tick.lineTo(10,18);tick.lineTo(20,6);c.drawPath(tick,p);break;
+            case "clipboard":
+                c.drawRoundRect(new RectF(5,5,20,22),2,2,p);
+                c.drawRoundRect(new RectF(9,2,16,8),1,1,p);break;
+            case "folder-open":
+                Path open=new Path();open.moveTo(2,9);open.lineTo(2,6);
+                open.lineTo(9,6);open.lineTo(12,9);open.lineTo(21,9);
+                open.lineTo(19,20);open.lineTo(3,20);open.close();c.drawPath(open,p);break;
+            case "folder-edit":
+                c.drawRoundRect(new RectF(2,7,20,20),2,2,p);
+                c.drawLine(2,8,9,8,p);c.drawLine(9,8,11,5,p);
+                c.drawLine(14,17,21,10,p);break;
+            case "en":
+            case "ru":
+                c.drawRoundRect(new RectF(1,3,23,21),3,3,p);
+                p.setStyle(Paint.Style.FILL);p.setTextAlign(Paint.Align.CENTER);
+                p.setTypeface(android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.BOLD));
+                p.setTextSize(10);c.drawText("en".equals(name)?"EN":"RU",12,15.5f,p);break;
             case "pause":
                 p.setStyle(Paint.Style.FILL);
                 c.drawRoundRect(new RectF(6,4,10,20),1,1,p);

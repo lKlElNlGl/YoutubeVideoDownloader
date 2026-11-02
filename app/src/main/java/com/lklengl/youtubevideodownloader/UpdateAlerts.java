@@ -35,7 +35,7 @@ public final class UpdateAlerts {
     }
     private static void ensureChannel(Context c){
         NotificationManager manager=c.getSystemService(NotificationManager.class);
-        NotificationChannel channel=new NotificationChannel(CHANNEL,"Новые версии YoutubeVideoDownloader",
+        NotificationChannel channel=new NotificationChannel(CHANNEL,UiStrings.display(c,"Новые версии YoutubeVideoDownloader"),
             NotificationManager.IMPORTANCE_DEFAULT);
         channel.setDescription(UiStrings.display(c, "Уведомления со звуком о новых версиях APK"));
         channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),

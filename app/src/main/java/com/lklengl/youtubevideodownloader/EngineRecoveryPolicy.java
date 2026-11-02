@@ -37,6 +37,8 @@ public final class EngineRecoveryPolicy {
     public static String shortMessage(String message){
         String s=lower(message);
         if(network(s))return "Не удалось подключиться к YouTube. Проверьте интернет и повторите попытку.";
+        if(s.contains("confirm you're not a bot")||s.contains("visitor data")||s.contains("sign in to confirm"))
+            return "YouTube запрашивает подтверждение доступа. Попробуйте повторить позже.";
         if(shouldUpdate(message))return "Не удалось загрузить видео. Проверьте обновление компонента YouTube.";
         if(s.contains("http error 403")||s.contains("http 403"))
             return "YouTube отказал в доступе (HTTP 403). Попробуйте повторить позже.";

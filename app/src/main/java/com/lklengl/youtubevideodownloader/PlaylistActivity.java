@@ -28,10 +28,16 @@ public final class PlaylistActivity extends Activity {
  private List<String> qualities;
  private ListView list;
  private BaseAdapter adapter;
- private TextView counter,selectAll,heading,subheading,owner,progressText,refreshControl,sectionCount;
+ private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
+ private CheckBox selectAll;
+ private ImageView filterIcon;
+ private final List<Integer> visibleRows=new ArrayList<>();
+ private int[] videoStatus=new int[0];
+ private int selectionFilter=0,downloadFilter=0,queueFilter=0;
+ private boolean selectedFirst=false,animatingSelection=false;
  private LinearLayout progressPanel;
  private Button addButton;
- private Spinner bulkQuality;
+ 
  private final Handler handler=new Handler(Looper.getMainLooper());
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final String[] waitingMessages={
@@ -80,18 +86,52 @@ public final class PlaylistActivity extends Activity {
    Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Плейлист не сохранён. Получите список повторно."),Toast.LENGTH_LONG).show();
    finish();return;
   }
+  android.content.SharedPreferences display=getSharedPreferences("playlist_display",0);
+  selectionFilter=display.getInt("selection",0);
+  downloadFilter=display.getInt("download",0);
+  queueFilter=display.getInt("queue",0);
+  selectedFirst=display.getBoolean("selectedFirst",false);
   buildScreen();refreshData(false);
  }
  private Set<String> previouslyAdded(){
   Set<String> urls=new HashSet<>();
-  for(DownloadQueue.Item item:DownloadQueue.all(this))urls.add(item.url);
+  for(PlaylistRepository.Entry entry:playlist.entries)
+   if(PlaylistHistory.hasAdded(this,entry.url))urls.add(entry.url);
   return urls;
+ }
+ private ColorStateList checkTint(){
+  return new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},
+   new int[]{ThemeStyle.RED,ThemeStyle.isDark(this)?0xFFF4F5F8:0xFF596477});
+ }
+ private void refreshStatuses(){
+  PlaylistHistory.syncFromQueue(this);
+  videoStatus=new int[playlist.entries.size()];
+  for(int i=0;i<videoStatus.length;i++)
+   videoStatus[i]=PlaylistHistory.status(this,playlist.entries.get(i).url);
+ }
+ private void rebuildVisible(boolean reSort){
+  List<Integer> next=PlaylistFilterPolicy.visible(selected,videoStatus,selectionFilter,downloadFilter,queueFilter,reSort&&selectedFirst);
+  if(reSort || visibleRows.isEmpty()){visibleRows.clear();visibleRows.addAll(next);}
+  else{
+   visibleRows.removeIf(i->!next.contains(i));
+   for(int i:next)if(!visibleRows.contains(i))visibleRows.add(i);
+  }
+  if(adapter!=null)adapter.notifyDataSetChanged();
+  updateFilterIcon();updateFooter();
+ }
+ private void updateFilterIcon(){
+  if(filterIcon==null)return;
+  boolean active=selectionFilter!=0||downloadFilter!=0||queueFilter!=0||selectedFirst;
+  filterIcon.setImageDrawable(new UiIcons("sliders",active?ThemeStyle.RED:ThemeStyle.text(this),dp(21)));
+  filterIcon.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(this),
+    active?ThemeStyle.RED:ThemeStyle.buttonStroke(this),dp(9)));
  }
  private void refreshData(boolean fresh){
   if(fresh){
    playlist=PlaylistCache.load(this,source);
    if(playlist==null)return;
   }
+  refreshStatuses();
   Set<String> already=previouslyAdded();
   List<String> urls=new ArrayList<>();
   for(PlaylistRepository.Entry e:playlist.entries)urls.add(e.url);
@@ -110,8 +150,7 @@ public final class PlaylistActivity extends Activity {
   }
   subheading.setText(UiStrings.display(PlaylistActivity.this, playlist.entries.size()+" видео"+
    (allKnown?" · "+QueueRules.readableDuration((int)Math.min(Integer.MAX_VALUE,seconds)):"")));
-  sectionCount.setText(UiStrings.display(PlaylistActivity.this, playlist.entries.size()+" видео"));
-  adapter.notifyDataSetChanged();updateFooter();
+  rebuildVisible(true);
  }
  private void buildScreen(){
   LinearLayout root=column();
@@ -164,13 +203,17 @@ public final class PlaylistActivity extends Activity {
   owner=txt("",12);owner.setTextColor(ThemeStyle.subdued(this));descriptions.addView(owner);
   subheading=txt("",12);subheading.setTextColor(ThemeStyle.subdued(this));descriptions.addView(subheading);
 
+  LinearLayout listCard=column();
+  listCard.setPadding(dp(10),dp(8),dp(10),dp(6));
+  listCard.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(14)));
+  root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);
-  root.addView(section,margin(2,0));
+  listCard.addView(section,margin(2,0));
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
   section.addView(sectionTitle,new LinearLayout.LayoutParams(0,-2,1));
   sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
-  root.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
+  listCard.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
 
   selectAll=txt("☑  Выбрать все",13);selectAll.setGravity(Gravity.CENTER_VERTICAL);
   selectAll.setPadding(dp(7),0,0,0);

@@ -18,7 +18,7 @@ public final class QueueContextMenu {
   LinearLayout content=new LinearLayout(activity);
   content.setOrientation(LinearLayout.VERTICAL);
   content.setPadding(0,dp,0,dp);
-  content.setBackground(ThemeStyle.popupBackground(activity));
+  // The PopupWindow background draws the single outer outline. Do not draw it twice.
   PopupWindow popup=new PopupWindow(content,ThemeStyle.dp(activity,250),-2,true);
   popup.setBackgroundDrawable(ThemeStyle.popupBackground(activity));
   popup.setOutsideTouchable(true);popup.setElevation(ThemeStyle.dp(activity,8));

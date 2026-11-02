@@ -28,7 +28,7 @@ artwork.putalpha(ImageChops.darker(artwork.getchannel("A"),mask))
 artwork.save(target,optimize=True)
 # A transparent non-adaptive launcher asset avoids OEMs filling an adaptive
 # icon's empty background with a solid dark square.
-padding=11
+padding=16
 legacy=Image.new("RGBA",(width+padding*2,height+padding*2),(0,0,0,0))
 legacy.alpha_composite(artwork,(padding,padding))
 legacy_target=source.with_name("ic_launcher_final.png")

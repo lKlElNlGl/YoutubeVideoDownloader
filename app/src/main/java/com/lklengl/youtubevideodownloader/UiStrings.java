@@ -327,6 +327,16 @@ public final class UiStrings {
         strings.put("Остановить загрузку", "Stop download");
         strings.put("Обновление плейлиста", "Playlist update");
         strings.put("Проверить обновления", "Check for updates");
+        strings.put("Другой плейлист уже обновляется", "Another playlist is being refreshed");
+        strings.put("Получаем список видео плейлиста…", "Fetching playlist videos…");
+        strings.put("Применить качество к отмеченным", "Apply quality to selected");
+        strings.put("Качество отмеченных обновлено", "Quality updated for selected videos");
+        strings.put("Фильтры списка", "List filters");
+        strings.put("Отображать", "Show");
+        strings.put("Сначала отмеченные", "Selected first");
+        strings.put("Добавить в очередь", "Add to queue");
+        strings.put("Скачанные", "Downloaded");
+        strings.put("Нескачанные", "Not downloaded");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}

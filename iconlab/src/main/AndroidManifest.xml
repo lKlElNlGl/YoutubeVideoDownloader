@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:label="Icon Lab"
+        android:icon="@android:drawable/ic_menu_gallery"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name=".LabVariant01"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 01"
+            android:icon="@mipmap/lab_icon_01"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant02"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 02"
+            android:icon="@mipmap/lab_icon_02"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant03"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 03"
+            android:icon="@mipmap/lab_icon_03"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant04"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 04"
+            android:icon="@mipmap/lab_icon_04"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant05"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 05"
+            android:icon="@mipmap/lab_icon_05"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant06"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 06"
+            android:icon="@mipmap/lab_icon_06"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant07"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 07"
+            android:icon="@mipmap/lab_icon_07"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant08"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 08"
+            android:icon="@mipmap/lab_icon_08"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

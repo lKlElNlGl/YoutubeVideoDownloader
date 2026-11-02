@@ -1,0 +1,60 @@
+name: Icon Lab small APK
+
+on:
+  push:
+    branches: ['feature/icon-lab']
+    paths:
+      - '.github/workflows/iconlab.yml'
+      - 'iconlab/**'
+      - 'scripts/generate_iconlab_icons.py'
+      - 'scripts/test_iconlab_generate.py'
+      - 'settings.gradle'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-iconlab:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install image tooling
+        run: python3 -m pip install --user Pillow
+      - name: Run icon regression tests
+        run: python3 -m unittest scripts/test_iconlab_generate.py
+      - name: Build small standalone APK
+        run: gradle --no-daemon :iconlab:assembleDebug
+      - name: Publish standalone prerelease without changing latest main app release
+        run: |
+          set -euo pipefail
+          apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          test -s "$apk"
+          mkdir -p dist
+          cp "$apk" dist/IconLab-v0.1.0.apk
+          tag=iconlab-v0.1.0
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/IconLab-v0.1.0.apk --clobber
+          else
+            gh release create "$tag" dist/IconLab-v0.1.0.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.1.0" \
+              --notes "Standalone Android icon comparison lab. Debug-signed APK. 8 icons; pinning to a specific home page must be done in the phone launcher." \
+              --prerelease --latest=false
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IconLab-v0.1.0
+          path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          if-no-files-found: error

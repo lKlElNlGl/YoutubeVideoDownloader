@@ -351,6 +351,10 @@ public final class UiStrings {
         strings.put("Отобразить загрузки находящиеся/отсутствующие в очереди","Show queued or unqueued downloads");
         strings.put("Загрузка потока ","Downloading stream ");
         strings.put("Объединение потоков","Merging streams");
+        strings.put("Не удалось подключиться к YouTube. Проверьте интернет и настройки прокси.","Could not connect to YouTube. Check your internet connection and proxy settings.");
+        strings.put("YouTube запрашивает подтверждение доступа. Попробуйте повторить позже.","YouTube requires access verification. Try again later.");
+        strings.put("Показать технический журнал","Show technical log");
+        strings.put("Скрыть технический журнал","Hide technical log");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}

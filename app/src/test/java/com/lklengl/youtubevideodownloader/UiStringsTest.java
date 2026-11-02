@@ -26,4 +26,11 @@ public class UiStringsTest {
     @Test public void languageChoicesAreAlwaysNamedInNativeLanguage() {
         assertArrayEquals(new String[]{"English", "Русский"}, UiStrings.LANGUAGE_NAMES);
     }
+    @Test public void formatsDynamicCountersWithoutRussianFragments() {
+        assertEquals("Selected: 8 of 554", UiStrings.displayLanguage("en", "Выбрано: 8 из 554"));
+        assertEquals("Added to queue: 8", UiStrings.displayLanguage("en", "Добавлено в очередь: 8"));
+    }
+    @Test public void russianModeKeepsOriginalDynamicLabels() {
+        assertEquals("Выбрано: 8 из 554", UiStrings.displayLanguage("ru", "Выбрано: 8 из 554"));
+    }
 }

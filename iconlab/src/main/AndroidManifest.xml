@@ -13,10 +13,10 @@
         </activity>
 
         <activity-alias
-            android:name=".LabVariant04a"
+            android:name=".LabCleanA"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04a"
-            android:icon="@mipmap/lab_icon_04a"
+            android:label="Clean A"
+            android:icon="@mipmap/lab_clean_a"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -26,10 +26,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04b"
+            android:name=".LabCleanB"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04b"
-            android:icon="@mipmap/lab_icon_04b"
+            android:label="Clean B"
+            android:icon="@mipmap/lab_clean_b"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -39,10 +39,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04c"
+            android:name=".LabCleanC"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04c"
-            android:icon="@mipmap/lab_icon_04c"
+            android:label="Clean C"
+            android:icon="@mipmap/lab_clean_c"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -52,10 +52,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04d"
+            android:name=".LabCleanD"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04d"
-            android:icon="@mipmap/lab_icon_04d"
+            android:label="Clean D"
+            android:icon="@mipmap/lab_clean_d"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -65,10 +65,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04e"
+            android:name=".LabCleanE"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04e"
-            android:icon="@mipmap/lab_icon_04e"
+            android:label="Clean E"
+            android:icon="@mipmap/lab_clean_e"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -78,49 +78,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04f"
+            android:name=".LabCleanF"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04f"
-            android:icon="@mipmap/lab_icon_04f"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabVariant04g"
-            android:targetActivity=".MainActivity"
-            android:label="Icon 04g"
-            android:icon="@mipmap/lab_icon_04g"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabVariant04h"
-            android:targetActivity=".MainActivity"
-            android:label="Icon 04h"
-            android:icon="@mipmap/lab_icon_04h"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabVariant04i"
-            android:targetActivity=".MainActivity"
-            android:label="Icon 04i"
-            android:icon="@mipmap/lab_icon_04i"
+            android:label="Clean F"
+            android:icon="@mipmap/lab_clean_f"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

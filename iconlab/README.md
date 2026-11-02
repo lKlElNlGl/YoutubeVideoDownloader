@@ -1,31 +1,37 @@
-# Icon Lab v0.2.1 — comparison with true original Icon 04
+# Icon Lab v0.3.0 — clean-grey-strip comparison
 
-v0.2.0 displayed white squares: generator switched the original 192px xxxhdpi
-launcher PNGs to 1024px nodpi. This version restores the resource type and
-resolution **exactly as used by the successful Icon 04 in v0.1.0**.
+**Purpose:** choose a grey-strip-free Android launcher icon using the EXACT
+scale of Icon 04b from Icon Lab v0.2.1, without changing the app's artwork.
 
-1. Uninstall the old Icon Lab. Debug-signing keys can differ across APKs.
-2. Install `IconLab-v0.2.1.apk` from the separate prerelease.
-3. Open **Icon Lab** and tap **Показать 9 вариантов**.
-4. Compare Icon 04a .. Icon 04i. Icon 04a should match the original v0.1.0 Icon 04, including its clipped edges.
+## Test specification
 
-| Icon | Percentage of original Icon 04 |
-|---|---:|
-| Icon 04a | 100.00% — exact original |
-| Icon 04b | 99.75% |
-| Icon 04c | 99.50% |
-| Icon 04d | 99.25% |
-| Icon 04e | 99.00% |
-| Icon 04f | 98.75% |
-| Icon 04g | 98.50% |
-| Icon 04h | 98.25% |
-| Icon 04i | 98.00% |
+- One button, `Показать 6 вариантов`, enables six real launcher icons.
+- All variants use the same 192px PNG in `mipmap-xxxhdpi`, the same
+  scale `1.06 * 0.9975`, the same position, and transparent corners.
+- No adaptive icon, white background, red-button edits or size changes.
+- Only the transparency mask along the lower edge/corners and the faint
+  exterior alpha pixels changes.
 
-The original WebP image and alpha mask are unchanged. New variants are
-rendered at high internal resolution and downsampled to 192x192 legacy
-xxxhdpi PNGs, so 0.25% adjustments remain distinct. No adaptive icon or
-1024px nodpi icon is used. The platform launcher may still apply its own
-normalization to individual variants; the exact-result check is on device.
+| Icon | Change to baseline Icon 04b |
+|---|---|
+| Clean A | Exact Icon 04b, unmodified reference |
+| Clean B | Minimal trim of the lower transparent/grey fringe |
+| Clean C | Minimal lower trim plus faint outer halo removal |
+| Clean D | Stronger lower fringe trim |
+| Clean E | Stronger bottom trim with slightly tighter rounded corners |
+| Clean F | Maximum conservative trim, corner and faint-halo cleanup |
 
-The app is a separate minimal Android package without download logic, network
-permissions or ffmpeg. It enables nine genuine launcher entries by one button.
+## How to check
+
+1. **Uninstall the previous Icon Lab** first (debug signing may differ).
+2. Install `IconLab-v0.3.0.apk` from the separate prerelease.
+3. Open **Icon Lab** and press **Показать 6 вариантов**.
+4. Compare Clean A .. Clean F in the app drawer or on your home screen.
+5. Choose the cleanest outer edge that preserves the complete black button.
+
+Android launcher normalization can differ from source transparency, so
+visual verification **on your phone** is mandatory before porting the winning
+icon to the main YouTube downloader.
+
+No yt-dlp, ffmpeg, network, cookies or downloader functionality is included.
+This test package has a separate applicationId.

@@ -12,7 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public final class MainActivity extends Activity {
-    private static final int VARIANT_COUNT = 9;
+    private static final int VARIANT_COUNT = 6;
 
     @Override
     public void onCreate(Bundle state) {
@@ -25,14 +25,13 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("Девять вариантов Icon 04: от 100% до 98% с шагом 0,25%.\n"
-                + "Нажмите кнопку, затем найдите Icon 04a — Icon 04i "
-                + "в списке приложений.");
+        description.setText("Шесть вариантов очистки серой полосы.\n"
+                + "Масштаб у всех одинаковый — как Icon 04b.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button button = new Button(this);
-        button.setText("Показать 9 вариантов");
+        button.setText("Показать 6 вариантов");
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         buttonParams.topMargin = dp(24);
@@ -44,17 +43,17 @@ public final class MainActivity extends Activity {
             int completed = 0;
             try {
                 for (int i = 0; i < VARIANT_COUNT; i++) {
-                    String alias = getPackageName() + ".LabVariant04" + (char) ('a' + i);
-                    ComponentName name = new ComponentName(this, alias);
-                    pm.setComponentEnabledSetting(name,
+                    String alias = getPackageName() + ".LabClean" + (char) ('A' + i);
+                    pm.setComponentEnabledSetting(
+                            new ComponentName(this, alias),
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                             PackageManager.DONT_KILL_APP);
                     completed++;
                 }
-                description.setText("Все 9 значков включены.\n"
-                        + "Откройте список приложений и сравните Icon 04a — Icon 04i. "
-                        + "При необходимости перенесите их на рабочий стол.");
-                Toast.makeText(this, "Включены Icon 04a — Icon 04i", Toast.LENGTH_LONG).show();
+                description.setText("Все 6 вариантов включены.\n"
+                        + "Найдите Clean A — Clean F в списке приложений. "
+                        + "Сравните серую полосу под чёрной кнопкой.");
+                Toast.makeText(this, "Включены Clean A — Clean F", Toast.LENGTH_LONG).show();
             } catch (RuntimeException exception) {
                 Toast.makeText(this, "Включено " + completed
                         + " значков. Ошибка: " + exception.getClass().getSimpleName(),

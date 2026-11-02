@@ -85,11 +85,11 @@ public final class DownloadService extends Service {
         Intent pause=new Intent(this,DownloadService.class).setAction(ACTION_PAUSE).putExtra("id",currentId);
         PendingIntent pauseAction=PendingIntent.getService(this,1,pause,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder builder=new Notification.Builder(this,CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle("YoutubeVideoDownloader")
-            .setContentText(message).setContentIntent(content).setOnlyAlertOnce(true)
+            .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle(UiStrings.display(DownloadService.this, "YoutubeVideoDownloader"))
+            .setContentText(UiStrings.display(DownloadService.this, message)).setContentIntent(content).setOnlyAlertOnce(true)
             .setOngoing(true).setProgress(100,Math.max(0,Math.min(100,percentage)),percentage<=0);
         if(currentId!=null)builder.addAction(new Notification.Action.Builder(
-            android.R.drawable.ic_media_pause,"Пауза",pauseAction).build());
+            android.R.drawable.ic_media_pause,UiStrings.display(this,"Пауза"),pauseAction).build());
         Notification n=builder.build();
         if(Build.VERSION.SDK_INT>=29)
             startForeground(NOTIFICATION_ID,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);

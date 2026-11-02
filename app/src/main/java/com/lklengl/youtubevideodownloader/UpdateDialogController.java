@@ -40,21 +40,21 @@ public final class UpdateDialogController {
         layout.setPadding(pad,(int)(10*density),pad,(int)(12*density));
         layout.setMinimumHeight((int)(174*density));
         subtitle=new TextView(activity);
-        subtitle.setText(String.format(java.util.Locale.getDefault(),"Размер APK: %.1f МБ",candidate.size/1000000.0));
+        subtitle.setText(UiStrings.display(activity, String.format(java.util.Locale.getDefault(),"Размер APK: %.1f МБ",candidate.size/1000000.0)));
         subtitle.setTextSize(15);layout.addView(subtitle);
-        stage=new TextView(activity);stage.setText("Готово к скачиванию");
+        stage=new TextView(activity);stage.setText(UiStrings.display(activity, "Готово к скачиванию"));
         stage.setTextSize(15);stage.setPadding(0,pad/2,0,pad/3);layout.addView(stage);
         progress=new ProgressBar(activity,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);progress.setProgress(0);
         progress.setProgressTintList(ColorStateList.valueOf(ThemeStyle.RED));
         layout.addView(progress,new LinearLayout.LayoutParams(-1,(int)(5*density)));
-        details=new TextView(activity);details.setText("");
+        details=new TextView(activity);details.setText(UiStrings.display(activity, ""));
         details.setMinHeight((int)(24*density));
         details.setTextSize(13);details.setPadding(0,pad/2,0,0);layout.addView(details);
         dialog=ThemeStyle.dialog(activity)
-            .setTitle("Обновление "+candidate.tag)
-            .setView(layout).setPositiveButton("Скачать и обновить",null)
-            .setNegativeButton("Позже",null).create();
+            .setTitle(UiStrings.display(activity, "Обновление "+candidate.tag))
+            .setView(layout).setPositiveButton(UiStrings.display(activity, "Скачать и обновить"),null)
+            .setNegativeButton(UiStrings.display(activity, "Позже"),null).create();
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
         dialog.setOnShowListener(d->{
@@ -65,8 +65,8 @@ public final class UpdateDialogController {
                 if(!busy){dialog.dismiss();executor.shutdownNow();}
                 else if(!cancelling && cancellation!=null){
                     cancelling=true;cancel.setEnabled(false);
-                    cancel.setText("Отмена загрузки…");
-                    stage.setText("Остановка скачивания…");
+                    cancel.setText(UiStrings.display(activity, "Отмена загрузки…"));
+                    stage.setText(UiStrings.display(activity, "Остановка скачивания…"));
                     cancellation.cancel();
                 }
             });
@@ -76,26 +76,26 @@ public final class UpdateDialogController {
     private void startDownload() {
         if(busy)return;
         busy=true;cancelling=false;cancellation=new GithubUpdater.Cancel();
-        accept.setEnabled(false);accept.setText("Подождите…");
-        cancel.setText("Отменить");cancel.setEnabled(true);
-        stage.setText("Скачивание APK…");details.setText("Скачано: 0%");
+        accept.setEnabled(false);accept.setText(UiStrings.display(activity, "Подождите…"));
+        cancel.setText(UiStrings.display(activity, "Отменить"));cancel.setEnabled(true);
+        stage.setText(UiStrings.display(activity, "Скачивание APK…"));details.setText(UiStrings.display(activity, "Скачано: 0%"));
         executor.execute(()->{
             try{
                 File apk=new GithubUpdater(activity).download(candidate,cancellation,
                     (bytes,total)->activity.runOnUiThread(()->{
                         if(dialog!=null && dialog.isShowing()){
                             int percent=(int)Math.max(0,Math.min(100,bytes*100/Math.max(total,1)));
-                            progress.setProgress(percent);details.setText("Скачано: "+percent+"%");
+                            progress.setProgress(percent);details.setText(UiStrings.display(activity, "Скачано: "+percent+"%"));
                         }
                     }),()->activity.runOnUiThread(()->{
-                        stage.setText("Проверка обновления…");
-                        details.setText("");
-                        cancel.setEnabled(false);cancel.setText("Подождите…");
+                        stage.setText(UiStrings.display(activity, "Проверка обновления…"));
+                        details.setText(UiStrings.display(activity, ""));
+                        cancel.setEnabled(false);cancel.setText(UiStrings.display(activity, "Подождите…"));
                     }));
                 cancellation.check();
                 activity.runOnUiThread(()->{
-                    stage.setText("APK проверен, открываем установщик Android…");
-                    details.setText("");
+                    stage.setText(UiStrings.display(activity, "APK проверен, открываем установщик Android…"));
+                    details.setText(UiStrings.display(activity, ""));
                     dialog.dismiss();
                     executor.shutdown();
                     installer.launch(apk);
@@ -104,16 +104,16 @@ public final class UpdateDialogController {
                 activity.runOnUiThread(()->{
                     busy=false;
                     if(cancellation.isCancelled()){
-                        stage.setText("Загрузка отменена");
-                        details.setText("");
+                        stage.setText(UiStrings.display(activity, "Загрузка отменена"));
+                        details.setText(UiStrings.display(activity, ""));
                         progress.setProgress(0);
                     }else{
-                        stage.setText("Не удалось скачать обновление");
+                        stage.setText(UiStrings.display(activity, "Не удалось скачать обновление"));
                         Log.w("YoutubeVideoDownloader","Ошибка загрузки обновления",e);
-                        details.setText(UpdateErrorMessages.userMessage(e));
+                        details.setText(UiStrings.display(activity, UpdateErrorMessages.userMessage(e)));
                     }
-                    accept.setEnabled(true);accept.setText("Повторить");
-                    cancel.setText("Закрыть");cancel.setEnabled(true);
+                    accept.setEnabled(true);accept.setText(UiStrings.display(activity, "Повторить"));
+                    cancel.setText(UiStrings.display(activity, "Закрыть"));cancel.setEnabled(true);
                     cancelling=false;
                 });
             }

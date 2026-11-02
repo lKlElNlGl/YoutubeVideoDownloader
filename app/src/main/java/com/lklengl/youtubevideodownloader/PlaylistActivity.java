@@ -345,7 +345,10 @@ public final class PlaylistActivity extends Activity {
     h.check.setChecked(selected[h.position]);
     h.name.setText(entry.title);
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
-    h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(qualities.get(h.position))]));
+    h.quality.setText(UiStrings.display(PlaylistActivity.this,PlaylistQualityText.label(
+       h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW,
+       PlaylistHistory.queuedQuality(PlaylistActivity.this,entry.url),
+       PlaylistHistory.actualHeight(PlaylistActivity.this,entry.url),qualities.get(h.position))));
     int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
      h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
      h.already.setText(UiStrings.display(PlaylistActivity.this,

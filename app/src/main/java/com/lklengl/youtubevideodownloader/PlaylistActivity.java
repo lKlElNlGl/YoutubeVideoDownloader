@@ -46,8 +46,8 @@ public final class PlaylistActivity extends Activity {
    if(activeRefreshId==null)return;
    long seconds=(SystemClock.elapsedRealtime()-refreshStart)/1000L;
    int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
-   progressText.setText("Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)
-    +"\n"+waitingMessages[index]);
+   progressText.setText(UiStrings.display(PlaylistActivity.this, "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)
+    +"\n"+waitingMessages[index]));
    handler.postDelayed(this,1000);
   }
  };
@@ -77,7 +77,7 @@ public final class PlaylistActivity extends Activity {
   if(proxy==null)proxy="";
   playlist=PlaylistCache.load(this,source);
   if(playlist==null){
-   Toast.makeText(this,"Плейлист не сохранён. Получите список повторно.",Toast.LENGTH_LONG).show();
+   Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Плейлист не сохранён. Получите список повторно."),Toast.LENGTH_LONG).show();
    finish();return;
   }
   buildScreen();refreshData(false);
@@ -108,9 +108,9 @@ public final class PlaylistActivity extends Activity {
   for(PlaylistRepository.Entry e:playlist.entries){
    if(e.duration<0)allKnown=false;else seconds+=e.duration;
   }
-  subheading.setText(playlist.entries.size()+" видео"+
-   (allKnown?" · "+QueueRules.readableDuration((int)Math.min(Integer.MAX_VALUE,seconds)):""));
-  sectionCount.setText(playlist.entries.size()+" видео");
+  subheading.setText(UiStrings.display(PlaylistActivity.this, playlist.entries.size()+" видео"+
+   (allKnown?" · "+QueueRules.readableDuration((int)Math.min(Integer.MAX_VALUE,seconds)):"")));
+  sectionCount.setText(UiStrings.display(PlaylistActivity.this, playlist.entries.size()+" видео"));
   adapter.notifyDataSetChanged();updateFooter();
  }
  private void buildScreen(){
@@ -121,13 +121,13 @@ public final class PlaylistActivity extends Activity {
   root.addView(toolbar,new LinearLayout.LayoutParams(-1,dp(47)));
   TextView back=txt("‹",32);back.setGravity(Gravity.CENTER);
   toolbar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(45)));
-  back.setOnClickListener(v->finish());back.setContentDescription("Назад");
+  back.setOnClickListener(v->finish());back.setContentDescription(UiStrings.display(PlaylistActivity.this, "Назад"));
   TextView title=txt("Плейлист",19);title.setTypeface(null,Typeface.BOLD);
   toolbar.addView(title,new LinearLayout.LayoutParams(0,-2,1));
   refreshControl=txt("⟳",30);refreshControl.setGravity(Gravity.CENTER);
   refreshControl.setTextColor(ThemeStyle.RED);
   toolbar.addView(refreshControl,new LinearLayout.LayoutParams(dp(44),dp(44)));
-  refreshControl.setContentDescription("Обновить плейлист");
+  refreshControl.setContentDescription(UiStrings.display(PlaylistActivity.this, "Обновить плейлист"));
   refreshControl.setOnClickListener(v->updatePlaylist());
 
   progressPanel=panel();
@@ -254,8 +254,8 @@ public final class PlaylistActivity extends Activity {
     h.check.setButtonTintList(ColorStateList.valueOf(ThemeStyle.RED));
     h.check.setChecked(selected[pos]);
     h.name.setText(entry.title);
-    h.duration.setText(entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration));
-    h.quality.setText(PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(qualities.get(pos))]+" ⌄");
+    h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
+    h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(qualities.get(pos))]+" ⌄"));
     h.already.setVisibility(previouslyAddedCache.contains(entry.url)?View.VISIBLE:View.GONE);
     return old;
    }
@@ -272,7 +272,7 @@ public final class PlaylistActivity extends Activity {
 
   LinearLayout bottom=panel();root.addView(bottom,margin(6,0));
   counter=txt("",12);bottom.addView(counter);
-  addButton=new Button(this);addButton.setText("Добавить в очередь");
+  addButton=new Button(this);addButton.setText(UiStrings.display(PlaylistActivity.this, "Добавить в очередь"));
   ThemeStyle.styleButton(addButton,true);
   ThemeStyle.icon(addButton,"download",18);
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(49)));
@@ -284,7 +284,7 @@ public final class PlaylistActivity extends Activity {
  }
  private Spinner spinner(String[] labels){
   Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
-  ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,labels){
+  ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,UiStrings.translateChoices(this,labels)){
    @Override public View getView(int p,View old,android.view.ViewGroup parent){
     TextView t=(TextView)super.getView(p,old,parent);
     t.setTextColor(ThemeStyle.text(PlaylistActivity.this));t.setTextSize(12);return t;
@@ -314,15 +314,15 @@ public final class PlaylistActivity extends Activity {
  private void updateFooter(){
   previouslyAddedCache=previouslyAdded();
   int count=0;for(boolean flag:selected)if(flag)count++;
-  counter.setText("Выбрано: "+count+" из "+selected.length);
+  counter.setText(UiStrings.display(PlaylistActivity.this, "Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  selectAll.setText(count==selected.length?"☑  Снять выбор":"☐  Выбрать все ("+selected.length+")");
+  selectAll.setText(UiStrings.display(PlaylistActivity.this, count==selected.length?"☑  Снять выбор":"☐  Выбрать все ("+selected.length+")"));
  }
  private void chooseQuality(int position){
   if(position<0||position>=qualities.size())return;
-  AlertDialog dialog=ThemeStyle.dialog(this).setTitle("Качество для этого видео")
-   .setSingleChoiceItems(PlaylistQualityPolicy.LABELS,
+  AlertDialog dialog=ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Качество для этого видео"))
+   .setSingleChoiceItems(UiStrings.translateChoices(this,PlaylistQualityPolicy.LABELS),
     PlaylistQualityPolicy.index(qualities.get(position)),(d,which)->{
      qualities.set(position,PlaylistQualityPolicy.VALUES[which]);
      persistQualities();
@@ -330,11 +330,11 @@ public final class PlaylistActivity extends Activity {
       int p=list.getFirstVisiblePosition()+i;
       if(p==position){
        Row h=(Row)list.getChildAt(i).getTag();
-       h.quality.setText(PlaylistQualityPolicy.LABELS[which]+" ⌄");break;
+       h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[which]+" ⌄"));break;
       }
      }
      d.dismiss();
-   }).setNegativeButton("Отмена",null).create();
+   }).setNegativeButton(UiStrings.display(PlaylistActivity.this, "Отмена"),null).create();
   dialog.show();
  }
  private void addSelected(){
@@ -343,12 +343,12 @@ public final class PlaylistActivity extends Activity {
   for(int i=0;i<selected.length;i++)if(selected[i]){
    count++;if(already.contains(playlist.entries.get(i).url))duplicates++;
   }
-  if(count==0){Toast.makeText(this,"Выберите видео",Toast.LENGTH_SHORT).show();return;}
+  if(count==0){Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Выберите видео"),Toast.LENGTH_SHORT).show();return;}
   if(duplicates>0){
-   ThemeStyle.dialog(this).setTitle("Повторное добавление")
-    .setMessage("Уже добавлено: "+duplicates+". Добавить их повторно?")
-    .setNegativeButton("Отмена",null)
-    .setPositiveButton("Добавить",(d,w)->reallyAdd()).show();
+   ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Повторное добавление"))
+    .setMessage(UiStrings.display(PlaylistActivity.this, "Уже добавлено: "+duplicates+". Добавить их повторно?"))
+    .setNegativeButton(UiStrings.display(PlaylistActivity.this, "Отмена"),null)
+    .setPositiveButton(UiStrings.display(PlaylistActivity.this, "Добавить"),(d,w)->reallyAdd()).show();
   }else reallyAdd();
  }
  private void reallyAdd(){
@@ -358,9 +358,9 @@ public final class PlaylistActivity extends Activity {
     "mp3".equals(format)||"m4a".equals(format),qualities,proxy,folder,priority,format);
    Arrays.fill(selected,false);persistSelection();updateFooter();
    adapter.notifyDataSetChanged();DownloadService.kick(this);
-   Toast.makeText(this,"Добавлено в очередь: "+count,Toast.LENGTH_LONG).show();
+   Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Добавлено в очередь: "+count),Toast.LENGTH_LONG).show();
   }catch(Exception ex){
-   ThemeStyle.dialog(this).setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
+   ThemeStyle.dialog(this).setMessage(UiStrings.display(PlaylistActivity.this, ex.getMessage())).setPositiveButton(UiStrings.display(PlaylistActivity.this, "ОК"),null).show();
   }
  }
  private void updatePlaylist(){
@@ -377,14 +377,14 @@ public final class PlaylistActivity extends Activity {
     runOnUiThread(()->{
      if(!id.equals(activeRefreshId)||isFinishing()||isDestroyed())return;
      finishRefresh();refreshData(true);
-     Toast.makeText(this,"Плейлист обновлён",Toast.LENGTH_SHORT).show();
+     Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Плейлист обновлён"),Toast.LENGTH_SHORT).show();
     });
    }catch(Exception ex){
     runOnUiThread(()->{
      if(!id.equals(activeRefreshId)||isFinishing()||isDestroyed())return;
      finishRefresh();
-     ThemeStyle.dialog(this).setTitle("Не удалось обновить плейлист")
-      .setMessage(ex.getMessage()).setPositiveButton("ОК",null).show();
+     ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Не удалось обновить плейлист"))
+      .setMessage(UiStrings.display(PlaylistActivity.this, ex.getMessage())).setPositiveButton(UiStrings.display(PlaylistActivity.this, "ОК"),null).show();
     });
    }
   });

@@ -149,7 +149,7 @@ public final class MainActivity extends Activity {
         String[] tabIcons={"play","queue","settings"};
         for(int i=0;i<3;i++){
             LinearLayout tab=pageTabs[i];
-            ThemeStyle.styleTab(tab,i==currentPage,tabIcons[i],titles[i]);
+            ThemeStyle.styleTab(tab,i==currentPage,tabIcons[i],UiStrings.translate(this,titles[i]));
             LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(48),1);
             params.setMargins(dp(2),dp(4),dp(2),dp(11));tabs.addView(tab,params);
             final int destination=i;
@@ -321,7 +321,22 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout settingsPage=pagePanels[2];
-        LinearLayout look=ThemeStyle.card(settingsPage,"Внешний вид");
+        LinearLayout look=ThemeStyle.card(settingsPage,UiStrings.translate(this,"Внешний вид"));
+        label(look,"Язык");
+        Spinner languagePicker=spinner(look,UiStrings.LANGUAGE_NAMES);
+        String savedLanguage=getSharedPreferences("design",MODE_PRIVATE).getString("language","en");
+        languagePicker.setSelection("ru".equals(savedLanguage)?1:0);
+        languagePicker.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,View view,int index,long id){
+                String next=index==1?"ru":"en";
+                if(!next.equals(getSharedPreferences("design",MODE_PRIVATE).getString("language","en"))){
+                    saveDraft();
+                    getSharedPreferences("design",MODE_PRIVATE).edit().putString("language",next).apply();
+                    recreate();
+                }
+            }
+        });
         label(look,"Тема оформления");
         Spinner themePicker=spinner(look,ThemeStyle.MODES);
         themePicker.setSelection(getSharedPreferences("design",MODE_PRIVATE).getInt("theme",2));
@@ -337,7 +352,7 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout network=ThemeStyle.card(settingsPage,"Сетевые параметры");
-        proxyEnabled=new CheckBox(this);proxyEnabled.setText("Использовать HTTP/HTTPS-прокси");
+        proxyEnabled=new CheckBox(this);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));
         proxyEnabled.setTextColor(ThemeStyle.text(this));network.addView(proxyEnabled);
         proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
         network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(50)));
@@ -446,7 +461,7 @@ public final class MainActivity extends Activity {
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
             ThemeStyle.styleTab(pageTabs[i],i==currentPage,
                 new String[]{"play","queue","settings"}[i],
-                new String[]{"Загрузка","Очередь","Настройки"}[i]);
+                new String[]{UiStrings.translate(this,"Загрузка"),UiStrings.translate(this,"Очередь"),UiStrings.translate(this,"Настройки")}[i]);
         }
         mainScroll.scrollTo(0,0);
         // Tab selection is intentionally not persisted across fresh launches.
@@ -467,22 +482,28 @@ public final class MainActivity extends Activity {
     private int dp(int value){return (int)(getResources().getDisplayMetrics().density*value+0.5f);}
     private TextView text(String value,int size){
         TextView t=new TextView(this);
-        t.setText(value);t.setTextSize(size);t.setTextColor(ThemeStyle.text(this));return t;
+        t.setText(UiStrings.display(this,value));t.setTextSize(size);t.setTextColor(ThemeStyle.text(this));return t;
     }
     private void label(LinearLayout parent,String value){
         TextView t=text(value,15);t.setTextColor(ThemeStyle.subdued(this));
         t.setPadding(0,dp(13),0,dp(4));parent.addView(t);
     }
     private Button button(LinearLayout parent,String value){
-        Button b=new Button(this);b.setText(value);ThemeStyle.styleButton(b,false);
+        Button b=new Button(this);b.setText(UiStrings.display(this,value));ThemeStyle.styleButton(b,false);
         parent.addView(b);return b;
+    }
+    private String[] translateChoices(String[] items){
+        if(items==UiStrings.LANGUAGE_NAMES)return items;
+        String[] translated=new String[items.length];
+        for(int i=0;i<items.length;i++)translated[i]=UiStrings.display(this,items[i]);
+        return translated;
     }
     private Spinner spinner(LinearLayout parent,String[] items){
         Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
         s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
         boolean themeChoices=items==ThemeStyle.MODES;
         String[] modes={"sun","moon","phone"};
-        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items){
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,translateChoices(items)){
             private TextView decorate(TextView v,int position){
                 v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);
                 v.setSingleLine(true);v.setEllipsize(TextUtils.TruncateAt.END);

@@ -33,28 +33,35 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Run icon regression tests
+      - name: Test 9 icon scales and launcher aliases
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
+      - name: Verify APK contents and small size
+        run: |
+          set -euo pipefail
+          apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          test -s "$apk"
+          test "$(stat -c '%s' "$apk")" -lt 5000000
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep "package: name='com.lklelnlgl.iconlab'"
       - name: Publish standalone prerelease without changing latest main app release
         run: |
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           test -s "$apk"
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.1.0.apk
-          tag=iconlab-v0.1.0
+          cp "$apk" dist/IconLab-v0.2.0.apk
+          tag=iconlab-v0.2.0
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.1.0.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.2.0.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.1.0.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.1.0" \
-              --notes "Standalone Android icon comparison lab. Debug-signed APK. 8 icons; pinning to a specific home page must be done in the phone launcher." \
+            gh release create "$tag" dist/IconLab-v0.2.0.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.2.0" \
+              --notes "Nine ultra-close launcher icons based on Icon 04: Icon 04a = 100% of original Icon 04 scale, Icon 04b..04i shrink by 0.25% to 98%. Standalone APK; uninstall Icon Lab v0.1.0 first. Main downloader release unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.1.0
+          name: IconLab-v0.2.0
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

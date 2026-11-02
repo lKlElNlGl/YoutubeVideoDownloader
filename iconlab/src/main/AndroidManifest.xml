@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:label="Icon Lab"
-        android:icon="@android:drawable/ic_menu_gallery"
+        android:icon="@drawable/lab_app_icon"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
@@ -13,10 +13,10 @@
         </activity>
 
         <activity-alias
-            android:name=".LabVariant01"
+            android:name=".LabVariant04a"
             android:targetActivity=".MainActivity"
-            android:label="Icon 01"
-            android:icon="@mipmap/lab_icon_01"
+            android:label="Icon 04a"
+            android:icon="@mipmap/lab_icon_04a"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -26,10 +26,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant02"
+            android:name=".LabVariant04b"
             android:targetActivity=".MainActivity"
-            android:label="Icon 02"
-            android:icon="@mipmap/lab_icon_02"
+            android:label="Icon 04b"
+            android:icon="@mipmap/lab_icon_04b"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -39,10 +39,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant03"
+            android:name=".LabVariant04c"
             android:targetActivity=".MainActivity"
-            android:label="Icon 03"
-            android:icon="@mipmap/lab_icon_03"
+            android:label="Icon 04c"
+            android:icon="@mipmap/lab_icon_04c"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -52,10 +52,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant04"
+            android:name=".LabVariant04d"
             android:targetActivity=".MainActivity"
-            android:label="Icon 04"
-            android:icon="@mipmap/lab_icon_04"
+            android:label="Icon 04d"
+            android:icon="@mipmap/lab_icon_04d"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -65,10 +65,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant05"
+            android:name=".LabVariant04e"
             android:targetActivity=".MainActivity"
-            android:label="Icon 05"
-            android:icon="@mipmap/lab_icon_05"
+            android:label="Icon 04e"
+            android:icon="@mipmap/lab_icon_04e"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -78,10 +78,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant06"
+            android:name=".LabVariant04f"
             android:targetActivity=".MainActivity"
-            android:label="Icon 06"
-            android:icon="@mipmap/lab_icon_06"
+            android:label="Icon 04f"
+            android:icon="@mipmap/lab_icon_04f"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -91,10 +91,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant07"
+            android:name=".LabVariant04g"
             android:targetActivity=".MainActivity"
-            android:label="Icon 07"
-            android:icon="@mipmap/lab_icon_07"
+            android:label="Icon 04g"
+            android:icon="@mipmap/lab_icon_04g"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -104,10 +104,23 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabVariant08"
+            android:name=".LabVariant04h"
             android:targetActivity=".MainActivity"
-            android:label="Icon 08"
-            android:icon="@mipmap/lab_icon_08"
+            android:label="Icon 04h"
+            android:icon="@mipmap/lab_icon_04h"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LabVariant04i"
+            android:targetActivity=".MainActivity"
+            android:label="Icon 04i"
+            android:icon="@mipmap/lab_icon_04i"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

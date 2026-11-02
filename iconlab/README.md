@@ -1,23 +1,29 @@
-# Icon Lab — tiny Android test application
+# Icon Lab v0.2.0 — tiny Android launcher icon test
 
-Independent Android package `com.lklelnlgl.iconlab` (no yt-dlp, ffmpeg, network, storage or download permissions).
+Stand-alone Android package `com.lklelnlgl.iconlab`. No downloader functionality, ffmpeg, yt-dlp, network or storage permissions.
 
-1. Install IconLab-v0.1.0.apk from release `iconlab-v0.1.0`.
-2. Launch **Icon Lab** and press **Показать 8 вариантов** once.
-3. Open the launcher **app drawer**. Eight actual launcher activities **Icon 01** — **Icon 08** appear.
-4. Drag them to a free home-screen page. Compare their visible edges and scale, then report the winning number.
+1. **Uninstall the previous Icon Lab** (v0.1.0) first; each disposable APK may use a different debug signature.
+2. Install `IconLab-v0.2.0.apk`.
+3. Open **Icon Lab** and tap the only button, **Показать 9 вариантов**.
+4. Find **Icon 04a**, **Icon 04b**, ... **Icon 04i** in the Android app list.
+5. Compare 9 actual launcher icons (5 + 4 on the five-column launcher). You can drag them to the last home-screen page manually.
 
-01 = current padded legacy baseline.
-02 = transparent legacy 90%.
-03 = transparent legacy 98%.
-04 = transparent legacy 106%.
-05 = adaptive transparent foreground 80% (close to baseline).
-06 = adaptive transparent foreground 65%.
-07 = adaptive transparent foreground 73%.
-08 = adaptive transparent foreground 86%.
+All variants use the approved Icon 04 source image, with a *transparent legacy icon* like the original. The only change between variants is the scale, measured relative to Icon 04:
 
-### Why not put the icons automatically on the last page?
+| Icon | Scale relative to Icon 04 | Absolute scale in the old generator |
+|---|---:|---:|
+| 04a | 100.00% | 1.06000 |
+| 04b | 99.75% | 1.05735 |
+| 04c | 99.50% | 1.05470 |
+| 04d | 99.25% | 1.05205 |
+| 04e | 99.00% | 1.04940 |
+| 04f | 98.75% | 1.04675 |
+| 04g | 98.50% | 1.04410 |
+| 04h | 98.25% | 1.04145 |
+| 04i | 98.00% | 1.03880 |
 
-Android does not grant apps permission to choose a home-screen page or add arbitrary launcher entries without launcher control. Activity aliases provide **real app icons** in the app drawer; manual drag ensures a faithful launcher comparison. Pinned shortcuts are unsuitable because they typically require a separate consent dialog for each shortcut and may use a shortcut badge.
+Output PNGs use a 1024 px canvas with `mipmap-nodpi` to preserve the quarter-percent steps; the previous 192 px generation would quantize some neighboring steps to the same pixels. Each candidate is generated directly from the original WebP (no progressive degradation or rescaling of a clipped icon). The exterior matte is transparent.
 
-The approved artwork comes directly from `app/src/main/res/drawable-nodpi/ic_launcher_reference.webp`. The generator removes the exterior matte before scaling. No main app changes or large download dependencies are required. APK is debug-signed and intentionally disposable. On a future rebuild, uninstall the old test app first if the temporary signing identity differs.
+Android launchers control placement. The app enables all nine *real launcher activities* after one tap; the launcher cannot be forced to arrange icons on a particular home-screen page.
+
+The small app remains separate from the main YoutubeVideoDownloader, and its prerelease does not change the main app latest release.

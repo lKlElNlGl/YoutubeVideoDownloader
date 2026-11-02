@@ -1040,6 +1040,7 @@ public final class MainActivity extends Activity {
             if(saf)removed=DocumentsContract.deleteDocument(getContentResolver(),file);
             else removed=getContentResolver().delete(file,null,null)>0;
             if(!removed)throw new java.io.IOException("Не удалось удалить файл");
+            PlaylistHistory.markRemovedFile(this,job.url);
             removeQueueRecord(job);
         }catch(Exception ex){
             ThemeStyle.dialog(this).setTitle(UiStrings.display(MainActivity.this, "Файл не удалён"))

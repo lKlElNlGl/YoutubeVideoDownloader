@@ -343,6 +343,14 @@ public final class UiStrings {
         strings.put(" кбит/с", " kbps");
         strings.put(" из ", " of ");
         strings.put(" с", " s");
+        strings.put("Получить информацию","Get information");
+        strings.put("Уже добавлено в очередь","Already added to queue");
+        strings.put("Фильтр отображения загрузок","Download display filters");
+        strings.put("Отобразить отмеченные/неотмеченные загрузки","Show selected or unselected downloads");
+        strings.put("Отобразить загрузки со статусом","Show downloads with status");
+        strings.put("Отобразить загрузки находящиеся/отсутствующие в очереди","Show queued or unqueued downloads");
+        strings.put("Загрузка потока ","Downloading stream ");
+        strings.put("Объединение потоков","Merging streams");
         ENGLISH=Collections.unmodifiableMap(strings);
     }
     private UiStrings(){}

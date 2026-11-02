@@ -1,37 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Full-bleed, dark background prevents white launcher margins. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="512" android:viewportHeight="512">
-    <path android:fillColor="#0A0C10" android:pathData="M0,0 H512 V512 H0 Z"/>
-    <path android:pathData="M42,0 H470 Q512,0 512,42 V470 Q512,512 470,512 H42 Q0,512 0,470 V42 Q0,0 42,0 Z"
-        android:strokeColor="#4F5359" android:strokeWidth="3">
-        <aapt:attr name="android:fillColor">
-            <gradient android:startX="88" android:startY="0" android:endX="420" android:endY="512" android:type="linear">
-                <item android:color="#353840" android:offset="0"/>
-                <item android:color="#0D1016" android:offset=".56"/>
-                <item android:color="#050608" android:offset="1"/>
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path android:pathData="M110,46 Q56,72 46,131"
-        android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
-        android:strokeAlpha=".22" android:strokeWidth="6" android:strokeLineCap="round"/>
-    <path android:pathData="M112,151 Q112,106 159,106 H345 Q392,106 392,151 V329 Q392,375 345,375 H159 Q112,375 112,329 Z"
-        android:strokeColor="#FF8993" android:strokeWidth="5">
-        <aapt:attr name="android:fillColor">
-            <gradient android:startX="124" android:startY="112" android:endX="376" android:endY="346" android:type="linear">
-                <item android:color="#FF6472" android:offset="0"/>
-                <item android:color="#FD2E44" android:offset=".49"/>
-                <item android:color="#A50922" android:offset="1"/>
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path android:pathData="M222,172 Q221,158 236,168 L329,224 Q344,234 329,245 L237,301 Q222,311 222,297 Z"
-        android:fillColor="#FFFFFF"/>
-    <path android:pathData="M307,279 Q307,269 319,269 H359 Q371,269 371,283 V365 H407 Q429,365 411,385 L353,451 Q342,465 330,450 L268,384 Q254,365 280,365 H307 Z"
-        android:fillColor="#0B0D11" android:strokeWidth="10" android:strokeColor="#0B0D11"/>
-    <path android:pathData="M309,281 Q309,270 321,270 H356 Q368,270 368,283 V365 H399 Q415,365 402,380 L348,443 Q341,451 333,442 L277,382 Q265,365 284,365 H309 Z"
-        android:fillColor="#EDF3FC" android:strokeColor="#C8D3E0" android:strokeWidth="3"/>
-</vector>
+<!-- Legacy icon also uses the transparent rendered artwork; no dark matte. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_final"/>
+</layer-list>

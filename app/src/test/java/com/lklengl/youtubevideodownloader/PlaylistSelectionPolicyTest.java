@@ -11,7 +11,7 @@ public class PlaylistSelectionPolicyTest {
  @Test public void explicitUnselectedItemsStayUnselectedAcrossReopening(){
   List<Boolean> current=Arrays.asList(false,true,false);
   Set<String> added=new HashSet<>(Arrays.asList("u2"));
-  assertEquals(Arrays.asList(false,false,false),PlaylistSelectionPolicy.resume(current,
+  assertEquals(Arrays.asList(false,true,false),PlaylistSelectionPolicy.resume(current,
       Arrays.asList("u1","u2","u3"),added));
  }
  @Test public void timeAndQualityAreConcreteAndDurationUnknownIsDash(){

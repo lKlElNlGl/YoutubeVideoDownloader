@@ -11,7 +11,7 @@ from generate_iconlab_icons import (
     VARIANTS, SOURCE, APPROVED_SCALE, OUTPUT_SIZE, remove_external_matte,
     apply_cleanup, apply_top_cleanup, neutralize_upper_left_bezel,
     clean_c2_reference, repair_upper_rim, extend_upper_black,
-    fit_canvas_subpixel, render_variants)
+    fit_canvas_subpixel, render_variants, smooth_canvas_top_if_crowded)
 ROOT=Path(__file__).resolve().parents[1]
 LABELS=[f"{n:02d}" for n in range(1,9)]
 
@@ -72,7 +72,7 @@ class IconLabTests(unittest.TestCase):
             for y in range(23):
                 for x in list(range(11))+list(range(117,128)):
                     self.assertEqual(im.getpixel((x,y)),base.getpixel((x,y)))
-        area=lambda im:sum(im.getchannel("A").crop((40,0,88,15)).getdata())
+        area=lambda im:sum(im.getchannel("A").crop((40,0,88,15)).get_flattened_data())
         self.assertGreater(area(variants[-1]),area(variants[0]))
 
     def test_eight_distinct_transparent_192px_png_files_no_stale_images(self):
@@ -107,6 +107,17 @@ class IconLabTests(unittest.TestCase):
             self.assertEqual(a.attrib[ns+"enabled"],"false")
             self.assertEqual(a.attrib[ns+"icon"],f"@mipmap/lab_top_{n}")
 
+    def test_top_boundary_antialias_only_when_growing_rim_reaches_canvas(self):
+        image=Image.new("RGBA",(192,192),(25,25,25,255))
+        # Only the top 3 output rows are softened. Interior is untouched.
+        fixed=smooth_canvas_top_if_crowded(image)
+        self.assertEqual(fixed.getpixel((96,0))[3],24)
+        self.assertEqual(fixed.getpixel((96,1))[3],170)
+        self.assertEqual(fixed.getpixel((96,2))[3],240)
+        self.assertEqual(fixed.getpixel((96,3)),image.getpixel((96,3)))
+        self.assertEqual(fixed.getpixel((96,120)),image.getpixel((96,120)))
+        self.assertEqual(fixed.getpixel((96,0))[:3],image.getpixel((96,0))[:3])
+
     def test_actual_art_not_opaque_cutoff_across_top_png_edge(self):
         if not SOURCE.is_file():
             self.skipTest("requires real source from GitHub")
@@ -115,7 +126,7 @@ class IconLabTests(unittest.TestCase):
             for n in LABELS:
                 with Image.open(Path(td)/"mipmap-xxxhdpi"/f"lab_top_{n}.png") as im:
                     self.assertLess(max(im.getchannel("A")
-                                       .crop((0,0,192,1)).getdata()),48,n)
+                                       .crop((0,0,192,1)).get_flattened_data()),48,n)
 
 if __name__=="__main__":
     unittest.main()

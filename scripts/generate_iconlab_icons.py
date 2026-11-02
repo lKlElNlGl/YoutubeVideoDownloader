@@ -181,6 +181,28 @@ def extend_upper_black(art, growth):
     return out
 
 
+def smooth_canvas_top_if_crowded(icon):
+    """Prevent a hard-cut straight top when a growing rim reaches 192px edge.
+
+    Preserve exact black color/shape and all interior pixels. The only
+    correction is 3-pixel anti-aliasing at the canvas boundary itself.
+    This is NOT a top contour trim, scale change, or red-panel translation.
+    """
+    alpha = icon.getchannel("A")
+    w, h = icon.size
+    if max(alpha.crop((0, 0, w, 1)).get_flattened_data()) < 40:
+        return icon
+    alpha = alpha.copy()
+    for y, cap in enumerate((24, 170, 240)):
+        for x in range(w):
+            old = alpha.getpixel((x, y))
+            if old > cap:
+                alpha.putpixel((x, y), cap)
+    result = icon.copy()
+    result.putalpha(alpha)
+    return result
+
+
 def fit_canvas_subpixel(artwork, size, scale):
     """Exact v0.2.1 rendering for reference 04b, including subpixel centering."""
     big = size * SUPER_SAMPLE
@@ -213,8 +235,10 @@ def render_variants(source, output_dir):
     for label,strength,growth in VARIANTS:
         repaired=repair_upper_rim(base,strength)
         sample=extend_upper_black(repaired,growth)
-        fit_canvas_subpixel(sample,OUTPUT_SIZE,APPROVED_SCALE).save(
-            icon_dir / f"lab_top_{label}.png",optimize=True)
+        icon = fit_canvas_subpixel(sample,OUTPUT_SIZE,APPROVED_SCALE)
+        if growth > 0:
+            icon = smooth_canvas_top_if_crowded(icon)
+        icon.save(icon_dir / f"lab_top_{label}.png",optimize=True)
     return base
 
 

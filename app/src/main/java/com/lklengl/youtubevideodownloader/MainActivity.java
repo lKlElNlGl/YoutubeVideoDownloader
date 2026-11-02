@@ -211,7 +211,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout download=pagePanels[0];
         LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");
-        label(linkCard,"Ссылка на видео или плейлист");
+
         FrameLayout linkRow=new FrameLayout(this);
         url=new EditText(this);ThemeStyle.styleField(url);
         url.setHint("https://www.youtube.com/watch?v=...");
@@ -251,14 +251,15 @@ public final class MainActivity extends Activity {
                     renderPreview(false);
                 }).show();
         });
-        linkCard.addView(linkRow);
-        Button paste=button(linkCard,"Вставить ссылку");
+        LinearLayout.LayoutParams linkSpacing=new LinearLayout.LayoutParams(-1,dp(51));
+        linkSpacing.setMargins(0,0,0,dp(6));linkCard.addView(linkRow,linkSpacing);
+        Button paste=button(linkCard,"Вставить ссылку");ThemeStyle.icon(paste,"clipboard",17);
         paste.setOnClickListener(v->{
             ClipboardManager cm=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount()>0)
                 url.setText(cm.getPrimaryClip().getItemAt(0).coerceToText(this));
         });
-        previewButton=button(linkCard,"Информация о видео / плейлисте");
+        previewButton=button(linkCard,"Получить информацию");ThemeStyle.icon(previewButton,"info",17);
         previewButton.setOnClickListener(v->{
             if(PlaylistSupport.isPlaylist(url.getText().toString()))loadPlaylist(false);
             else loadPreview(false);
@@ -356,7 +357,7 @@ public final class MainActivity extends Activity {
 
         queueList=new LinearLayout(this);queueList.setOrientation(LinearLayout.VERTICAL);
         pagePanels[1].addView(queueList);
-        Button clean=button(pagePanels[1],"Очистить завершённые");
+        Button clean=button(pagePanels[1],"Очистить завершённые");ThemeStyle.icon(clean,"trash",17);
         clean.setOnClickListener(v->{
             for(DownloadQueue.Item j:DownloadQueue.all(this))
                 if(DownloadQueue.DONE.equals(j.status)||DownloadQueue.ERROR.equals(j.status)||
@@ -408,7 +409,7 @@ public final class MainActivity extends Activity {
         label(save,"Папка сохранения");
         folderLabel=text("",14);folderLabel.setPadding(dp(3),dp(4),dp(3),dp(8));
         save.addView(folderLabel);
-        Button chooseFolder=button(save,"Изменить папку");
+        Button chooseFolder=button(save,"Изменить папку");ThemeStyle.icon(chooseFolder,"folder-edit",17);
         chooseFolder.setOnClickListener(v->{
             Intent tree=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             tree.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
@@ -420,7 +421,7 @@ public final class MainActivity extends Activity {
             getPreferences(MODE_PRIVATE).edit().remove("folderUri").apply();
             showFolderLabel();
         });
-        Button openFolder=button(save,"Открыть папку с файлами");
+        Button openFolder=button(save,"Открыть папку с файлами");ThemeStyle.icon(openFolder,"folder-open",17);
         openFolder.setOnClickListener(v->openFolder());
 
         LinearLayout updates=ThemeStyle.card(settingsPage,"Обновления");
@@ -549,6 +550,7 @@ public final class MainActivity extends Activity {
         Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
         s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
         boolean themeChoices=items==ThemeStyle.MODES;
+        boolean languageChoices=items==UiStrings.LANGUAGE_NAMES;
         String[] modes={"sun","moon","phone"};
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,translateChoices(items)){
             private TextView decorate(TextView v,int position){
@@ -556,7 +558,7 @@ public final class MainActivity extends Activity {
                 v.setSingleLine(true);v.setEllipsize(TextUtils.TruncateAt.END);
                 if(themeChoices){
                     v.setCompoundDrawablesWithIntrinsicBounds(
-                        new UiIcons(modes[position],ThemeStyle.subdued(MainActivity.this),dp(18)),
+                        new UiIcons(languageChoices?(position==0?"en":"ru"):modes[position],ThemeStyle.subdued(MainActivity.this),dp(18)),
                         null,null,null);
                     v.setCompoundDrawablePadding(dp(10));
                 }

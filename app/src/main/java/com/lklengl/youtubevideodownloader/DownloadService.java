@@ -75,7 +75,7 @@ public final class DownloadService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         NotificationManager manager=getSystemService(NotificationManager.class);
-        manager.createNotificationChannel(new NotificationChannel(CHANNEL,"Загрузки YoutubeVideoDownloader",NotificationManager.IMPORTANCE_LOW));
+        manager.createNotificationChannel(new NotificationChannel(CHANNEL,UiStrings.display(this,"Загрузки YoutubeVideoDownloader"),NotificationManager.IMPORTANCE_LOW));
         promote("Ожидание загрузок",0);
         DownloadQueue.recover(this);
     }

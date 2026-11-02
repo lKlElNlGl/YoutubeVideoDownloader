@@ -30,10 +30,16 @@
 
 ## Изменения
 
-### v0.5.2 (готовится к выпуску)
+### v0.5.3
+- Исправлены сохранение отметок видео при изменении порядка плейлиста и повторные запросы к YouTube.
+- Улучшены уведомления о добавлении, прогресс и сообщения об ошибках.
+- Переработаны чекбоксы, выбор качества, фильтры и отступы; уточнены статусы файлов.
+- Изменены размеры и ресурсы иконки для более крупного отображения без белой подложки.
+
+### v0.5.2
 - Английский и русский интерфейс с выбором языка.
 - Компактный список плейлиста, фильтры и статусы скачивания.
-- Общее обновление плейлиста на обеих страницах.
+- Обновление плейлиста на обеих страницах.
 - Восстановлены цвета оформления 050 и обновлена иконка.
 
 ### v0.5.1
@@ -89,10 +95,16 @@ Playlists let you choose individual entries and set per-video quality. Available
 
 ## What's changed
 
-### v0.5.2 (upcoming)
+### v0.5.3
+- Kept playlist selections tied to video IDs and unified playlist metadata requests.
+- Improved queue confirmations, progress reporting, and user-facing errors.
+- Refined checkboxes, quality menus, filters, spacing, and file status labels.
+- Enlarged the launcher artwork and switched to adaptive transparent resources.
+
+### v0.5.2
 - English and Russian UI with a language setting.
 - Compact playlist browser, filters, and download status labels.
-- Shared playlist refresh across screens.
+- Playlist refresh across screens.
 - Restored the 050 color palette and refined the launcher icon.
 
 ### v0.5.1

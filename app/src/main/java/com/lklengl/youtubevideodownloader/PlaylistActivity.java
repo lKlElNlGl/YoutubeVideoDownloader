@@ -154,11 +154,23 @@ public final class PlaylistActivity extends Activity {
   Set<String> already=previouslyAdded();
   List<String> urls=new ArrayList<>();
   for(PlaylistRepository.Entry e:playlist.entries)urls.add(e.url);
-  List<Boolean> saved=PlaylistCache.readSelection(this,source);
-  List<Boolean> flags=saved==null?PlaylistSelectionPolicy.initial(urls,already):
-   PlaylistSelectionPolicy.resume(saved,urls,already);
+  Map<String,Boolean> byId=PlaylistCache.readSelectionById(this,source);
+  List<String> ids=new ArrayList<>();
+  Set<String> alreadyIds=new HashSet<>();
+  for(PlaylistRepository.Entry e:playlist.entries){
+   ids.add(e.id);
+   if(already.contains(e.url))alreadyIds.add(e.id);
+  }
+  List<Boolean> flags;
+  if(byId!=null)flags=PlaylistSelectionPolicy.byId(ids,byId,alreadyIds);
+  else{
+   List<Boolean> legacy=PlaylistCache.readSelection(this,source);
+   flags=legacy==null?PlaylistSelectionPolicy.initial(urls,already):
+     PlaylistSelectionPolicy.resume(legacy,urls,already);
+  }
   selected=new boolean[flags.size()];
   for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
+  PlaylistCache.saveSelectionById(this,source,playlist,selected);
   qualities=PlaylistCache.readQualities(this,source,playlist,quality);
   heading.setText(playlist.title);
   owner.setText(playlist.uploader);
@@ -401,7 +413,10 @@ public final class PlaylistActivity extends Activity {
   });
   fade.start();
  }
- private void persistSelection(){PlaylistCache.saveSelection(this,source,selected);}
+ private void persistSelection(){
+  PlaylistCache.saveSelectionById(this,source,playlist,selected);
+  PlaylistCache.saveSelection(this,source,selected);
+ }
  private void persistQualities(){PlaylistCache.saveQualities(this,source,playlist,qualities);}
  private void updateFooter(){
   if(selected==null||selectAll==null||addButton==null)return;

@@ -84,7 +84,9 @@ public final class DownloadQueue {
             i.status=WAITING;i.message="Ожидает";i.filename="";i.durationSeconds=duration;i.actualHeight=height;i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
             if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             else QueueRules.addNewest(list,java.util.Collections.singletonList(i));
-            save(context,list);return i.id;
+            save(context,list);
+            PlaylistHistory.markQueued(context,url);
+            return i.id;
         }
     }
     /** Adds the selected playlist entries atomically; avoids partial playlists on capacity failures. */
@@ -121,7 +123,9 @@ public final class DownloadQueue {
             }
             if(priority)QueueRules.prependPriority(list,added);
             else QueueRules.addNewest(list,added);
-            save(context,list);return count;
+            save(context,list);
+            for(Item item:added)PlaylistHistory.markQueued(context,item.url);
+            return count;
         }
     }
     public static Item next(Context context) {

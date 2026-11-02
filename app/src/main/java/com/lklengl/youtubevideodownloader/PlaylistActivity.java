@@ -29,6 +29,7 @@ public final class PlaylistActivity extends Activity {
  private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
  private CheckBox selectAll;
  private ImageView filterIcon;
+ private View filterDot;
  private final List<Integer> visibleRows=new ArrayList<>();
  private int[] videoStatus=new int[0];
  private int selectionFilter=0,downloadFilter=0,queueFilter=0;
@@ -141,9 +142,10 @@ public final class PlaylistActivity extends Activity {
  private void updateFilterIcon(){
   if(filterIcon==null)return;
   boolean active=selectionFilter!=0||downloadFilter!=0||queueFilter!=0||selectedFirst;
-  filterIcon.setImageDrawable(new UiIcons("sliders",active?ThemeStyle.RED:ThemeStyle.text(this),dp(21)));
+  filterIcon.setImageDrawable(new UiIcons("sliders",ThemeStyle.text(this),dp(20)));
   filterIcon.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(this),
-    active?ThemeStyle.RED:ThemeStyle.buttonStroke(this),dp(9)));
+    ThemeStyle.buttonStroke(this),dp(9)));
+  if(filterDot!=null)filterDot.setVisibility(active?View.VISIBLE:View.GONE);
  }
  private void refreshData(boolean fresh){
   if(fresh){
@@ -241,6 +243,7 @@ public final class PlaylistActivity extends Activity {
   LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);
   listCard.addView(section,margin(2,0));
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
+  sectionTitle.setTranslationY(dp(3));
   section.addView(sectionTitle,new LinearLayout.LayoutParams(0,-2,1));
   sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
@@ -263,8 +266,16 @@ public final class PlaylistActivity extends Activity {
   });
   filterIcon=new ImageView(this);filterIcon.setScaleType(ImageView.ScaleType.CENTER);
   filterIcon.setContentDescription(UiStrings.display(this,"Настройки списка видео"));
-  selectRow.addView(filterIcon,new LinearLayout.LayoutParams(dp(42),dp(38)));
-  filterIcon.setOnClickListener(v->showListSettings());
+  FrameLayout filterFrame=new FrameLayout(this);
+  selectRow.addView(filterFrame,new LinearLayout.LayoutParams(dp(42),dp(38)));
+  filterFrame.addView(filterIcon,new FrameLayout.LayoutParams(-1,-1));
+  filterDot=new View(this);
+  android.graphics.drawable.GradientDrawable dotShape=new android.graphics.drawable.GradientDrawable();
+  dotShape.setColor(ThemeStyle.RED);dotShape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+  filterDot.setBackground(dotShape);
+  FrameLayout.LayoutParams dotPos=new FrameLayout.LayoutParams(dp(7),dp(7),Gravity.TOP|Gravity.END);
+  dotPos.setMargins(0,dp(3),dp(3),0);filterFrame.addView(filterDot,dotPos);
+  filterFrame.setOnClickListener(v->showListSettings());
   updateFilterIcon();
   list=new ListView(this);
   list.setDivider(new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)));
@@ -305,14 +316,15 @@ public final class PlaylistActivity extends Activity {
      description.addView(h.duration);
      h.quality=txt("",11);
      h.quality.setTextColor(ThemeStyle.text(PlaylistActivity.this));
-     h.quality.setPadding(dp(7),dp(3),dp(5),dp(3));
+     h.quality.setPadding(dp(8),dp(3),dp(8),dp(3));
+  h.quality.setSingleLine(true);
       h.quality.setMinHeight(dp(27));
       h.quality.setCompoundDrawablesWithIntrinsicBounds(null,null,
         new UiIcons("chevron",ThemeStyle.subdued(PlaylistActivity.this),dp(12)),null);
       h.quality.setCompoundDrawablePadding(dp(4));
       h.quality.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(PlaylistActivity.this),
         ThemeStyle.buttonStroke(PlaylistActivity.this),dp(6)));
-      LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(-2,dp(29));
+      LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(dp(158),dp(31));
       qp.setMargins(0,dp(3),0,0);description.addView(h.quality,qp);
       h.already=txt("",10);
      description.addView(h.already);
@@ -337,7 +349,7 @@ public final class PlaylistActivity extends Activity {
     int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
      h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
      h.already.setText(UiStrings.display(PlaylistActivity.this,
-       status==PlaylistHistory.DOWNLOADED?"Уже скачано":"Уже добавлено"));
+       status==PlaylistHistory.DOWNLOADED?"Уже скачано":"Уже добавлено в очередь"));
      h.already.setTextColor(status==PlaylistHistory.DOWNLOADED?0xFF4EC67B:0xFFE5AD38);
     return old;
    }
@@ -436,8 +448,9 @@ public final class PlaylistActivity extends Activity {
   spinner.setPadding(dp(12),0,dp(32),0);
   frame.addView(spinner,new FrameLayout.LayoutParams(-1,-1));
   ImageView arrow=new ImageView(this);
-  arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(this),dp(17)));
-  FrameLayout.LayoutParams location=new FrameLayout.LayoutParams(dp(36),-1,Gravity.END);
+  arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(this),dp(13)));
+  arrow.setPadding(dp(9),0,dp(9),0);
+  FrameLayout.LayoutParams location=new FrameLayout.LayoutParams(dp(32),-1,Gravity.END);
   frame.addView(arrow,location);
   arrow.setOnClickListener(v->spinner.performClick());
  }
@@ -457,6 +470,16 @@ public final class PlaylistActivity extends Activity {
   LinearLayout content=column();
   content.setPadding(dp(17),dp(6),dp(17),dp(9));
   scroll.addView(content);
+  TextView filterHeading=txt("Фильтр отображения загрузок",15);
+  filterHeading.setTypeface(null,Typeface.BOLD);content.addView(filterHeading,margin(7,8));
+  Spinner choose=settingsChoice(content,"Отобразить отмеченные/неотмеченные загрузки",
+    new String[]{"Все","Только отмеченные","Только неотмеченные"},selectionFilter);
+  Spinner downloads=settingsChoice(content,"Отобразить загрузки со статусом",
+    new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
+  Spinner queued=settingsChoice(content,"Отобразить загрузки находящиеся/отсутствующие в очереди",
+    new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
+  View sectionBreak=new View(this);sectionBreak.setBackgroundColor(ThemeStyle.border(this));
+  content.addView(sectionBreak,margin(13,12));
   TextView info=txt("Качество для отмеченных",13);
   info.setTypeface(null,Typeface.BOLD);
   content.addView(info,margin(7,4));
@@ -464,7 +487,7 @@ public final class PlaylistActivity extends Activity {
   bulk.setSelection(PlaylistQualityPolicy.index(quality));
   addCompactSpinner(content,bulk);
   TextView applyQuality=txt("Применить качество к отмеченным",13);
-  applyQuality.setTextColor(ThemeStyle.RED);
+  applyQuality.setTextColor(ThemeStyle.isDark(this)?0xFFE77A80:ThemeStyle.RED);
   applyQuality.setGravity(Gravity.CENTER);
   content.addView(applyQuality,margin(4,8));
   applyQuality.setOnClickListener(v->{
@@ -475,12 +498,6 @@ public final class PlaylistActivity extends Activity {
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
   });
-  Spinner choose=settingsChoice(content,"Выбор видео",
-    new String[]{"Все","Только отмеченные","Только неотмеченные"},selectionFilter);
-  Spinner downloads=settingsChoice(content,"Статус загрузки",
-    new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
-  Spinner queued=settingsChoice(content,"Добавление в очередь",
-    new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
   CheckBox sort=new CheckBox(this);
   UiCheckboxStyle.apply(sort);
   sort.setText(UiStrings.display(this,"Сначала отмеченные"));
@@ -506,23 +523,41 @@ public final class PlaylistActivity extends Activity {
  }
  private void chooseQuality(int position){
   if(position<0||position>=qualities.size())return;
-  AlertDialog dialog=ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Качество для этого видео"))
-   .setSingleChoiceItems(UiStrings.translateChoices(this,PlaylistQualityPolicy.LABELS),
-    PlaylistQualityPolicy.index(qualities.get(position)),(d,which)->{
-     qualities.set(position,PlaylistQualityPolicy.VALUES[which]);
-     persistQualities();
-     for(int i=0;i<list.getChildCount();i++){
-      int visible=list.getFirstVisiblePosition()+i;
-      if(visible>=visibleRows.size())continue;
-      int p=visibleRows.get(visible);
-      if(p==position){
-       Row h=(Row)list.getChildAt(i).getTag();
-       h.quality.setText(UiStrings.display(PlaylistActivity.this, PlaylistQualityPolicy.LABELS[which]));break;
-      }
-     }
-     d.dismiss();
-   }).setNegativeButton(UiStrings.display(PlaylistActivity.this, "Отмена"),null).create();
-  dialog.show();
+  TextView anchor=null;
+  for(int i=0;i<list.getChildCount();i++){
+   int visible=list.getFirstVisiblePosition()+i;
+   if(visible<visibleRows.size()&&visibleRows.get(visible)==position){
+    anchor=((Row)list.getChildAt(i).getTag()).quality;break;
+   }
+  }
+  if(anchor==null)return;
+  final TextView chosenView=anchor;
+  LinearLayout options=column();
+  String[] labels=UiStrings.translateChoices(this,PlaylistQualityPolicy.LABELS);
+  int current=PlaylistQualityPolicy.index(qualities.get(position));
+  android.widget.PopupWindow popup=new android.widget.PopupWindow(this);
+  popup.setWidth(dp(185));popup.setHeight(dp(Math.min(340,labels.length*39+4)));
+  popup.setBackgroundDrawable(ThemeStyle.popupBackground(this));
+  popup.setFocusable(true);popup.setOutsideTouchable(true);popup.setElevation(dp(6));
+  for(int n=0;n<labels.length;n++){
+   final int index=n;
+   LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER_VERTICAL);
+   line.setPadding(dp(11),0,dp(12),0);
+   line.setBackground(ThemeStyle.popupRowBackground(this,n==current,n,labels.length));
+   TextView label=txt(labels[n],13);line.addView(label,new LinearLayout.LayoutParams(0,dp(39),1));
+   if(n==current){
+    ImageView check=new ImageView(this);
+    check.setImageDrawable(new UiIcons("check",ThemeStyle.text(this),dp(15)));
+    line.addView(check,new LinearLayout.LayoutParams(dp(17),dp(17)));
+   }
+   options.addView(line,new LinearLayout.LayoutParams(-1,dp(39)));
+   line.setOnClickListener(v->{
+    qualities.set(position,PlaylistQualityPolicy.VALUES[index]);
+    persistQualities();chosenView.setText(labels[index]);popup.dismiss();
+   });
+  }
+  ScrollView scroll=new ScrollView(this);scroll.addView(options);popup.setContentView(scroll);
+  popup.showAsDropDown(anchor,0,0,Gravity.START);
  }
  private void addSelected(){
   int count=0,duplicates=0;
@@ -545,7 +580,7 @@ public final class PlaylistActivity extends Activity {
     "mp3".equals(format)||"m4a".equals(format),qualities,proxy,folder,priority,format);
    Arrays.fill(selected,false);persistSelection();
    refreshStatuses();rebuildVisible(false);DownloadService.kick(this);
-   Toast.makeText(this,UiStrings.display(PlaylistActivity.this, "Добавлено в очередь: "+count),Toast.LENGTH_LONG).show();
+   QueueNotice.show(this,QueueNotice.message(count,priority));
   }catch(Exception ex){
    ThemeStyle.dialog(this).setMessage(UiStrings.display(PlaylistActivity.this, ex.getMessage())).setPositiveButton(UiStrings.display(PlaylistActivity.this, "ОК"),null).show();
   }

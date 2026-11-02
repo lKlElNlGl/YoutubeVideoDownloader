@@ -256,6 +256,7 @@ public final class DownloadService extends Service {
                 }finally{mmr.release();}
             }catch(Exception ignored){}
             DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length(),duration,height);
+            PlaylistHistory.markDownloaded(this,item.url,saved.toString());
             announce();
     }
     private void checkCancel() throws IOException {

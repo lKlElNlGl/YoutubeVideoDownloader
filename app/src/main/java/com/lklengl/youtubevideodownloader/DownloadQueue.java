@@ -15,7 +15,7 @@ public final class DownloadQueue {
     private static final Object LOCK=new Object();
 
     public static final class Item {
-        public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle, format, contentUri;
+        public String id, url, quality, proxy, directoryUri, status, message, filename, title, playlistTitle, playlistFolder, format, contentUri;
         public boolean deleteRequested;
         public boolean audio;
         public boolean priority;
@@ -29,14 +29,14 @@ public final class DownloadQueue {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("durationSeconds",durationSeconds);j.put("actualHeight",actualHeight);j.put("metadataChecked",metadataChecked);j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
+            j.put("durationSeconds",durationSeconds);j.put("actualHeight",actualHeight);j.put("metadataChecked",metadataChecked);j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("playlistFolder",playlistFolder);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
             return j;
         }
         static Item fromJson(JSONObject j) {
             Item i=new Item();i.id=j.optString("id");i.url=j.optString("url");
             i.quality=j.optString("quality","best");i.proxy=j.optString("proxy");
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
-            i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");
+            i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");i.playlistFolder=j.optString("playlistFolder","");
             i.audio=j.optBoolean("audio");i.priority=j.optBoolean("priority");i.deleteRequested=j.optBoolean("deleteRequested");
             i.progress=j.optInt("progress");i.durationSeconds=j.optInt("durationSeconds",-1);
              i.actualHeight=j.optInt("actualHeight",0);i.metadataChecked=j.optBoolean("metadataChecked");return i;
@@ -81,7 +81,7 @@ public final class DownloadQueue {
             if(QueueRules.activeCount(list)>=2000)throw new IllegalStateException("Очередь ограничена 2000 активными заданиями");
             Item i=new Item();i.id=UUID.randomUUID().toString();i.url=url;i.audio=audio;
             i.quality=quality;i.proxy=proxy;i.directoryUri=directoryUri;
-            i.status=WAITING;i.message="Ожидает";i.filename="";i.durationSeconds=duration;i.actualHeight=height;i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.progress=0;
+            i.status=WAITING;i.message="Ожидает";i.filename="";i.durationSeconds=duration;i.actualHeight=height;i.priority=priority;i.contentUri="";i.format=format;i.title=title==null?"":title;i.playlistTitle="";i.playlistFolder="";i.progress=0;
             if(priority)QueueRules.prependPriority(list,java.util.Collections.singletonList(i));
             else QueueRules.addNewest(list,java.util.Collections.singletonList(i));
             save(context,list);
@@ -102,6 +102,10 @@ public final class DownloadQueue {
     }
     public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
             boolean audio,List<String> qualities,String proxy,String directoryUri,boolean priority,String format) {
+        return enqueuePlaylist(context,playlist,selected,audio,qualities,proxy,directoryUri,priority,format,"");
+    }
+    public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
+            boolean audio,List<String> qualities,String proxy,String directoryUri,boolean priority,String format,String playlistUrl) {
         synchronized(LOCK) {
             if(qualities.size()!=playlist.entries.size())throw new IllegalArgumentException("Качество видео не соответствует списку");
             for(String q:qualities)if(!PlaylistQualityPolicy.allowed(q))
@@ -112,12 +116,13 @@ public final class DownloadQueue {
             for(Boolean checked:selected)if(Boolean.TRUE.equals(checked))count++;
             if(count==0)throw new IllegalArgumentException("Выберите хотя бы одно видео");
             if(QueueRules.activeCount(list)+count>2000)throw new IllegalStateException("Слишком много задач в очереди (максимум 2000)");
+            String targetSubfolder=PlaylistFolders.folderFor(context,playlistUrl,playlist.title);
             List<Item> added=new ArrayList<>();
             for(int n=0;n<selected.size();n++) {
                 if(!Boolean.TRUE.equals(selected.get(n)))continue;
                 PlaylistRepository.Entry entry=playlist.entries.get(n);
                 Item i=new Item();i.id=UUID.randomUUID().toString();i.url=entry.url;i.title=entry.title;
-                i.playlistTitle=playlist.title;i.quality=qualities.get(n);i.proxy=proxy;i.audio=audio;
+                i.playlistTitle=playlist.title;i.playlistFolder=targetSubfolder;i.quality=qualities.get(n);i.proxy=proxy;i.audio=audio;
                 i.directoryUri=directoryUri;i.format=format;i.priority=priority;i.contentUri="";i.status=WAITING;i.message="Ожидает";
                 i.filename="";i.durationSeconds=entry.duration;i.progress=0;added.add(i);
             }

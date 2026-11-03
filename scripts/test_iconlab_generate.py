@@ -4,7 +4,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import Image
-from scripts.generate_iconlab_adaptive import ADAPTIVE_SIZE, ADAPTIVE_SCALES
+from scripts.generate_iconlab_adaptive import SIZE as ADAPTIVE_SIZE, SCALES as ADAPTIVE_SCALES, INSET_DP
 from scripts.generate_iconlab_icons import (
     APPROVED_SCALE, OUTPUT_SIZE, SOURCE_SIZE, SOURCE,
     VARIANTS, fit_canvas_subpixel, render_variants)
@@ -62,8 +62,11 @@ class IconLabLegacyLauncherTests(unittest.TestCase):
             self.assertEqual(alias.attrib[ns+"icon"], f"@mipmap/lab_size_{n}")
             self.assertEqual(alias.attrib[ns+"enabled"], "false")
         # Android 8+ uses adaptive resources; legacy PNG remains as fallback.
-        # The adaptive XML is generated during preBuild, not checked in.
+        self.assertEqual(ADAPTIVE_SIZE, 720)
         self.assertEqual(len(ADAPTIVE_SCALES), 8)
+        self.assertEqual(INSET_DP, 9)
+        self.assertEqual(app.attrib[ns+'icon'], '@mipmap/lab_size_01')
+        self.assertEqual(app.attrib[ns+'roundIcon'], '@mipmap/lab_size_01')
 
     def test_button_only_enables_app_drawer_aliases_no_home_screen_pinning(self):
         code=(ROOT/"iconlab/src/main/java/com/lklelnlgl/iconlab/MainActivity.java").read_text()
@@ -77,34 +80,49 @@ class IconLabLegacyLauncherTests(unittest.TestCase):
         self.assertNotIn("ShortcutInfo", code)
         self.assertNotIn("Добавить 8 значков на рабочий стол", code)
 
-    def test_adaptive_icons_are_transparent_and_fit_safe_region(self):
+    def test_ssh_two_layer_structure_with_transparent_background_and_9dp_inset(self):
         with Image.open(SOURCE) as source, tempfile.TemporaryDirectory() as td:
-            before = source.tobytes()
+            original_bytes = source.tobytes()
             render_variants(source, Path(td))
-            self.assertEqual(source.tobytes(), before)
-            xmlns = "{http://schemas.android.com/apk/res/android}"
+            self.assertEqual(source.tobytes(), original_bytes)
+            ns = "{http://schemas.android.com/apk/res/android}"
+
+            background_path = Path(td) / "drawable-nodpi/lab_background_art.webp"
+            with Image.open(background_path) as background:
+                self.assertEqual(background.size, (720, 720))
+                self.assertEqual(background.mode, "RGBA")
+                self.assertEqual(background.getchannel("A").getextrema(), (0, 0),
+                                 "No opaque black or white padding is allowed")
+
             for i, scale in enumerate(ADAPTIVE_SCALES, start=1):
                 number = f"{i:02d}"
                 xml = Path(td)/"mipmap-anydpi-v26"/f"lab_size_{number}.xml"
-                root = ET.parse(xml).getroot()
-                self.assertEqual(root.tag, "adaptive-icon")
-                self.assertEqual(root.find("background").attrib[xmlns+"drawable"],
-                                 "@android:color/transparent")
-                self.assertEqual(root.find("foreground").attrib[xmlns+"drawable"],
-                                 f"@drawable/lab_adaptive_foreground_{number}")
-                icon_path = Path(td)/"drawable-nodpi"/f"lab_adaptive_foreground_{number}.png"
-                with Image.open(icon_path) as icon:
-                    self.assertEqual(icon.mode, "RGBA")
-                    self.assertEqual(icon.size, (ADAPTIVE_SIZE, ADAPTIVE_SIZE))
-                    self.assertEqual(icon.getpixel((0,0))[3], 0)
-                    self.assertEqual(icon.getpixel((431,431))[3], 0)
-                    # The visible icon must remain fully within the central
-                    # Android adaptive safe region, avoiding clipped black rim.
-                    bbox = icon.getchannel("A").getbbox()
-                    self.assertGreaterEqual(bbox[0], 72)
-                    self.assertGreaterEqual(bbox[1], 72)
-                    self.assertLessEqual(bbox[2], 360)
-                    self.assertLessEqual(bbox[3], 360)
+                adaptive = ET.parse(xml).getroot()
+                self.assertEqual(adaptive.tag, "adaptive-icon")
+                self.assertEqual(
+                    adaptive.find("background").attrib[ns+"drawable"],
+                    "@drawable/lab_background_art")
+                self.assertEqual(
+                    adaptive.find("foreground").attrib[ns+"drawable"],
+                    f"@drawable/lab_foreground_{number}")
+                inset_path = Path(td)/"drawable"/f"lab_foreground_{number}.xml"
+                inset = ET.parse(inset_path).getroot()
+                self.assertEqual(inset.tag, "inset")
+                self.assertEqual(
+                    inset.attrib[ns+"drawable"],
+                    f"@drawable/lab_foreground_art_{number}")
+                for side in ("Left", "Top", "Right", "Bottom"):
+                    self.assertEqual(inset.attrib[ns+"inset"+side], "9dp")
+
+                foreground_path = (
+                    Path(td)/"drawable-nodpi"/f"lab_foreground_art_{number}.webp")
+                with Image.open(foreground_path) as foreground:
+                    self.assertEqual(foreground.size, (720, 720))
+                    self.assertEqual(foreground.mode, "RGBA")
+                    self.assertEqual(foreground.getpixel((0, 0))[3], 0)
+                    self.assertEqual(foreground.getpixel((719, 719))[3], 0)
+                    self.assertGreater(foreground.getpixel((360, 360))[3], 240)
+                    self.assertIsNotNone(foreground.getchannel("A").getbbox())
 
 
 if __name__ == "__main__":

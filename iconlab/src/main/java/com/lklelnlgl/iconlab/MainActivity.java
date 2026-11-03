@@ -26,10 +26,11 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("Восемь размеров утверждённой иконки.\n"
-                + "01 — проверенный масштаб 04b.\n"
-                + "02–08 — 109–115%.\n"
-                + "Нажмите кнопку: варианты появятся в списке приложений.");
+        description.setText("8 вариантов утверждённой иконки.\n"
+                + "Механизм слоёв как в SSH Button Next.\n"
+                + "Прозрачный фон, отступ 9 dp.\n"
+                + "Варианты отличаются только масштабом.\n"
+                + "Значки появятся в списке приложений.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 

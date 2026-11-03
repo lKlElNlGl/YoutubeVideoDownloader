@@ -34,7 +34,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test transparent adaptive icons, legacy fallback and app drawer aliases
+      - name: Test SSH Button Next-style two-layer icons and no home shortcuts
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -50,18 +50,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.2.apk
-          tag=iconlab-v0.5.2
+          cp "$apk" dist/IconLab-v0.5.3.apk
+          tag=iconlab-v0.5.3
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.2.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.3.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.2.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.2" \
-              --notes "Adds transparent Android 8+ adaptive resources to stop automatic legacy icon white-disc framing; retains original 128 to 192 legacy fallback, approved master art and app-drawer-only alias button. No home pin requests. Device launcher may override transparent adaptive background. Main app unchanged." \
+            gh release create "$tag" dist/IconLab-v0.5.3.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.3" \
+              --notes "Port of SSH Button Next icon architecture: 720px WebP layers, 9dp foreground inset, adaptive XML referencing bitmap background and inset foreground; background stays transparent to preserve approved icon corners. Legacy 128 to 192 pipeline and app-drawer-only aliases stay. No shortcuts or main app changes. Launcher behavior varies by device." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.2
+          name: IconLab-v0.5.3
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

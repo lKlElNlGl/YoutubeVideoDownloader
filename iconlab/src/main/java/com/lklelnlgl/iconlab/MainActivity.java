@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
         description.setGravity(Gravity.CENTER);
         description.setText("Контрольное сравнение двух иконок на одном Realme.\n"
                 + "A — точно старый Clean C2 из Icon Lab v0.3.2.\n"
-                + "B — новый рисунок со сглаженной маской и чистым краем.\n"
+                + "B — уточнены только верх и боковые края маски; низ без изменений.\n"
                 + "Оба — обычные PNG, без фоновых слоёв.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));

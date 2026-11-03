@@ -36,7 +36,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test smooth C2 alpha silhouette and clean bezel edge pixels
+      - name: Test soft upper/side contour crop with unchanged bottom and clean RGB
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -52,18 +52,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.9.apk
-          tag=iconlab-v0.5.9
+          cp "$apk" dist/IconLab-v0.5.10.apk
+          tag=iconlab-v0.5.10
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.9.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.10.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.9.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.9" \
-              --notes "Old C2 remains byte-exact. The new approved artwork gets an 8x supersampled smooth silhouette from the working C2 and repairs newly exposed fringe pixels by nearest-bezel RGB fill. Solid artwork and master unchanged, no adaptive icons. Labels _A_Старый C2 and _B_Сглаженная маска." \
+            gh release create "$tag" dist/IconLab-v0.5.10.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.10" \
+              --notes "Keep old Clean C2 byte-identical. Gently trim the upper and upper side silhouette of the approved new artwork by about 1px with high-resolution feathered alpha. Bottom third stays pixel-exact to v0.5.9; solid RGB and master unchanged. No adaptive icons or background. Labels: _A_Старый C2 and _B_Сглаженная маска." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.9
+          name: IconLab-v0.5.10
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

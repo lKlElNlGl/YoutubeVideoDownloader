@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageFilter
 
 from scripts import iconlab_reference_v032 as old
 from scripts import iconlab_legacy_v055 as new
@@ -11,7 +11,8 @@ from scripts.generate_iconlab_icons import (
     render_controls, render_new_c2, prepare_new_c2_alpha,
     OLD_SOURCE, NEW_SOURCE)
 from scripts.iconlab_edge_refine import (
-    render_smooth_legacy_icon, smooth_proven_mask, extend_bezel_colors)
+    render_smooth_legacy_icon, smooth_proven_mask, trim_top_and_shoulders,
+    extend_bezel_colors)
 from PIL import ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,7 +118,8 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                 reference = a.convert("RGBA")
                 result = b.convert("RGBA")
                 raw = render_new_c2(artwork)
-                expected_mask = smooth_proven_mask(reference.getchannel("A"))
+                baseline_mask = smooth_proven_mask(reference.getchannel("A"))
+                expected_mask = trim_top_and_shoulders(baseline_mask)
                 self.assertEqual(result.getchannel("A").tobytes(),
                                  expected_mask.tobytes())
                 # Rebuilt high-res mask is a distinct antialiased output.
@@ -127,7 +129,11 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                 self.assertEqual(result.getpixel((191,191))[3],0)
                 old_coverage = sum(x >= 128 for x in reference.getchannel("A").getdata())
                 new_coverage = sum(x >= 128 for x in result.getchannel("A").getdata())
-                self.assertLess(abs(old_coverage-new_coverage), 500)
+                self.assertLess(abs(old_coverage-new_coverage), 1100)
+                self.assertLess(new_coverage, old_coverage)
+                self.assertEqual(
+                    result.getchannel("A").crop((0,130,192,192)).tobytes(),
+                    baseline_mask.crop((0,130,192,192)).tobytes())
                 # Never recolor any solid part of the new approved image.
                 pixels_original = list(raw.getdata())
                 pixels_clean = list(result.getdata())
@@ -152,6 +158,39 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertEqual(result.getpixel((0,0))[3],0)
         self.assertEqual(source.getpixel((37,96)),(255,0,255,0))
         self.assertEqual(source.getpixel((96,96)),(18,20,23,255))
+
+
+    def test_upper_edges_contract_but_lower_third_unchanged(self):
+        baseline = Image.new("L", (192,192),0)
+        ImageDraw.Draw(baseline).rounded_rectangle(
+            (4,3,187,186), radius=30, fill=255)
+        baseline=baseline.filter(ImageFilter.GaussianBlur(0.45))
+        corrected=trim_top_and_shoulders(baseline)
+        initial=list(baseline.getdata())
+        updated=list(corrected.getdata())
+        self.assertTrue(all(a<=b for a,b in zip(updated,initial)))
+        self.assertTrue(any(a<b for a,b in zip(updated,initial)))
+        # Top and shoulder areas are trimmed, centre stays solid.
+        self.assertLess(sum(a>=128 for a in updated[:70*192]),
+                        sum(a>=128 for a in initial[:70*192]))
+        self.assertLess(updated[90*192+4],initial[90*192+4])
+        self.assertEqual(corrected.getpixel((96,96)),255)
+        # User specifically approved NO changes to the bottom.
+        self.assertEqual(updated[130*192:],initial[130*192:])
+        # A feathered rim, not a binary/hard cut.
+        self.assertTrue(any(0<a<255 for a in updated[:70*192]))
+
+    def test_trim_validates_supersampling_and_never_changes_opaque_interior(self):
+        mask=Image.new("L",(192,192),0)
+        ImageDraw.Draw(mask).rounded_rectangle(
+            (4,4,187,187), radius=30, fill=255)
+        corrected=trim_top_and_shoulders(mask,supersample=8)
+        self.assertEqual(corrected.getpixel((96,96)),255)
+        self.assertEqual(corrected.getpixel((96,180)),255)
+        with self.assertRaises(ValueError):
+            trim_top_and_shoulders(mask,supersample=4)
+        with self.assertRaises(ValueError):
+            trim_top_and_shoulders(mask,inset_px=4.0)
 
     def test_legacy_mask_requires_8x_highres(self):
         with Image.open(OLD_SOURCE) as source, tempfile.TemporaryDirectory() as d:

@@ -1,7 +1,7 @@
 """Decisive Realme launcher A/B test: old proven icon vs new approved art.
 
 A = EXACT Icon Lab v0.3.2 Clean C2 from original source+generator.
-B = approved art with smoothed old C2 silhouette and clean edge RGB.
+B = approved art with subtly trimmed top + shoulders of the smooth C2 contour.
 The new artwork is never recolored, redrawn, or saved back to source.
 Both are legacy 192x192 xxxhdpi PNG and activity-alias, in the same APK.
 No adaptive resources, no added background, no modifications to master art.
@@ -92,4 +92,4 @@ def render_controls(res=RES):
 
 if __name__ == "__main__":
     render_controls()
-    print("Control A = original Clean C2; control B = new artwork with smooth alpha and repaired bezel edge.")
+    print("Control A = original Clean C2; B = gently trimmed upper edge with feather; bottom preserved.")

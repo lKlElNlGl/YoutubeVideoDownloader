@@ -26,7 +26,7 @@
         <activity-alias
             android:name=".LabProbeNew"
             android:targetActivity=".MainActivity"
-            android:label="B · Новый 100%"
+            android:label="B · Новый C2"
             android:icon="@mipmap/lab_probe_new"
             android:enabled="false"
             android:exported="true">

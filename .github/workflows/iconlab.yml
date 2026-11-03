@@ -35,7 +35,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test exact old v0.3.2 Clean C2 versus new v0.5.5 PNG
+      - name: Test original C2 versus approved art with C2 alpha-only cleanup
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -51,18 +51,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.6.apk
-          tag=iconlab-v0.5.6
+          cp "$apk" dist/IconLab-v0.5.7.apk
+          tag=iconlab-v0.5.7
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.6.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.7.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.6.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.6" \
-              --notes "Controlled A/B diagnosis on Realme 8i: two icon activity-aliases in same APK and same legacy xxxhdpi resource class. A is byte-identical to old v0.3.2 Clean C2; B is byte-identical to new v0.5.5 100 percent. No adaptive background, no home pins and no changes to approved master or main application." \
+            gh release create "$tag" dist/IconLab-v0.5.7.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.7" \
+              --notes "Old Clean C2 remains byte-identical to v0.3.2. New approved artwork receives the same original C2 alpha contour cleanup, without recoloring any source RGB, while remaining in the legacy 192px xxxhdpi icon format. No adaptive background or main app changes." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.6
+          name: IconLab-v0.5.7
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

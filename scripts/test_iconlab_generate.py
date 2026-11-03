@@ -7,7 +7,9 @@ from PIL import Image, ImageChops
 
 from scripts import iconlab_reference_v032 as old
 from scripts import iconlab_legacy_v055 as new
-from scripts.generate_iconlab_icons import render_controls, OLD_SOURCE, NEW_SOURCE
+from scripts.generate_iconlab_icons import (
+    render_controls, render_new_c2, prepare_new_c2_alpha,
+    OLD_SOURCE, NEW_SOURCE)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,7 +35,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertEqual([a.attrib[ns+"icon"] for a in aliases],
                          ["@mipmap/lab_probe_old","@mipmap/lab_probe_new"])
         self.assertEqual([a.attrib[ns+"label"] for a in aliases],
-                         ["A · Старый C2","B · Новый 100%"])
+                         ["A · Старый C2","B · Новый C2"])
         self.assertTrue(all(a.attrib[ns+"enabled"]=="false" for a in aliases))
         self.assertFalse((ROOT/"iconlab/src/main/res/mipmap-anydpi-v26").exists())
 
@@ -46,7 +48,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertNotIn("requestPinShortcut",java)
         self.assertNotIn("ShortcutManager",java)
 
-    def test_old_is_byte_exact_c2_new_is_byte_exact_v055_100_percent(self):
+    def test_old_is_byte_exact_c2_new_is_exact_c2_alpha_rebuild(self):
         with tempfile.TemporaryDirectory() as root:
             dst=Path(root)
             render_controls(dst)
@@ -59,11 +61,11 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                 with Image.open(OLD_SOURCE) as art:
                     old.render_variants(art,temp/"old")
                 with Image.open(NEW_SOURCE) as art:
-                    new.render_variants(art,temp/"new")
+                    expected_new=render_new_c2(art)
                 self.assertEqual(old_png.read_bytes(),
                     (temp/"old/mipmap-xxxhdpi/lab_clean_c2.png").read_bytes())
-                self.assertEqual(new_png.read_bytes(),
-                    (temp/"new/mipmap-xxxhdpi/lab_size_05.png").read_bytes())
+                with Image.open(new_png) as got_new:
+                    self.assertEqual(got_new.tobytes(),expected_new.tobytes())
             for icon_file in [old_png,new_png]:
                 with Image.open(icon_file) as icon:
                     self.assertEqual(icon.size,(192,192))
@@ -72,6 +74,33 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                     self.assertEqual(icon.getpixel((191,191))[3],0)
                     self.assertGreater(icon.getpixel((96,96))[3],220)
             self.assertNotEqual(old_png.read_bytes(),new_png.read_bytes())
+
+
+    def test_new_c2_cleanup_changes_only_source_alpha_and_never_adds_opacity(self):
+        # Every RGB component remains bit-for-bit identical to the prepared
+        # approved source. External contour alone changes, as requested.
+        with Image.open(NEW_SOURCE) as master:
+            raw=master.convert("RGBA")
+            original=raw.tobytes()
+            prepared=new.prepare_128_source(raw)
+            clipped=prepare_new_c2_alpha(raw)
+            self.assertEqual(raw.tobytes(), original)
+            self.assertEqual(clipped.size,(128,128))
+            source_px=list(prepared.getdata())
+            clipped_px=list(clipped.getdata())
+            self.assertTrue(all(a[:3]==b[:3] for a,b in zip(source_px,clipped_px)))
+            self.assertTrue(all(b[3]<=a[3] for a,b in zip(source_px,clipped_px)))
+            self.assertTrue(any(b[3]<a[3] for a,b in zip(source_px,clipped_px)))
+            self.assertEqual(clipped.getpixel((64,64))[3],prepared.getpixel((64,64))[3])
+
+    def test_new_c2_is_not_old_v055_png(self):
+        with Image.open(NEW_SOURCE) as art:
+            source=new.prepare_128_source(art)
+            previous=new.fit_canvas_subpixel(source,192,1.00)
+            updated=render_new_c2(art)
+            self.assertNotEqual(previous.tobytes(), updated.tobytes())
+            self.assertEqual(updated.getpixel((0,0))[3],0)
+            self.assertEqual(updated.getpixel((191,191))[3],0)
 
     def test_cleans_stale_test_adaptive_and_old_variant_resources(self):
         with tempfile.TemporaryDirectory() as d:

@@ -1,7 +1,8 @@
 """Decisive Realme launcher A/B test: old proven icon vs new approved art.
 
 A = EXACT Icon Lab v0.3.2 Clean C2 from original source+generator.
-B = EXACT Icon Lab v0.5.5 100% from approved new art+generator.
+B = approved new art with the original v0.3.2 Clean C2 outer alpha cleanup.
+The new artwork is never recolored, redrawn, or saved back to source.
 Both are legacy 192x192 xxxhdpi PNG and activity-alias, in the same APK.
 No adaptive resources, no added background, no modifications to master art.
 """
@@ -21,6 +22,28 @@ ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "iconlab/src/main/res"
 OLD_SOURCE = old.SOURCE
 NEW_SOURCE = new.SOURCE
+
+
+def prepare_new_c2_alpha(source):
+    """Apply ONLY the v0.3.2 outer alpha treatment to the new artwork.
+
+    Keep original RGB unchanged at every source pixel. Do not call the old
+    neutralize_upper_left_bezel function; that function changes RGB and is
+    forbidden for the approved new master. The cleanup may only REDUCE alpha.
+    """
+    base = new.prepare_128_source(source)
+    alpha_only = old.remove_external_matte(base)
+    alpha_only = old.apply_cleanup(alpha_only, bottom_lift=2,
+                                   alpha_cutoff=16, extra_radius=0)
+    alpha_only = old.apply_top_cleanup(alpha_only, top_lift=1.0,
+                                       corner_radius=0.0)
+    return alpha_only
+
+
+def render_new_c2(source):
+    """Use exactly the reference C2 scaling and supersampling after cleanup."""
+    return old.fit_canvas_subpixel(prepare_new_c2_alpha(source),
+                                   old.OUTPUT_SIZE, old.APPROVED_SCALE)
 
 
 def render_controls(res=RES):
@@ -47,19 +70,16 @@ def render_controls(res=RES):
     with TemporaryDirectory() as temp:
         temp = Path(temp)
         oldfolder = temp / "old"
-        newfolder = temp / "new"
         with Image.open(OLD_SOURCE) as artwork:
             old.render_variants(artwork, oldfolder)
-        with Image.open(NEW_SOURCE) as artwork:
-            new.render_variants(artwork, newfolder)
         # Old: successful, untouched Clean C2 from v0.3.2.
         copyfile(oldfolder / "mipmap-xxxhdpi/lab_clean_c2.png",
                  folder / "lab_probe_old.png")
-        # New: 100% PNG from v0.5.5, before any launcher processing.
-        copyfile(newfolder / "mipmap-xxxhdpi/lab_size_05.png",
-                 folder / "lab_probe_new.png")
+        # New: old C2 contour algorithm, but NEW approved artwork only.
+        with Image.open(NEW_SOURCE) as artwork:
+            render_new_c2(artwork).save(folder / "lab_probe_new.png", optimize=True)
 
 
 if __name__ == "__main__":
     render_controls()
-    print("Control A = original Clean C2; control B = new approved art 100%.")
+    print("Control A = original Clean C2; control B = approved art with C2 alpha mask.")

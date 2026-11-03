@@ -8,6 +8,10 @@ No artwork recoloring, cropping, background or Android adaptive mask.
 """
 from pathlib import Path
 from PIL import Image
+try:
+    from .generate_iconlab_adaptive import render_adaptive
+except ImportError:
+    from generate_iconlab_adaptive import render_adaptive
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "iconlab/assets/approved_master_display.webp"
@@ -45,6 +49,7 @@ def render_variants(source, output_dir=RES):
     for name, scale in VARIANTS:
         icon = fit_canvas_subpixel(base, OUTPUT_SIZE, scale)
         icon.save(folder / f"lab_size_{name}.png", optimize=True)
+    render_adaptive(original, output_dir)
     return base
 
 

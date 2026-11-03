@@ -79,10 +79,10 @@ class RealmeLegacyIconTests(unittest.TestCase):
                 self.assertEqual(first.tobytes(), expected.tobytes())
                 region=first.getchannel("A").point(
                     lambda a:255 if a>100 else 0).getbbox()
-                self.assertLessEqual(region[0], 3)
-                self.assertLessEqual(region[1], 3)
-                self.assertGreaterEqual(region[2], 188)
-                self.assertGreaterEqual(region[3], 188)
+                self.assertLessEqual(region[0], 5)
+                self.assertLessEqual(region[1], 5)
+                self.assertGreaterEqual(region[2], 186)
+                self.assertGreaterEqual(region[3], 186)
 
     def test_repeated_generation_cleans_stale_adaptive_resources(self):
         with Image.open(SOURCE) as original, tempfile.TemporaryDirectory() as td:

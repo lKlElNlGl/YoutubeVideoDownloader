@@ -9,6 +9,6 @@ public class PlaylistQualityTextTest {
   assertEquals("720p",PlaylistQualityText.label(PlaylistHistory.QUEUED,"720",0,"best"));
  }
  @Test public void missingRecordedHeightDoesNotInventResolution(){
-  assertEquals("Определяется…",PlaylistQualityText.label(PlaylistHistory.DOWNLOADED,"best",0,"best"));
+  assertEquals("Качество неизвестно",PlaylistQualityText.label(PlaylistHistory.DOWNLOADED,"best",0,"best"));
  }
 }

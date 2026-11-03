@@ -143,6 +143,7 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle savedInstanceState) {
         ThemeStyle.initialize(this);
         super.onCreate(savedInstanceState);
+        PlaylistFolders.initialize(this);
         UpdateAlerts.schedule(getApplicationContext());
         EngineUpdateWorker.schedule(getApplicationContext());
         // Remove unused legacy credentials when migrating from v0.3.0.
@@ -401,7 +402,7 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout network=ThemeStyle.card(settingsPage,"Сетевые параметры");
-        proxyEnabled=new CheckBox(this);UiCheckboxStyle.apply(proxyEnabled);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));
+        proxyEnabled=new CheckBox(this);UiCheckboxStyle.apply(proxyEnabled);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));UiCheckboxStyle.applyLabelGap(proxyEnabled);
         proxyEnabled.setTextColor(ThemeStyle.text(this));network.addView(proxyEnabled);
         proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
         network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(50)));
@@ -410,6 +411,14 @@ public final class MainActivity extends Activity {
         label(save,"Папка сохранения");
         folderLabel=text("",14);folderLabel.setPadding(dp(3),dp(4),dp(3),dp(8));
         save.addView(folderLabel);
+        CheckBox playlistFolders=new CheckBox(this);
+        UiCheckboxStyle.apply(playlistFolders);
+        playlistFolders.setText(UiStrings.display(this,"Сохранять плейлисты в отдельные папки"));
+        UiCheckboxStyle.applyLabelGap(playlistFolders);
+        playlistFolders.setTextSize(13);playlistFolders.setTextColor(ThemeStyle.text(this));
+        playlistFolders.setChecked(PlaylistFolders.enabled(this));
+        save.addView(playlistFolders);
+        playlistFolders.setOnCheckedChangeListener((control,enabled)->PlaylistFolders.setEnabled(this,enabled));
         Button chooseFolder=button(save,"Изменить папку");ThemeStyle.icon(chooseFolder,"folder-edit",17);
         chooseFolder.setOnClickListener(v->{
             Intent tree=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -557,12 +566,12 @@ public final class MainActivity extends Activity {
             private TextView decorate(TextView v,int position){
                 v.setTextColor(ThemeStyle.text(MainActivity.this));v.setTextSize(14);
                 v.setSingleLine(true);v.setEllipsize(TextUtils.TruncateAt.END);
-                if(themeChoices){
+                if(themeChoices||languageChoices){
                     v.setCompoundDrawablesWithIntrinsicBounds(
                         new UiIcons(languageChoices?(position==0?"en":"ru"):modes[position],ThemeStyle.subdued(MainActivity.this),dp(18)),
                         null,null,null);
                     v.setCompoundDrawablePadding(dp(10));
-                }
+                }else v.setCompoundDrawablesWithIntrinsicBounds(null,null,null,null);
                 return v;
             }
             @Override public View getView(int position,View old,ViewGroup parent){

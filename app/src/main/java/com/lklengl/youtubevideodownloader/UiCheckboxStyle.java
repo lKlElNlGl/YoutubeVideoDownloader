@@ -17,6 +17,11 @@ public final class UiCheckboxStyle {
   box.setButtonDrawable(states);
   box.setMinHeight(ThemeStyle.dp(c,38));
  }
+ /** Only labelled checkboxes need separation; selection-only video boxes are unchanged. */
+ public static void applyLabelGap(CheckBox box){
+  box.setButtonDrawable(new InsetDrawable(box.getButtonDrawable(),0,0,
+      ThemeStyle.dp(box.getContext(),8),0));
+ }
  private static final class Mark extends Drawable {
   private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
   private final int size,color;private final boolean selected;

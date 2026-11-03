@@ -64,6 +64,8 @@ public final class UiStrings {
         strings.put("Уже добавлено", "Already queued");
         strings.put("Уже скачано", "Already downloaded");
         strings.put("Длительность неизвестна", "Duration unknown");
+        strings.put("Качество неизвестно", "Quality unknown");
+        strings.put("Сохранять плейлисты в отдельные папки", "Save playlists in separate folders");
         strings.put("Назад", "Back");
         strings.put("Обновить плейлист", "Refresh playlist");
         strings.put("Качество для этого видео", "Quality for this video");

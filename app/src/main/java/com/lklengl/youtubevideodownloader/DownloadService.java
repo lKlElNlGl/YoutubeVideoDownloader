@@ -276,16 +276,19 @@ public final class DownloadService extends Service {
         ContentValues values=null;
         Uri dest;
         boolean media=item.directoryUri.isEmpty();
+        String subfolder=item.playlistFolder==null||item.playlistFolder.isEmpty()?"":PlaylistFolderRules.safeName(item.playlistFolder);
         if(media){
             values=new ContentValues();
             values.put(MediaStore.MediaColumns.DISPLAY_NAME,source.getName());
             values.put(MediaStore.MediaColumns.MIME_TYPE,mime(source.getName()));
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YoutubeVideoDownloader");
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YoutubeVideoDownloader"+
+                 (subfolder.isEmpty()?"":"/"+subfolder));
             values.put(MediaStore.MediaColumns.IS_PENDING,1);
             dest=resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values);
         }else {
             Uri tree=Uri.parse(item.directoryUri);
             Uri root=DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree));
+            if(!subfolder.isEmpty())root=ensurePlaylistFolder(resolver,tree,root,subfolder);
             dest=DocumentsContract.createDocument(resolver,root,mime(source.getName()),source.getName());
         }
         if(dest==null)throw new IOException("Не удалось создать файл. Проверьте разрешение папки.");
@@ -309,6 +312,21 @@ public final class DownloadService extends Service {
             resolver.update(dest,values,null,null);
         }
         return dest;
+    }
+    /** Reuse existing SAF directories so later downloads of the same playlist stay together. */
+    private Uri ensurePlaylistFolder(ContentResolver resolver,Uri tree,Uri parent,String name) throws IOException {
+        Uri children=DocumentsContract.buildChildDocumentsUriUsingTree(tree,DocumentsContract.getDocumentId(parent));
+        String[] columns={DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE};
+        try(android.database.Cursor cursor=resolver.query(children,columns,null,null,null)){
+            if(cursor!=null)while(cursor.moveToNext()){
+                if(name.equals(cursor.getString(1))&&DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2)))
+                    return DocumentsContract.buildDocumentUriUsingTree(tree,cursor.getString(0));
+            }
+        }catch(RuntimeException ex){throw new IOException("Не удалось открыть папку плейлиста",ex);}
+        Uri created=DocumentsContract.createDocument(resolver,parent,DocumentsContract.Document.MIME_TYPE_DIR,name);
+        if(created==null)throw new IOException("Не удалось создать папку плейлиста: "+name);
+        return created;
     }
     private String mime(String name){
         String lower=name.toLowerCase(Locale.ROOT);

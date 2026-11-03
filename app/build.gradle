@@ -6,8 +6,8 @@ android {
         applicationId 'com.lklelnlgl.youtubedownloader'
         minSdk 29
         targetSdk 35
-        versionCode = (project.findProperty('appVersionCode') ?: '5030').toString().toInteger()
-        versionName = (project.findProperty('appVersionName') ?: '0.5.3').toString()
+        versionCode = (project.findProperty('appVersionCode') ?: '5040').toString().toInteger()
+        versionName = (project.findProperty('appVersionName') ?: '0.5.4').toString()
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
     }
     buildTypes { release { minifyEnabled false } }
@@ -21,8 +21,9 @@ dependencies {
     implementation 'androidx.work:work-runtime:2.12.0'
 }
 
-tasks.register('generateLauncherIcon', Exec) {
+// The user-approved launcher PNG is immutable: no image generation or resampling.
+tasks.register('verifyLauncherIcon', Exec) {
     workingDir rootProject.projectDir
-    commandLine 'python3', 'scripts/generate_launcher_icon.py'
+    commandLine 'python3', 'scripts/check_launcher_icon.py'
 }
-tasks.named('preBuild') { dependsOn tasks.named('generateLauncherIcon') }
+tasks.named('preBuild') { dependsOn tasks.named('verifyLauncherIcon') }

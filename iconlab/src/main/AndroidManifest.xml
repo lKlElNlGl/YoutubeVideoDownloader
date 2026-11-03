@@ -13,10 +13,10 @@
         </activity>
 
         <activity-alias
-            android:name=".LabTop01"
+            android:name=".LabSize01"
             android:targetActivity=".MainActivity"
-            android:label="01 Clean C2"
-            android:icon="@mipmap/lab_top_01"
+            android:label="01 · 108%"
+            android:icon="@mipmap/lab_size_01"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -26,10 +26,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop02"
+            android:name=".LabSize02"
             android:targetActivity=".MainActivity"
-            android:label="02 Контур"
-            android:icon="@mipmap/lab_top_02"
+            android:label="02 · 109%"
+            android:icon="@mipmap/lab_size_02"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -39,10 +39,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop03"
+            android:name=".LabSize03"
             android:targetActivity=".MainActivity"
-            android:label="03 Контур"
-            android:icon="@mipmap/lab_top_03"
+            android:label="03 · 110%"
+            android:icon="@mipmap/lab_size_03"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -52,10 +52,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop04"
+            android:name=".LabSize04"
             android:targetActivity=".MainActivity"
-            android:label="04 Контур"
-            android:icon="@mipmap/lab_top_04"
+            android:label="04 · 111%"
+            android:icon="@mipmap/lab_size_04"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -65,10 +65,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop05"
+            android:name=".LabSize05"
             android:targetActivity=".MainActivity"
-            android:label="05 +0,5 px"
-            android:icon="@mipmap/lab_top_05"
+            android:label="05 · 112%"
+            android:icon="@mipmap/lab_size_05"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -78,10 +78,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop06"
+            android:name=".LabSize06"
             android:targetActivity=".MainActivity"
-            android:label="06 +1 px"
-            android:icon="@mipmap/lab_top_06"
+            android:label="06 · 113%"
+            android:icon="@mipmap/lab_size_06"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -91,10 +91,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop07"
+            android:name=".LabSize07"
             android:targetActivity=".MainActivity"
-            android:label="07 +1,5 px"
-            android:icon="@mipmap/lab_top_07"
+            android:label="07 · 114%"
+            android:icon="@mipmap/lab_size_07"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -104,10 +104,10 @@
         </activity-alias>
 
         <activity-alias
-            android:name=".LabTop08"
+            android:name=".LabSize08"
             android:targetActivity=".MainActivity"
-            android:label="08 +2 px"
-            android:icon="@mipmap/lab_top_08"
+            android:label="08 · 115%"
+            android:icon="@mipmap/lab_size_08"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

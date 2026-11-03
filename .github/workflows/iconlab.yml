@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test eight repaired upper black-rim variants
+      - name: Test approved artwork scaled variants and launcher shortcuts
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -49,18 +49,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.4.0.apk
-          tag=iconlab-v0.4.0
+          cp "$apk" dist/IconLab-v0.5.0.apk
+          tag=iconlab-v0.5.0
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.4.0.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.0.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.4.0.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.4.0" \
-              --notes "Eight variants: 01 exact unmodified Clean C2; 02-04 darken the gray top border with unchanged silhouette; 05-08 grow only upper black bezel by 0.5, 1.0, 1.5, 2.0 source px. Black gloss, red play button, white marks, bottom, sides and Icon 04b scale preserved. Original transparent legacy 192px xxxhdpi resource. Standalone tester; uninstall the previous Icon Lab first. The main downloader remains unchanged." \
+            gh release create "$tag" dist/IconLab-v0.5.0.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.0" \
+              --notes "Eight proportional size variants 108–115% from the approved YoutubeVideoDownloader master artwork. Button requests all eight launcher shortcuts and enables fallback launcher aliases. Android home launcher may ask for confirmation or ignore simultaneous requests. No changes to the main app." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.4.0
+          name: IconLab-v0.5.0
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

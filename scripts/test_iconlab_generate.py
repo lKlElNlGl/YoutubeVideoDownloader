@@ -9,7 +9,7 @@ from scripts import iconlab_reference_v032 as old
 from scripts import iconlab_legacy_v055 as new
 from scripts.generate_iconlab_icons import (
     render_controls, render_new_c2, prepare_new_c2_alpha,
-    OLD_SOURCE, NEW_SOURCE)
+    adopt_proven_old_alpha_contour, OLD_SOURCE, NEW_SOURCE)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,7 +35,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertEqual([a.attrib[ns+"icon"] for a in aliases],
                          ["@mipmap/lab_probe_old","@mipmap/lab_probe_new"])
         self.assertEqual([a.attrib[ns+"label"] for a in aliases],
-                         ["A · Старый C2","B · Новый C2"])
+                         ["_A · Старый C2","_B · Маска A"])
         self.assertTrue(all(a.attrib[ns+"enabled"]=="false" for a in aliases))
         self.assertFalse((ROOT/"iconlab/src/main/res/mipmap-anydpi-v26").exists())
 
@@ -61,7 +61,8 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                 with Image.open(OLD_SOURCE) as art:
                     old.render_variants(art,temp/"old")
                 with Image.open(NEW_SOURCE) as art:
-                    expected_new=render_new_c2(art)
+                    with Image.open(old_png) as old_icon:
+                        expected_new=adopt_proven_old_alpha_contour(render_new_c2(art),old_icon)
                 self.assertEqual(old_png.read_bytes(),
                     (temp/"old/mipmap-xxxhdpi/lab_clean_c2.png").read_bytes())
                 with Image.open(new_png) as got_new:
@@ -101,6 +102,34 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
             self.assertNotEqual(previous.tobytes(), updated.tobytes())
             self.assertEqual(updated.getpixel((0,0))[3],0)
             self.assertEqual(updated.getpixel((191,191))[3],0)
+
+
+    def test_new_legacy_contour_exactly_matches_working_old_alpha_but_rgb_unmodified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            render_controls(folder)
+            with Image.open(folder/"mipmap-xxxhdpi/lab_probe_old.png") as old_png, \
+                 Image.open(folder/"mipmap-xxxhdpi/lab_probe_new.png") as new_png, \
+                 Image.open(NEW_SOURCE) as approved_source:
+                old_image=old_png.convert("RGBA")
+                result=new_png.convert("RGBA")
+                source_image=render_new_c2(approved_source)
+                self.assertEqual(result.getchannel("A").tobytes(),
+                                 old_image.getchannel("A").tobytes())
+                self.assertEqual(result.convert("RGB").tobytes(),
+                                 source_image.convert("RGB").tobytes())
+                self.assertNotEqual(result.convert("RGB").tobytes(),
+                                    old_image.convert("RGB").tobytes())
+                self.assertEqual(result.getpixel((0,0))[3],0)
+                self.assertEqual(result.getpixel((191,191))[3],0)
+                self.assertNotEqual(result.getchannel("A").tobytes(),
+                                    source_image.getchannel("A").tobytes())
+
+    def test_new_contour_no_op_when_old_and_new_match(self):
+        with Image.open(NEW_SOURCE) as image:
+            generated=render_new_c2(image)
+            output=adopt_proven_old_alpha_contour(generated, generated)
+            self.assertEqual(output.tobytes(),generated.tobytes())
 
     def test_cleans_stale_test_adaptive_and_old_variant_resources(self):
         with tempfile.TemporaryDirectory() as d:

@@ -1,7 +1,7 @@
 """Decisive Realme launcher A/B test: old proven icon vs new approved art.
 
 A = EXACT Icon Lab v0.3.2 Clean C2 from original source+generator.
-B = approved new art with the original v0.3.2 Clean C2 outer alpha cleanup.
+B = approved art with EXACT ALPHA silhouette copied from successful A.
 The new artwork is never recolored, redrawn, or saved back to source.
 Both are legacy 192x192 xxxhdpi PNG and activity-alias, in the same APK.
 No adaptive resources, no added background, no modifications to master art.
@@ -46,6 +46,22 @@ def render_new_c2(source):
                                    old.OUTPUT_SIZE, old.APPROVED_SCALE)
 
 
+
+def adopt_proven_old_alpha_contour(new_icon, old_icon):
+    """Give approved NEW icon the EXACT alpha silhouette of working Clean C2.
+
+    Only the alpha channel in the generated 192x192 PNG is changed; EVERY
+    new RGB component remains bit-for-bit unchanged. The approved master
+    source remains immutable. Since Realme already renders the old icon
+    correctly, matching the whole old alpha mask (not merely near-threshold
+    edges) is more decisive than guessing a new scale or radius.
+    """
+    if new_icon.size != old_icon.size or new_icon.size != (192, 192):
+        raise ValueError("both legacy icons must have the same 192px canvas")
+    result = new_icon.convert("RGBA").copy()
+    result.putalpha(old_icon.convert("RGBA").getchannel("A"))
+    return result
+
 def render_controls(res=RES):
     folder = res / "mipmap-xxxhdpi"
     folder.mkdir(parents=True, exist_ok=True)
@@ -75,11 +91,15 @@ def render_controls(res=RES):
         # Old: successful, untouched Clean C2 from v0.3.2.
         copyfile(oldfolder / "mipmap-xxxhdpi/lab_clean_c2.png",
                  folder / "lab_probe_old.png")
-        # New: old C2 contour algorithm, but NEW approved artwork only.
-        with Image.open(NEW_SOURCE) as artwork:
-            render_new_c2(artwork).save(folder / "lab_probe_new.png", optimize=True)
+        # New: preserve ALL of the new artwork RGB, but use the alpha
+        # silhouette of the proven old launcher icon pixel for pixel.
+        with Image.open(NEW_SOURCE) as artwork, Image.open(
+                folder / "lab_probe_old.png") as old_icon:
+            new_icon = render_new_c2(artwork)
+            adopt_proven_old_alpha_contour(new_icon, old_icon).save(
+                folder / "lab_probe_new.png", optimize=True)
 
 
 if __name__ == "__main__":
     render_controls()
-    print("Control A = original Clean C2; control B = approved art with C2 alpha mask.")
+    print("Control A = original Clean C2; control B = new artwork with exact alpha from A.")

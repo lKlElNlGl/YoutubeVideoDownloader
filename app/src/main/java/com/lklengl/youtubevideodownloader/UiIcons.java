@@ -47,7 +47,7 @@ public final class UiIcons extends Drawable {
                 folder.lineTo(11.5f,7);folder.lineTo(19,7);
                 folder.quadTo(21,7,21,9);folder.lineTo(21,12);
                 c.drawPath(folder,p);
-                c.drawLine(3,10,3,19);c.drawLine(3,19,12,19);
+                c.drawLine(3,10,3,19,p);c.drawLine(3,19,12,19,p);
                 Path pencil=new Path();pencil.moveTo(13.5f,18.8f);
                 pencil.lineTo(12.5f,21);pencil.lineTo(14.8f,20);
                 pencil.lineTo(21,13.8f);pencil.lineTo(18.7f,11.5f);

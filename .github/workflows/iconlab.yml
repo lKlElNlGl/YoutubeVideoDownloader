@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test approved artwork scaled variants and launcher shortcuts
+      - name: Test legacy 128px icon rendering and app drawer aliases
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -49,18 +49,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.0.apk
-          tag=iconlab-v0.5.0
+          cp "$apk" dist/IconLab-v0.5.1.apk
+          tag=iconlab-v0.5.1
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.0.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.1.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.0.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.0" \
-              --notes "Eight proportional size variants 108–115% from the approved YoutubeVideoDownloader master artwork. Button requests all eight launcher shortcuts and enables fallback launcher aliases. Android home launcher may ask for confirmation or ignore simultaneous requests. No changes to the main app." \
+            gh release create "$tag" dist/IconLab-v0.5.1.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.1" \
+              --notes "Reuses old working Icon Lab 128px source / legacy 192px xxxhdpi rendering and the original app drawer activity-alias mechanism, with approved new artwork. No pinned shortcuts, no adaptive background. 01 is exact 04b scale; 02–08 are 109–115 percent. Main app unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.0
+          name: IconLab-v0.5.1
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

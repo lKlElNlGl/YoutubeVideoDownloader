@@ -15,7 +15,7 @@
         <activity-alias
             android:name=".LabSize01"
             android:targetActivity=".MainActivity"
-            android:label="01 · 108%"
+            android:label="01 · 04b"
             android:icon="@mipmap/lab_size_01"
             android:enabled="false"
             android:exported="true">

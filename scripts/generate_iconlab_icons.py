@@ -19,15 +19,9 @@ SOURCE_INSET = 4
 OUTPUT_SIZE = 192
 SUPER_SAMPLE = 8
 APPROVED_SCALE = 1.06 * (1 - 0.0025)
-VARIANTS = (
-    ("01", APPROVED_SCALE),
-    ("02", 1.00),
-    ("03", 1.01),
-    ("04", 1.02),
-    ("05", 1.03),
-    ("06", 1.04),
-    ("07", 1.05),
-    ("08", 1.06),
+VARIANTS = tuple(
+    (f"{index:02d}", percent / 100.0)
+    for index, percent in enumerate(range(96, 107), start=1)
 )
 
 
@@ -96,4 +90,4 @@ if __name__ == "__main__":
     with Image.open(SOURCE) as art:
         base = render_variants(art)
     assert base.size == (128, 128)
-    print("Generated eight legacy 192px xxxhdpi icons (v0.3.2 pipeline).")
+    print("Generated eleven legacy 192px xxxhdpi icons (v0.3.2 pipeline).")

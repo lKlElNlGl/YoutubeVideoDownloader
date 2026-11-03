@@ -13,7 +13,7 @@ import android.widget.Toast;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
-    private static final int VARIANT_COUNT = 8;
+    private static final int VARIANT_COUNT = 11;
 
     @Override
     public void onCreate(Bundle state) {
@@ -26,15 +26,15 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("8 вариантов утверждённой иконки.\n"
-                + "Механизм отображения — как в Icon Lab v0.3.2.\n"
-                + "Только PNG с прозрачностью, без подложек.\n"
+        description.setText("11 вариантов утверждённой иконки: от 96% до 106%.\n"
+                + "Шаг — 1%. Меняется только размер рисунка целиком.\n"
+                + "PNG с прозрачными углами, без подложек.\n"
                 + "Нажмите кнопку: значки появятся в списке приложений.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button button = new Button(this);
-        button.setText("Показать 8 вариантов");
+        button.setText("Показать 11 вариантов");
         LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         buttonParams.topMargin = dp(24);
@@ -54,9 +54,9 @@ public final class MainActivity extends Activity {
                             PackageManager.DONT_KILL_APP);
                     completed++;
                 }
-                description.setText("Включены все 8 вариантов.\n"
-                        + "Сравните значки 01–08 в списке приложений.");
-                Toast.makeText(this, "Включены значки 01–08", Toast.LENGTH_LONG).show();
+                description.setText("Включены все 11 вариантов.\n"
+                        + "Сравните значки 01–11 в списке приложений.");
+                Toast.makeText(this, "Включены значки 01–11", Toast.LENGTH_LONG).show();
             } catch (RuntimeException exception) {
                 Toast.makeText(this, "Включено " + completed
                         + " значков. Ошибка: " + exception.getClass().getSimpleName(),

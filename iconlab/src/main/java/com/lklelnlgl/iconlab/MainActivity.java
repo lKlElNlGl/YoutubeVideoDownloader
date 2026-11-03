@@ -10,11 +10,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.Locale;
 
 public final class MainActivity extends Activity {
-    private static final int VARIANT_COUNT = 11;
-
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -26,45 +23,40 @@ public final class MainActivity extends Activity {
         TextView description = new TextView(this);
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
-        description.setText("11 вариантов утверждённой иконки: от 96% до 106%.\n"
-                + "Шаг — 1%. Меняется только размер рисунка целиком.\n"
-                + "PNG с прозрачными углами, без подложек.\n"
-                + "Нажмите кнопку: значки появятся в списке приложений.");
+        description.setText("Контрольное сравнение двух иконок на одном Realme.\n"
+                + "A — точно старый Clean C2 из Icon Lab v0.3.2.\n"
+                + "B — новый утверждённый рисунок, 100% из v0.5.5.\n"
+                + "Оба — обычные PNG, без фоновых слоёв.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         Button button = new Button(this);
-        button.setText("Показать 11 вариантов");
-        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+        button.setText("Показать 2 значка");
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        buttonParams.topMargin = dp(24);
-        layout.addView(button, buttonParams);
+        params.topMargin = dp(24);
+        layout.addView(button, params);
         setContentView(layout);
 
         button.setOnClickListener(view -> {
             PackageManager pm = getPackageManager();
-            int completed = 0;
-            try {
-                for (int i = 1; i <= VARIANT_COUNT; i++) {
-                    String alias = getPackageName() + ".LabSize"
-                            + String.format(Locale.US, "%02d", i);
+            int enabled = 0;
+            for (String alias : new String[] { "LabProbeOld", "LabProbeNew" }) {
+                try {
                     pm.setComponentEnabledSetting(
-                            new ComponentName(this, alias),
-                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                            PackageManager.DONT_KILL_APP);
-                    completed++;
+                        new ComponentName(this, getPackageName() + "." + alias),
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        PackageManager.DONT_KILL_APP);
+                    enabled++;
+                } catch (RuntimeException e) {
+                    Toast.makeText(this, "Ошибка добавления: " + alias,
+                            Toast.LENGTH_LONG).show();
                 }
-                description.setText("Включены все 11 вариантов.\n"
-                        + "Сравните значки 01–11 в списке приложений.");
-                Toast.makeText(this, "Включены значки 01–11", Toast.LENGTH_LONG).show();
-            } catch (RuntimeException exception) {
-                Toast.makeText(this, "Включено " + completed
-                        + " значков. Ошибка: " + exception.getClass().getSimpleName(),
-                        Toast.LENGTH_LONG).show();
             }
+            description.setText("Включено " + enabled + " из 2 значков.\n"
+                    + "Сравни A · Старый C2 и B · Новый 100% в списке приложений.");
         });
     }
-
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }

@@ -7,6 +7,8 @@ on:
       - '.github/workflows/iconlab.yml'
       - 'iconlab/**'
       - 'scripts/generate_iconlab_icons.py'
+      - 'scripts/iconlab_reference_v032.py'
+      - 'scripts/iconlab_legacy_v055.py'
       - 'scripts/test_iconlab_generate.py'
       - 'settings.gradle'
   workflow_dispatch:
@@ -33,7 +35,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test eleven 96–106 percent legacy icon variants and app drawer aliases
+      - name: Test exact old v0.3.2 Clean C2 versus new v0.5.5 PNG
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -49,18 +51,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.5.apk
-          tag=iconlab-v0.5.5
+          cp "$apk" dist/IconLab-v0.5.6.apk
+          tag=iconlab-v0.5.6
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.5.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.6.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.5.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.5" \
-              --notes "Eleven variants of unchanged approved art at 96–106 percent, one percent steps. Restores legacy v0.3.2 128 to 192 pipeline and app-drawer aliases only. No adaptive backgrounds, no home screen pins, no changes to main app." \
+            gh release create "$tag" dist/IconLab-v0.5.6.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.6" \
+              --notes "Controlled A/B diagnosis on Realme 8i: two icon activity-aliases in same APK and same legacy xxxhdpi resource class. A is byte-identical to old v0.3.2 Clean C2; B is byte-identical to new v0.5.5 100 percent. No adaptive background, no home pins and no changes to approved master or main application." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.5
+          name: IconLab-v0.5.6
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

@@ -11,12 +11,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity-alias
-            android:name=".LabSize01"
+            android:name=".LabProbeOld"
             android:targetActivity=".MainActivity"
-            android:label="01 · 96%"
-            android:icon="@mipmap/lab_size_01"
+            android:label="A · Старый C2"
+            android:icon="@mipmap/lab_probe_old"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -24,129 +23,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
-
         <activity-alias
-            android:name=".LabSize02"
+            android:name=".LabProbeNew"
             android:targetActivity=".MainActivity"
-            android:label="02 · 97%"
-            android:icon="@mipmap/lab_size_02"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize03"
-            android:targetActivity=".MainActivity"
-            android:label="03 · 98%"
-            android:icon="@mipmap/lab_size_03"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize04"
-            android:targetActivity=".MainActivity"
-            android:label="04 · 99%"
-            android:icon="@mipmap/lab_size_04"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize05"
-            android:targetActivity=".MainActivity"
-            android:label="05 · 100%"
-            android:icon="@mipmap/lab_size_05"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize06"
-            android:targetActivity=".MainActivity"
-            android:label="06 · 101%"
-            android:icon="@mipmap/lab_size_06"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize07"
-            android:targetActivity=".MainActivity"
-            android:label="07 · 102%"
-            android:icon="@mipmap/lab_size_07"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize08"
-            android:targetActivity=".MainActivity"
-            android:label="08 · 103%"
-            android:icon="@mipmap/lab_size_08"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize09"
-            android:targetActivity=".MainActivity"
-            android:label="09 · 104%"
-            android:icon="@mipmap/lab_size_09"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize10"
-            android:targetActivity=".MainActivity"
-            android:label="10 · 105%"
-            android:icon="@mipmap/lab_size_10"
-            android:enabled="false"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".LabSize11"
-            android:targetActivity=".MainActivity"
-            android:label="11 · 106%"
-            android:icon="@mipmap/lab_size_11"
+            android:label="B · Новый 100%"
+            android:icon="@mipmap/lab_probe_new"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

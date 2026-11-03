@@ -27,3 +27,4 @@ Publish v0.5.1: intermediate palette 051, full playlist redesign, per-video qual
 Publish v0.5.2: Russian and English localization, approved playlist browsing and filters, shared refresh, 050 palette, corrected popup borders, red action styles and transparent launcher artwork.
 
 Publish v0.5.3: stable playlist selections by ID, unified metadata refresh, queue notices, stream-progress fixes, friendly network errors, consistent controls, actual resolutions, insets, and transparent adaptive icon.
+Publish v0.5.4: exact approved Icon Lab A_192px launcher, 28dp native quality spinners, aligned playlist rows, saved per-playlist subfolders, RU/EN icons, checkbox spacing, unknown quality labels, signed APK.

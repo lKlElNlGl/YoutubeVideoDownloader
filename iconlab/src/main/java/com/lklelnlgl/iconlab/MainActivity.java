@@ -27,10 +27,9 @@ public final class MainActivity extends Activity {
         description.setTextSize(17);
         description.setGravity(Gravity.CENTER);
         description.setText("8 вариантов утверждённой иконки.\n"
-                + "Механизм слоёв как в SSH Button Next.\n"
-                + "Прозрачный фон, отступ 9 dp.\n"
-                + "Варианты отличаются только масштабом.\n"
-                + "Значки появятся в списке приложений.");
+                + "Механизм отображения — как в Icon Lab v0.3.2.\n"
+                + "Только PNG с прозрачностью, без подложек.\n"
+                + "Нажмите кнопку: значки появятся в списке приложений.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 

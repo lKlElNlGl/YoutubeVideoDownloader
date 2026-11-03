@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:label="Icon Lab"
-        android:icon="@mipmap/lab_size_01"
-        android:roundIcon="@mipmap/lab_size_01"
+        android:icon="@drawable/lab_app_icon"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
@@ -16,7 +15,7 @@
         <activity-alias
             android:name=".LabSize01"
             android:targetActivity=".MainActivity"
-            android:label="01 · SSH 73%"
+            android:label="01 · 04b"
             android:icon="@mipmap/lab_size_01"
             android:enabled="false"
             android:exported="true">
@@ -29,7 +28,7 @@
         <activity-alias
             android:name=".LabSize02"
             android:targetActivity=".MainActivity"
-            android:label="02 · SSH 74%"
+            android:label="02 · 100%"
             android:icon="@mipmap/lab_size_02"
             android:enabled="false"
             android:exported="true">
@@ -42,7 +41,7 @@
         <activity-alias
             android:name=".LabSize03"
             android:targetActivity=".MainActivity"
-            android:label="03 · SSH 75%"
+            android:label="03 · 101%"
             android:icon="@mipmap/lab_size_03"
             android:enabled="false"
             android:exported="true">
@@ -55,7 +54,7 @@
         <activity-alias
             android:name=".LabSize04"
             android:targetActivity=".MainActivity"
-            android:label="04 · SSH 76%"
+            android:label="04 · 102%"
             android:icon="@mipmap/lab_size_04"
             android:enabled="false"
             android:exported="true">
@@ -68,7 +67,7 @@
         <activity-alias
             android:name=".LabSize05"
             android:targetActivity=".MainActivity"
-            android:label="05 · SSH 77%"
+            android:label="05 · 103%"
             android:icon="@mipmap/lab_size_05"
             android:enabled="false"
             android:exported="true">
@@ -81,7 +80,7 @@
         <activity-alias
             android:name=".LabSize06"
             android:targetActivity=".MainActivity"
-            android:label="06 · SSH 78%"
+            android:label="06 · 104%"
             android:icon="@mipmap/lab_size_06"
             android:enabled="false"
             android:exported="true">
@@ -94,7 +93,7 @@
         <activity-alias
             android:name=".LabSize07"
             android:targetActivity=".MainActivity"
-            android:label="07 · SSH 79%"
+            android:label="07 · 105%"
             android:icon="@mipmap/lab_size_07"
             android:enabled="false"
             android:exported="true">
@@ -107,7 +106,7 @@
         <activity-alias
             android:name=".LabSize08"
             android:targetActivity=".MainActivity"
-            android:label="08 · SSH 80%"
+            android:label="08 · 106%"
             android:icon="@mipmap/lab_size_08"
             android:enabled="false"
             android:exported="true">

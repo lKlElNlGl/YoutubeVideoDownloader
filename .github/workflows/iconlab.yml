@@ -7,7 +7,6 @@ on:
       - '.github/workflows/iconlab.yml'
       - 'iconlab/**'
       - 'scripts/generate_iconlab_icons.py'
-      - 'scripts/generate_iconlab_adaptive.py'
       - 'scripts/test_iconlab_generate.py'
       - 'settings.gradle'
   workflow_dispatch:
@@ -34,7 +33,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test SSH Button Next-style two-layer icons and no home shortcuts
+      - name: Test original v0.3.2 legacy resources with approved new artwork
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -50,18 +49,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.3.apk
-          tag=iconlab-v0.5.3
+          cp "$apk" dist/IconLab-v0.5.4.apk
+          tag=iconlab-v0.5.4
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.3.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.4.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.3.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.3" \
-              --notes "Port of SSH Button Next icon architecture: 720px WebP layers, 9dp foreground inset, adaptive XML referencing bitmap background and inset foreground; background stays transparent to preserve approved icon corners. Legacy 128 to 192 pipeline and app-drawer-only aliases stay. No shortcuts or main app changes. Launcher behavior varies by device." \
+            gh release create "$tag" dist/IconLab-v0.5.4.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.4" \
+              --notes "Restores legacy 192px xxxhdpi-only icons used successfully in v0.3.0/v0.3.2 on Realme Android 12. Removes all adaptive icons and backgrounds, normalizes only empty margins of the approved master image to old 128px art footprint, keeps 04b renderer and app-drawer-only button. Main app unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.3
+          name: IconLab-v0.5.4
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

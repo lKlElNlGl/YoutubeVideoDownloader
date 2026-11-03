@@ -9,7 +9,10 @@ from scripts import iconlab_reference_v032 as old
 from scripts import iconlab_legacy_v055 as new
 from scripts.generate_iconlab_icons import (
     render_controls, render_new_c2, prepare_new_c2_alpha,
-    adopt_proven_old_alpha_contour, OLD_SOURCE, NEW_SOURCE)
+    OLD_SOURCE, NEW_SOURCE)
+from scripts.iconlab_edge_refine import (
+    render_smooth_legacy_icon, smooth_proven_mask, extend_bezel_colors)
+from PIL import ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,7 +38,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertEqual([a.attrib[ns+"icon"] for a in aliases],
                          ["@mipmap/lab_probe_old","@mipmap/lab_probe_new"])
         self.assertEqual([a.attrib[ns+"label"] for a in aliases],
-                         ["_A · Старый C2","_B · Маска A"])
+                         ["_A_Старый C2","_B_Сглаженная маска"])
         self.assertTrue(all(a.attrib[ns+"enabled"]=="false" for a in aliases))
         self.assertFalse((ROOT/"iconlab/src/main/res/mipmap-anydpi-v26").exists())
 
@@ -48,7 +51,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
         self.assertNotIn("requestPinShortcut",java)
         self.assertNotIn("ShortcutManager",java)
 
-    def test_old_is_byte_exact_c2_new_is_exact_c2_alpha_rebuild(self):
+    def test_old_exact_c2_and_new_exact_smooth_rebuild(self):
         with tempfile.TemporaryDirectory() as root:
             dst=Path(root)
             render_controls(dst)
@@ -62,7 +65,7 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
                     old.render_variants(art,temp/"old")
                 with Image.open(NEW_SOURCE) as art:
                     with Image.open(old_png) as old_icon:
-                        expected_new=adopt_proven_old_alpha_contour(render_new_c2(art),old_icon)
+                        expected_new=render_smooth_legacy_icon(render_new_c2(art),old_icon)
                 self.assertEqual(old_png.read_bytes(),
                     (temp/"old/mipmap-xxxhdpi/lab_clean_c2.png").read_bytes())
                 with Image.open(new_png) as got_new:
@@ -104,32 +107,62 @@ class DiagnosticOldVsNewTest(unittest.TestCase):
             self.assertEqual(updated.getpixel((191,191))[3],0)
 
 
-    def test_new_legacy_contour_exactly_matches_working_old_alpha_but_rgb_unmodified(self):
+    def test_new_silhouette_is_smooth_and_near_old_coverage(self):
         with tempfile.TemporaryDirectory() as tmp:
-            folder=Path(tmp)
+            folder = Path(tmp)
             render_controls(folder)
-            with Image.open(folder/"mipmap-xxxhdpi/lab_probe_old.png") as old_png, \
-                 Image.open(folder/"mipmap-xxxhdpi/lab_probe_new.png") as new_png, \
-                 Image.open(NEW_SOURCE) as approved_source:
-                old_image=old_png.convert("RGBA")
-                result=new_png.convert("RGBA")
-                source_image=render_new_c2(approved_source)
+            with Image.open(folder/"mipmap-xxxhdpi/lab_probe_old.png") as a, \
+                 Image.open(folder/"mipmap-xxxhdpi/lab_probe_new.png") as b, \
+                 Image.open(NEW_SOURCE) as artwork:
+                reference = a.convert("RGBA")
+                result = b.convert("RGBA")
+                raw = render_new_c2(artwork)
+                expected_mask = smooth_proven_mask(reference.getchannel("A"))
                 self.assertEqual(result.getchannel("A").tobytes(),
-                                 old_image.getchannel("A").tobytes())
-                self.assertEqual(result.convert("RGB").tobytes(),
-                                 source_image.convert("RGB").tobytes())
-                self.assertNotEqual(result.convert("RGB").tobytes(),
-                                    old_image.convert("RGB").tobytes())
+                                 expected_mask.tobytes())
+                # Rebuilt high-res mask is a distinct antialiased output.
+                self.assertNotEqual(result.getchannel("A").tobytes(),
+                                    reference.getchannel("A").tobytes())
                 self.assertEqual(result.getpixel((0,0))[3],0)
                 self.assertEqual(result.getpixel((191,191))[3],0)
-                self.assertNotEqual(result.getchannel("A").tobytes(),
-                                    source_image.getchannel("A").tobytes())
+                old_coverage = sum(x >= 128 for x in reference.getchannel("A").getdata())
+                new_coverage = sum(x >= 128 for x in result.getchannel("A").getdata())
+                self.assertLess(abs(old_coverage-new_coverage), 500)
+                # Never recolor any solid part of the new approved image.
+                pixels_original = list(raw.getdata())
+                pixels_clean = list(result.getdata())
+                self.assertTrue(all(
+                    a[:3] == b[:3] for a,b in zip(pixels_original,pixels_clean)
+                    if a[3] >= 200))
+                self.assertGreater(result.getpixel((96,96))[3],240)
 
-    def test_new_contour_no_op_when_old_and_new_match(self):
-        with Image.open(NEW_SOURCE) as image:
-            generated=render_new_c2(image)
-            output=adopt_proven_old_alpha_contour(generated, generated)
-            self.assertEqual(output.tobytes(),generated.tobytes())
+    def test_newly_revealed_fringe_uses_nearest_bezel_not_transparent_garbage(self):
+        source=Image.new("RGBA",(192,192),(255,0,255,0))
+        draw=ImageDraw.Draw(source)
+        draw.rounded_rectangle((40,40,151,151),radius=28,fill=(18,20,23,255))
+        alpha=Image.new("L",(192,192),0)
+        ImageDraw.Draw(alpha).rounded_rectangle(
+            (35,35,156,156),radius=28,fill=255)
+        old_reference=Image.new("RGBA",(192,192))
+        old_reference.putalpha(alpha)
+        result=render_smooth_legacy_icon(source, old_reference)
+        self.assertGreater(result.getpixel((37,96))[3],200)
+        self.assertEqual(result.getpixel((37,96))[:3],(18,20,23))
+        self.assertEqual(result.getpixel((96,96))[:3],(18,20,23))
+        self.assertEqual(result.getpixel((0,0))[3],0)
+        self.assertEqual(source.getpixel((37,96)),(255,0,255,0))
+        self.assertEqual(source.getpixel((96,96)),(18,20,23,255))
+
+    def test_legacy_mask_requires_8x_highres(self):
+        with Image.open(OLD_SOURCE) as source, tempfile.TemporaryDirectory() as d:
+            old.render_variants(source,Path(d))
+            with Image.open(Path(d)/"mipmap-xxxhdpi/lab_clean_c2.png") as image:
+                alpha=image.getchannel("A")
+                mask=smooth_proven_mask(alpha, supersample=8)
+                self.assertEqual(mask.size,(192,192))
+                self.assertEqual(mask.mode,"L")
+                with self.assertRaises(ValueError):
+                    smooth_proven_mask(alpha,supersample=4)
 
     def test_cleans_stale_test_adaptive_and_old_variant_resources(self):
         with tempfile.TemporaryDirectory() as d:

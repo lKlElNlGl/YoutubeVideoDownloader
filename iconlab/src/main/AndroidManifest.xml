@@ -14,7 +14,7 @@
         <activity-alias
             android:name=".LabProbeOld"
             android:targetActivity=".MainActivity"
-            android:label="_A · Старый C2"
+            android:label="_A_Старый C2"
             android:icon="@mipmap/lab_probe_old"
             android:enabled="false"
             android:exported="true">
@@ -26,7 +26,7 @@
         <activity-alias
             android:name=".LabProbeNew"
             android:targetActivity=".MainActivity"
-            android:label="_B · Маска A"
+            android:label="_B_Сглаженная маска"
             android:icon="@mipmap/lab_probe_new"
             android:enabled="false"
             android:exported="true">

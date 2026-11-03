@@ -7,6 +7,7 @@ on:
       - '.github/workflows/iconlab.yml'
       - 'iconlab/**'
       - 'scripts/generate_iconlab_icons.py'
+      - 'scripts/iconlab_edge_refine.py'
       - 'scripts/iconlab_reference_v032.py'
       - 'scripts/iconlab_legacy_v055.py'
       - 'scripts/test_iconlab_generate.py'
@@ -35,7 +36,7 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test exact old C2 alpha silhouette on approved new artwork
+      - name: Test smooth C2 alpha silhouette and clean bezel edge pixels
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
@@ -51,18 +52,18 @@ jobs:
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.8.apk
-          tag=iconlab-v0.5.8
+          cp "$apk" dist/IconLab-v0.5.9.apk
+          tag=iconlab-v0.5.9
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.8.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.9.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.8.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.8" \
-              --notes "Old Clean C2 is identical to v0.3.2; new approved 192px icon gets the exact alpha mask from the old successful icon, while keeping all RGB bytes of the approved new image. No redraw, no white background, no adaptive icons; labels begin with underscore. Main app unchanged." \
+            gh release create "$tag" dist/IconLab-v0.5.9.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.9" \
+              --notes "Old C2 remains byte-exact. The new approved artwork gets an 8x supersampled smooth silhouette from the working C2 and repairs newly exposed fringe pixels by nearest-bezel RGB fill. Solid artwork and master unchanged, no adaptive icons. Labels _A_Старый C2 and _B_Сглаженная маска." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.8
+          name: IconLab-v0.5.9
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

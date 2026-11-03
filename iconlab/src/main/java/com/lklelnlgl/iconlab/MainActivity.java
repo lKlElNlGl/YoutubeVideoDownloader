@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
         description.setGravity(Gravity.CENTER);
         description.setText("Контрольное сравнение двух иконок на одном Realme.\n"
                 + "A — точно старый Clean C2 из Icon Lab v0.3.2.\n"
-                + "B — новый рисунок с точной маской прозрачности A.\n"
+                + "B — новый рисунок со сглаженной маской и чистым краем.\n"
                 + "Оба — обычные PNG, без фоновых слоёв.");
         layout.addView(description, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -54,7 +54,7 @@ public final class MainActivity extends Activity {
                 }
             }
             description.setText("Включено " + enabled + " из 2 значков.\n"
-                    + "Сравни _A · Старый C2 и _B · Маска A в списке приложений.");
+                    + "Сравни _A_Старый C2 и _B_Сглаженная маска в списке приложений.");
         });
     }
     private int dp(int value) {

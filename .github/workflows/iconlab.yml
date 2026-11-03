@@ -6,10 +6,6 @@ on:
     paths:
       - '.github/workflows/iconlab.yml'
       - 'iconlab/**'
-      - 'scripts/generate_iconlab_icons.py'
-      - 'scripts/iconlab_edge_refine.py'
-      - 'scripts/iconlab_reference_v032.py'
-      - 'scripts/iconlab_legacy_v055.py'
       - 'scripts/test_iconlab_generate.py'
       - 'settings.gradle'
   workflow_dispatch:
@@ -36,34 +32,80 @@ jobs:
           gradle-version: '8.11.1'
       - name: Install image tooling
         run: python3 -m pip install --user Pillow
-      - name: Test soft upper/side contour crop with unchanged bottom and clean RGB
+      - name: Test exact user-supplied PNG files and launcher aliases
         run: python3 -m unittest scripts/test_iconlab_generate.py
       - name: Build small standalone APK
         run: gradle --no-daemon :iconlab:assembleDebug
-      - name: Verify package and small size
+      - name: Verify package and both original icon resources
         run: |
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           test -s "$apk"
           test "$(stat -c '%s' "$apk")" -lt 5000000
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep "package: name='com.lklelnlgl.iconlab'"
+          unzip -Z -1 "$apk" > /tmp/iconlab-apk-paths.txt
+          grep -F 'lab_user_a_192.png' /tmp/iconlab-apk-paths.txt
+          grep -F 'lab_user_b_large.png' /tmp/iconlab-apk-paths.txt
       - name: Publish separate prerelease
         run: |
           set -euo pipefail
           apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
           mkdir -p dist
-          cp "$apk" dist/IconLab-v0.5.10.apk
-          tag=iconlab-v0.5.10
+          cp "$apk" dist/IconLab-v0.5.11.apk
+          tag=iconlab-v0.5.11
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/IconLab-v0.5.10.apk --clobber
+            gh release upload "$tag" dist/IconLab-v0.5.11.apk --clobber
           else
-            gh release create "$tag" dist/IconLab-v0.5.10.apk \
-              --target "$GITHUB_SHA" --title "Icon Lab v0.5.10" \
-              --notes "Keep old Clean C2 byte-identical. Gently trim the upper and upper side silhouette of the approved new artwork by about 1px with high-resolution feathered alpha. Bottom third stays pixel-exact to v0.5.9; solid RGB and master unchanged. No adaptive icons or background. Labels: _A_Старый C2 and _B_Сглаженная маска." \
+            gh release create "$tag" dist/IconLab-v0.5.11.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.11" \
+              --notes "Two ORIGINAL user PNG images, byte-for-byte unchanged: 77.png (192x189) and 555.png (1035x1019). Direct drawable-nodpi legacy activity-alias icons named _A_192px and _B_Большая; no resizing, clipping, masks, background or adaptive icons. Main downloader unchanged." \
               --prerelease --latest=false
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: IconLab-v0.5.10
+          name: IconLab-v0.5.11
+          path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          if-no-files-found: error
+ /tmp/iconlab-apk-paths.txt
+          grep -Eq '/lab_user_b_large.png
+      - name: Publish separate prerelease
+        run: |
+          set -euo pipefail
+          apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          mkdir -p dist
+          cp "$apk" dist/IconLab-v0.5.11.apk
+          tag=iconlab-v0.5.11
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/IconLab-v0.5.11.apk --clobber
+          else
+            gh release create "$tag" dist/IconLab-v0.5.11.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.11" \
+              --notes "Two ORIGINAL user PNG images, byte-for-byte unchanged: 77.png (192x189) and 555.png (1035x1019). Direct drawable-nodpi legacy activity-alias icons named _A_192px and _B_Большая; no resizing, clipping, masks, background or adaptive icons. Main downloader unchanged." \
+              --prerelease --latest=false
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IconLab-v0.5.11
+          path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          if-no-files-found: error
+ /tmp/iconlab-apk-paths.txt
+      - name: Publish separate prerelease
+        run: |
+          set -euo pipefail
+          apk=iconlab/build/outputs/apk/debug/iconlab-debug.apk
+          mkdir -p dist
+          cp "$apk" dist/IconLab-v0.5.11.apk
+          tag=iconlab-v0.5.11
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/IconLab-v0.5.11.apk --clobber
+          else
+            gh release create "$tag" dist/IconLab-v0.5.11.apk \
+              --target "$GITHUB_SHA" --title "Icon Lab v0.5.11" \
+              --notes "Two ORIGINAL user PNG images, byte-for-byte unchanged: 77.png (192x189) and 555.png (1035x1019). Direct drawable-nodpi legacy activity-alias icons named _A_192px and _B_Большая; no resizing, clipping, masks, background or adaptive icons. Main downloader unchanged." \
+              --prerelease --latest=false
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IconLab-v0.5.11
           path: iconlab/build/outputs/apk/debug/iconlab-debug.apk
           if-no-files-found: error

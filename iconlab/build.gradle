@@ -7,17 +7,11 @@ android {
         applicationId 'com.lklelnlgl.iconlab'
         minSdk 29
         targetSdk 35
-        versionCode 18
-        versionName '0.5.10'
+        versionCode 19
+        versionName '0.5.11'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 }
-
-tasks.register('generateIconLabIcons', Exec) {
-    workingDir rootProject.projectDir
-    commandLine 'python3', 'scripts/generate_iconlab_icons.py'
-}
-tasks.named('preBuild') { dependsOn tasks.named('generateIconLabIcons') }

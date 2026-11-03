@@ -12,10 +12,10 @@
             </intent-filter>
         </activity>
         <activity-alias
-            android:name=".LabProbeOld"
+            android:name=".LabSourceSmall"
             android:targetActivity=".MainActivity"
-            android:label="_A_Старый C2"
-            android:icon="@mipmap/lab_probe_old"
+            android:label="_A_192px"
+            android:icon="@drawable/lab_user_a_192"
             android:enabled="false"
             android:exported="true">
             <intent-filter>
@@ -24,10 +24,10 @@
             </intent-filter>
         </activity-alias>
         <activity-alias
-            android:name=".LabProbeNew"
+            android:name=".LabSourceLarge"
             android:targetActivity=".MainActivity"
-            android:label="_B_Сглаженная маска"
-            android:icon="@mipmap/lab_probe_new"
+            android:label="_B_Большая"
+            android:icon="@drawable/lab_user_b_large"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

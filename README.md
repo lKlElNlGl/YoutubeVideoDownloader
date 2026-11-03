@@ -10,7 +10,7 @@
 - Предпросмотр названия, длительности и доступных вариантов качества.
 - Плейлисты: просмотр списка, отметки отдельных видео и выбор качества для каждого ролика.
 - Очередь загрузок с прогрессом, паузой, продолжением, повтором и удалением.
-- Выбор папки, открытие скачанного файла и папки с ним.
+- Выбор папки, открытие скачанного файла и папки с ним. По желанию плейлисты сохраняются в собственных подпапках выбранной папки загрузок.
 - Светлая, тёмная и системная темы.
 - English / Русский в настройках. На новой установке выбран English.
 - Проверка обновлений приложения и компонента работы с YouTube.
@@ -29,6 +29,13 @@
 Для плейлиста можно выбрать отдельные записи и настроить качество каждого видео. Доступность форматов и разрешений зависит от источника.
 
 ## Изменения
+
+### v0.5.4
+- Установлена окончательно утверждённая иконка _A_192px из Icon Lab v0.5.11: оригинальный PNG без adaptive-обработки и подложек, с проверкой SHA-256 в сборке.
+- Индивидуальный выбор качества переведён на стандартный Spinner приложения: 28 dp, динамическая ширина, длительность и качество на одной строке, никаких галочек в меню.
+- Добавлены подпапки с названиями плейлистов непосредственно в основной папке загрузки, с повторным использованием прежнего имени. Настройка включена на новых установках; при обновлении сохраняется старое поведение до явного включения.
+- Исправлены значки RU/EN, отступы подписей чекбоксов, иконки папок и выравнивание заголовка списка.
+- Для скачанного файла без известного разрешения выводится «Качество неизвестно».
 
 ### v0.5.3
 - Исправлены сохранение отметок видео при изменении порядка плейлиста и повторные запросы к YouTube.
@@ -75,7 +82,7 @@ An Android app for downloading YouTube videos and audio, including selected vide
 - Preview titles, durations, and available quality options.
 - Browse playlists, select individual videos, and set a separate resolution for each one.
 - Download queue with progress, pause, resume, retry, and removal.
-- Choose a save folder and open downloaded files or their folders.
+- Choose a save folder and open downloaded files or their folders. Optionally save each playlist into its own subfolder under the selected download folder.
 - Light, dark, and system themes.
 - English / Русский language selection in Settings. English is the default on fresh installations.
 - Check for app updates and updates to the YouTube download component.
@@ -94,6 +101,13 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.4
+- Adopted the user-approved original _A_192px PNG launcher from Icon Lab v0.5.11, with no adaptive icon or background and an SHA-256 build guard.
+- Per-video quality uses the existing Spinner, a 28 dp tall dynamic-width field and a single row alongside duration; removed nonstandard popup check marks.
+- Optional stable, named playlist subfolders directly inside the chosen download directory. Enabled for fresh installs; existing users keep their previous save behavior until they enable it.
+- Corrected RU/EN selector icons, checkbox label spacing, folder button icons and playlist header baseline alignment.
+- Completed downloads with no measured resolution now display “Quality unknown”.
 
 ### v0.5.3
 - Kept playlist selections tied to video IDs and unified playlist metadata requests.

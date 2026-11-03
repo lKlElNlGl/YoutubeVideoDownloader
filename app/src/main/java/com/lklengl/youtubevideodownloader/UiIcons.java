@@ -29,14 +29,32 @@ public final class UiIcons extends Drawable {
             case "clipboard":
                 c.drawRoundRect(new RectF(5,5,20,22),2,2,p);
                 c.drawRoundRect(new RectF(9,2,16,8),1,1,p);break;
-            case "folder-open":
-                Path open=new Path();open.moveTo(2,9);open.lineTo(2,6);
-                open.lineTo(9,6);open.lineTo(12,9);open.lineTo(21,9);
-                open.lineTo(19,20);open.lineTo(3,20);open.close();c.drawPath(open,p);break;
-            case "folder-edit":
-                c.drawRoundRect(new RectF(2,7,20,20),2,2,p);
-                c.drawLine(2,8,9,8,p);c.drawLine(9,8,11,5,p);
-                c.drawLine(14,17,21,10,p);break;
+            case "folder-open": {
+                // Lucide-like folder-open: independent lid and slanted open lower edge.
+                Path lid=new Path();
+                lid.moveTo(2,10);lid.lineTo(2,6);lid.quadTo(2,4,4,4);
+                lid.lineTo(9,4);lid.lineTo(11.5f,7);lid.lineTo(19,7);
+                lid.quadTo(21,7,21,9);c.drawPath(lid,p);
+                Path open=new Path();open.moveTo(3.8f,11);open.lineTo(20,11);
+                open.quadTo(22.5f,11,21.5f,13.3f);
+                open.lineTo(19.4f,19.2f);open.quadTo(19.1f,20,18,20);
+                open.lineTo(4.5f,20);open.quadTo(2.3f,20,2,18);
+                open.lineTo(3.8f,11);c.drawPath(open,p);break;
+            }
+            case "folder-edit": {
+                Path folder=new Path();folder.moveTo(3,10);folder.lineTo(3,6);
+                folder.quadTo(3,4,5,4);folder.lineTo(9,4);
+                folder.lineTo(11.5f,7);folder.lineTo(19,7);
+                folder.quadTo(21,7,21,9);folder.lineTo(21,12);
+                c.drawPath(folder,p);
+                c.drawLine(3,10,3,19);c.drawLine(3,19,12,19);
+                Path pencil=new Path();pencil.moveTo(13.5f,18.8f);
+                pencil.lineTo(12.5f,21);pencil.lineTo(14.8f,20);
+                pencil.lineTo(21,13.8f);pencil.lineTo(18.7f,11.5f);
+                pencil.lineTo(13.5f,16.7f);pencil.close();c.drawPath(pencil,p);
+                c.drawLine(17.6f,12.7f,19.8f,15,p);
+                break;
+            }
             case "en":
             case "ru":
                 c.drawRoundRect(new RectF(1,3,23,21),3,3,p);

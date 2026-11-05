@@ -419,7 +419,7 @@ public final class PlaylistActivity extends Activity {
   addButton=new Button(this);addButton.setText(UiStrings.display(PlaylistActivity.this, "Добавить в очередь"));
   ThemeStyle.styleButton(addButton,true);
   ThemeStyle.icon(addButton,"plus",18);
-  bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(49)));
+  bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
   addButton.setOnClickListener(v->addSelected());
  }
  private static final class Row{
@@ -552,7 +552,7 @@ public final class PlaylistActivity extends Activity {
     new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
   Spinner queued=settingsChoice(content,"Отобразить находящиеся/отсутствующие в очереди загрузки",
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
-  TextView reset=txt("↶  Сбросить фильтры",13);
+  TextView reset=txt("Сбросить фильтры",13);
   reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
   reset.setCompoundDrawablesWithIntrinsicBounds(
    new UiIcons("refresh-cw",ThemeStyle.RED,dp(15)),null,null,null);

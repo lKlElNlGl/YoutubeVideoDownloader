@@ -254,7 +254,8 @@ public final class PlaylistActivity extends Activity {
   listCard.addView(section,margin(2,0));
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
   section.post(()->sectionTitle.setTranslationY(
-   sectionCount.getTop()+sectionCount.getBaseline()-sectionTitle.getTop()-sectionTitle.getBaseline()));
+   sectionCount.getTop()+sectionCount.getBaseline()-sectionTitle.getTop()-sectionTitle.getBaseline()-dp(2)));
+   sectionCount.setTranslationY(-dp(2));
   section.addView(sectionTitle,new LinearLayout.LayoutParams(0,-2,1));
   sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
@@ -344,6 +345,7 @@ public final class PlaylistActivity extends Activity {
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
      arrow.setPadding(dp(7),0,dp(7),0);
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(23),-1,Gravity.END));
+      // Closed spinner is intentionally 18dp; popup rows stay at shared 46dp.
      arrow.setOnClickListener(v->holder.quality.performClick());
      h.already=txt("",10);
      description.addView(h.already);
@@ -376,6 +378,7 @@ public final class PlaylistActivity extends Activity {
      h.name.setSelected(activeTitle==h.position);
      h.name.setEllipsize(activeTitle==h.position?TextUtils.TruncateAt.MARQUEE:TextUtils.TruncateAt.END);
      h.name.setMarqueeRepeatLimit(-1);
+     TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
     h.quality.setSelection(PlaylistQualityPolicy.index(qualities.get(h.position)));
      updateRowQuality(h);
@@ -616,7 +619,10 @@ public final class PlaylistActivity extends Activity {
  private void cancelRefresh(){PlaylistRefreshManager.cancel(source);}
  @Override protected void onResume(){
   super.onResume();
-  if(progressPanel!=null){handler.removeCallbacks(tick);tick.run();}
+  if(progressPanel!=null){
+    refreshStatuses();rebuildVisible(false);
+    handler.removeCallbacks(tick);tick.run();
+   }
  }
  @Override protected void onPause(){handler.removeCallbacks(tick);super.onPause();}
  @Override protected void onDestroy(){handler.removeCallbacks(tick);super.onDestroy();}

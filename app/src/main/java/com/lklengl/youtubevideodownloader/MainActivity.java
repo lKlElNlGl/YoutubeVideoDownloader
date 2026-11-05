@@ -56,7 +56,13 @@ public final class MainActivity extends Activity {
     private TextView jumpUp,jumpDown;
     private final android.os.Handler jumpHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private ProgressBar activeQueueBar;
-    private TextView activeQueueInfo;
+    private TextView activeQueueInfo,activeQueueTotal;
+    private String selectedQueueId=null;
+    private final Map<String,LinearLayout> renderedQueueCards=new HashMap<>();
+    private final Map<String,TextView> renderedQueueTitles=new HashMap<>();
+    private Button refreshAllFilesButton;
+    private volatile boolean metadataRefreshBusy=false;
+    private final Set<String> scannedMissingMetadata=new HashSet<>();
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
     private Button previewDetailsButton, reopenPlaylistButton, updatePreviewButton, cancelInfoButton;
     private ProgressBar infoIndicator;
@@ -371,6 +377,9 @@ public final class MainActivity extends Activity {
 
         queueList=new LinearLayout(this);queueList.setOrientation(LinearLayout.VERTICAL);
         pagePanels[1].addView(queueList);
+        refreshAllFilesButton=button(pagePanels[1],"Обновить информацию обо всех файлах");
+        ThemeStyle.icon(refreshAllFilesButton,"refresh-cw",17);
+        refreshAllFilesButton.setOnClickListener(v->refreshAllQueueFiles());
         Button clean=button(pagePanels[1],"Очистить завершённые");ThemeStyle.icon(clean,"trash",17);
         clean.setOnClickListener(v->{
             for(DownloadQueue.Item j:DownloadQueue.all(this))
@@ -943,7 +952,8 @@ public final class MainActivity extends Activity {
             (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
     }
     private String queueFormat(DownloadQueue.Item j){
-        return QueueMetadata.label(j.audio,j.quality,j.format,j.actualHeight,j.durationSeconds);
+        String info=QueueMetadata.label(j.audio,j.quality,j.format,j.actualHeight,j.durationSeconds);
+        return DownloadQueue.DONE.equals(j.status)?info.replace("Определяется…","Качество неизвестно"):info;
     }
     private void queueHeading(String label,int count){
         TextView header=text(label+(count>=0?" ("+count+")":""),15);
@@ -968,10 +978,44 @@ public final class MainActivity extends Activity {
         t.setSingleLine(true);t.setEllipsize(TextUtils.TruncateAt.END);
         return t;
     }
+    private void selectQueueRow(String id){
+        selectedQueueId=id;
+        for(Map.Entry<String,LinearLayout> entry:renderedQueueCards.entrySet()){
+            boolean selected=id.equals(entry.getKey());
+            android.graphics.drawable.GradientDrawable bg=ThemeStyle.rounded(
+                selected?(ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP:ThemeStyle.field(this)):ThemeStyle.cardColor(this),
+                selected?(ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP_BORDER:ThemeStyle.border(this)):ThemeStyle.border(this),
+                dp(12));
+            bg.setStroke(selected?dp(1):1,
+                selected?(ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP_BORDER:ThemeStyle.border(this)):ThemeStyle.border(this));
+            entry.getValue().setBackground(bg);
+            TextView title=renderedQueueTitles.get(entry.getKey());
+            if(title!=null)TitleMarquee.show(title,selected);
+        }
+    }
+    private void attachQueueRow(LinearLayout card,String id,TextView title,boolean isCurrent){
+        renderedQueueCards.put(id,card);renderedQueueTitles.put(id,title);
+        card.setOnClickListener(v->selectQueueRow(id));
+        TitleMarquee.bind(title,()->selectQueueRow(id));
+        if(isCurrent){
+            TitleMarquee.show(title,true);
+        }else TitleMarquee.show(title,id.equals(selectedQueueId));
+        if(id.equals(selectedQueueId))selectQueueRow(id);
+    }
+    private void displayStreamLine(TextView view,String original){
+        String text=UiStrings.display(this,original);
+        view.setText(text);
+        view.post(()->{
+            if(view.getWidth()>0 && view.getPaint().measureText(text)>view.getWidth())
+                view.setText(text.replace("Загрузка видео ","Видео: ")
+                    .replace("Загрузка аудио ","Аудио: "));
+        });
+    }
     private ImageView queuePhoto(LinearLayout parent,DownloadQueue.Item j,int side){
         ImageView picture=new ImageView(this);
         parent.addView(picture,new LinearLayout.LayoutParams(dp(side),dp(side)));
         QueueThumbnails.show(this,j,picture,dp(8));
+        picture.setOnClickListener(v->selectQueueRow(j.id));
         return picture;
     }
     private ImageView queueAction(LinearLayout parent,String icon,int tint,String description){
@@ -988,19 +1032,35 @@ public final class MainActivity extends Activity {
         StringBuilder key=new StringBuilder();
         for(DownloadQueue.Item j:jobs)key.append(j.id).append('/').append(j.status).append(';');
         String signature=key.toString();
+        if(refreshAllFilesButton!=null){
+            boolean any=false;for(DownloadQueue.Item item:jobs)if(DownloadQueue.DONE.equals(item.status))any=true;
+            refreshAllFilesButton.setEnabled(any&&!metadataRefreshBusy);
+        }
         if(signature.equals(queueSignature) && activeQueueBar!=null){
             for(DownloadQueue.Item j:jobs)if(DownloadQueue.RUNNING.equals(j.status)){
-                activeQueueBar.setProgress(j.progress);
+                activeQueueBar.setProgress(j.streamProgress);
+                if(activeQueueTotal!=null)activeQueueTotal.setText(
+                    UiStrings.display(this,"Загрузка файла выполнена на ")+
+                    (j.progressEstimated?"≈":"")+j.progress+"%");
                 if(activeQueueInfo!=null)
-                    activeQueueInfo.setText(UiStrings.display(MainActivity.this, j.message));
+                    displayStreamLine(activeQueueInfo,j.message);
                 return;
             }
         }
         if(signature.equals(queueSignature)&&activeQueueBar==null)return;
-        queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;
+        queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;activeQueueTotal=null;
+        renderedQueueCards.clear();renderedQueueTitles.clear();
         queueList.removeAllViews();
         if(jobs.isEmpty()){
             queueList.addView(compactInfo("Очередь пуста",14,true));return;
+        }
+        for(DownloadQueue.Item item:jobs)if(DownloadQueue.DONE.equals(item.status)&&
+           (item.actualHeight<=0||item.durationSeconds<0)&&
+           scannedMissingMetadata.add(item.id)){
+            uiWorker.execute(()->{
+                LocalMetadata.refresh(getApplicationContext(),item);
+                runOnUiThread(()->{queueSignature=null;refreshQueue();});
+            });
         }
         List<DownloadQueue.Item> running=new ArrayList<>(),waiting=new ArrayList<>(),
             done=new ArrayList<>(),problems=new ArrayList<>();
@@ -1023,16 +1083,20 @@ public final class MainActivity extends Activity {
                 TextView title=compactInfo(queueName(j),14,false);
                 title.setTypeface(null,android.graphics.Typeface.BOLD);labels.addView(title);
                 labels.addView(compactInfo(queueFormat(j),12,false));
-                TextView percent=compactInfo(j.progress+"%",12,true);labels.addView(percent);
+                activeQueueTotal=compactInfo(UiStrings.display(this,"Загрузка файла выполнена на ")+
+                   (j.progressEstimated?"≈":"")+j.progress+"%",12,true);
+                labels.addView(activeQueueTotal);
+                attachQueueRow(card,j.id,title,true);
                 ImageView pause=queueAction(top,"pause",ThemeStyle.text(this),"Приостановить загрузку");
-                pause.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
+                pause.setOnClickListener(v->{selectQueueRow(j.id);DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
                 activeQueueBar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-                activeQueueBar.setMax(100);activeQueueBar.setProgress(j.progress);
+                activeQueueBar.setMax(100);activeQueueBar.setProgress(j.streamProgress);
                 activeQueueBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ThemeStyle.RED));
                 LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(-1,dp(6));
                 bar.setMargins(0,dp(8),0,dp(5));card.addView(activeQueueBar,bar);
                 activeQueueInfo=compactInfo(j.message,12,true);
                 card.addView(activeQueueInfo);
+                displayStreamLine(activeQueueInfo,j.message);
             }
         }
         if(!waiting.isEmpty()){
@@ -1079,18 +1143,23 @@ public final class MainActivity extends Activity {
         if(finished)state.setTextColor(0xFF4EC67B);
         if(DownloadQueue.ERROR.equals(j.status))state.setTextColor(ThemeStyle.RED);
         labels.addView(state);
+        attachQueueRow(card,j.id,title,false);
+        if(finished && !LocalMetadata.exists(this,j.contentUri)){
+            state.setText(UiStrings.display(this,"Файл не найден"));
+            state.setTextColor(ThemeStyle.RED);
+        }
         if(finished){
             ImageView play=queueAction(line,"play",0xFF4EC67B,"Открыть скачанный файл");
-            play.setOnClickListener(v->openDownloaded(j));
+            play.setOnClickListener(v->{selectQueueRow(j.id);openDownloaded(j);});
         }else if(DownloadQueue.PAUSED.equals(j.status)){
             ImageView resume=queueAction(line,"play",ThemeStyle.RED,"Продолжить загрузку");
-            resume.setOnClickListener(v->{DownloadService.resume(this,j.id);queueSignature=null;refreshQueue();});
+            resume.setOnClickListener(v->{selectQueueRow(j.id);DownloadService.resume(this,j.id);queueSignature=null;refreshQueue();});
         }else if(DownloadQueue.WAITING.equals(j.status)){
             ImageView paused=queueAction(line,"pause",ThemeStyle.subdued(this),"Поставить на паузу");
-            paused.setOnClickListener(v->{DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
+            paused.setOnClickListener(v->{selectQueueRow(j.id);DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
         }
         ImageView menu=queueAction(line,"more",ThemeStyle.subdued(this),"Действия с загрузкой");
-        menu.setOnClickListener(v->queueMenu(menu,j));
+        menu.setOnClickListener(v->{selectQueueRow(j.id);queueMenu(menu,j);});
     }
     private static String readableBytes(long value){
         if(value>=1024L*1024*1024)return String.format(Locale.getDefault(),"%.2f ГБ",value/(1024d*1024*1024));
@@ -1103,6 +1172,7 @@ public final class MainActivity extends Activity {
             actions.put("Открыть файл","play");
             actions.put("Открыть с помощью…","app-window");
             actions.put("Открыть папку","folder");
+            actions.put("Обновить информацию о файле","refresh-cw");
         }
         if(DownloadQueue.ERROR.equals(j.status)){
             actions.put("Подробности","info");
@@ -1116,6 +1186,7 @@ public final class MainActivity extends Activity {
                 case "Открыть файл":openDownloaded(j,false);break;
                 case "Открыть с помощью…":openDownloaded(j,true);break;
                 case "Открыть папку":openFolderFor(j.directoryUri);break;
+                case "Обновить информацию о файле":refreshQueueFile(j);break;
                 case "Подробности":showTechnicalDetails(j);break;
                 case "Повторить загрузку":DownloadQueue.retry(this,j.id);DownloadService.kick(this);break;
                 case "Продолжить":DownloadService.resume(this,j.id);break;
@@ -1173,12 +1244,15 @@ public final class MainActivity extends Activity {
         boolean finished=DownloadQueue.DONE.equals(job.status)&&!TextUtils.isEmpty(job.contentUri)&&downloadedFileAccessible(job.contentUri);
         LinearLayout content=new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(22),dp(10),dp(22),dp(5));
-        TextView message=text("Запись будет удалена из очереди. Скачанный файл останется на устройстве.",14);
+        TextView message=text(finished?
+            "Запись будет удалена из очереди. Скачанный файл останется на устройстве.":
+            DownloadQueue.RUNNING.equals(job.status)?"Загрузка будет остановлена, запись и незавершённые файлы удалены.":
+            "Запись будет удалена из очереди. Незавершённые файлы будут очищены.",14);
         content.addView(message);
         CheckBox deleteFile=new CheckBox(this);
         deleteFile.setText(UiStrings.display(MainActivity.this, "Также удалить скачанный файл с устройства"));
         deleteFile.setTextColor(ThemeStyle.text(this));deleteFile.setTextSize(13);
-        UiCheckboxStyle.apply(deleteFile);
+        UiCheckboxStyle.apply(deleteFile);UiCheckboxStyle.applyLabelGap(deleteFile);
         if(finished){
             LinearLayout.LayoutParams checkParams=new LinearLayout.LayoutParams(-1,-2);
             checkParams.setMargins(0,dp(12),0,0);content.addView(deleteFile,checkParams);

@@ -19,6 +19,8 @@ import android.widget.TextView;
 
 /** Shared premium graphite/coral design tokens and compact visual components. */
 public final class ThemeStyle {
+    public static final int CONTROL_HEIGHT_DP=46;
+    public static final int POPUP_ITEM_HEIGHT_DP=46;
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
     public static final int RED=0xFFEF2830;
     public static final int NIGHT_BG=0xFF0D1119;
@@ -169,7 +171,7 @@ public final class ThemeStyle {
             (isDark(c)?0x44FFFFFF:0x33000000)),shape,null));
         b.setElevation(dp(c,primary?2:1));
         if(b.getLayoutParams()==null){
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(c,50));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(c,CONTROL_HEIGHT_DP));
             p.setMargins(0,dp(c,6),0,dp(c,6));b.setLayoutParams(p);
         }
     }
@@ -184,7 +186,7 @@ public final class ThemeStyle {
         Context c=spinner.getContext();
         spinner.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         spinner.setPadding(dp(c,12),dp(c,5),dp(c,25),dp(c,5));
-        spinner.setMinimumHeight(dp(c,50));
+        spinner.setMinimumHeight(dp(c,CONTROL_HEIGHT_DP));
     }
     public static LinearLayout card(LinearLayout parent,String title){
         Context c=parent.getContext();
@@ -196,7 +198,7 @@ public final class ThemeStyle {
         params.setMargins(0,dp(c,5),0,dp(c,10));parent.addView(panel,params);
         TextView heading=new TextView(c);heading.setText(UiStrings.display(c,title));
         heading.setTextSize(16);heading.setTypeface(null,android.graphics.Typeface.BOLD);
-        heading.setTextColor(text(c));heading.setPadding(dp(c,3),dp(c,4),0,dp(c,10));
+        heading.setTextColor(text(c));heading.setPadding(dp(c,3),dp(c,4),0,dp(c,6));
         panel.addView(heading);
         // Titles are separated by spacing and card borders, never progress-like red stripes.
         return panel;

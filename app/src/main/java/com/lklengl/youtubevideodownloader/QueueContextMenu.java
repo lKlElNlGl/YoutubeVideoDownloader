@@ -46,12 +46,12 @@ public final class QueueContextMenu {
    TextView title=new TextView(activity);title.setText(UiStrings.display(activity, label));title.setTextSize(14);title.setTextColor(ink);
    LinearLayout.LayoutParams text=new LinearLayout.LayoutParams(-1,-2);
    text.setMargins(ThemeStyle.dp(activity,10),0,0,0);row.addView(title,text);
-   content.addView(row,new LinearLayout.LayoutParams(-1,ThemeStyle.dp(activity,47)));
+   content.addView(row,new LinearLayout.LayoutParams(-1,ThemeStyle.dp(activity,46)));
    row.setOnClickListener(v->{popup.dismiss();chosen.accept(label);});
    i++;
   }
   int width=ThemeStyle.dp(activity,250);
-  int menuHeight=ThemeStyle.dp(activity,47)*count+2*dp+
+  int menuHeight=ThemeStyle.dp(activity,46)*count+2*dp+
       (count>1&&actions.containsKey("Удалить запись")?ThemeStyle.dp(activity,7):0);
   android.graphics.Rect bounds=new android.graphics.Rect();
   activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(bounds);

@@ -21,7 +21,9 @@ public final class PlaylistHistory {
  }
  public static String queuedQuality(Context c,String url){
   if(url==null||url.isEmpty())return "best";
-  return media(c).getString("quality_"+key(url),"best");
+  for(DownloadQueue.Item item:DownloadQueue.all(c))
+   if(url.equals(item.url))return item.quality;
+  return "best";
  }
  public static int actualHeight(Context c,String url){
   if(url==null||url.isEmpty())return 0;
@@ -29,8 +31,8 @@ public final class PlaylistHistory {
  }
  public static void markDownloaded(Context c,String url,String contentUri,int height){
   markDownloaded(c,url,contentUri);
-  if(url!=null&&!url.isEmpty()&&height>0)
-   media(c).edit().putInt("height_"+key(url),height).apply();
+  if(url!=null&&!url.isEmpty())
+   media(c).edit().putInt("height_"+key(url),Math.max(0,height)).apply();
  }
  private static String key(String url){
   try {
@@ -67,17 +69,23 @@ public final class PlaylistHistory {
   if(dirty)changes.apply();
   if(detailsDirty)details.apply();
  }
- public static boolean hasAdded(Context c,String url){return prefs(c).contains(key(url));}
- public static int status(Context c,String url){
+ public static boolean hasAdded(Context c,String url){return status(c,url)!=NEW;}
+ public static int status(Context c,String url){return status(c,url,DownloadQueue.all(c));}
+ /** List argument avoids loading the entire queue for each playlist row. */
+ public static int status(Context c,String url,List<DownloadQueue.Item> queue){
+  boolean queued=false;
+  for(DownloadQueue.Item item:queue)if(url.equals(item.url)){
+   if(DownloadQueue.DONE.equals(item.status)&&LocalMetadata.exists(c,item.contentUri))return DOWNLOADED;
+   queued=true;
+  }
   String value=prefs(c).getString(key(url),null);
-  if(value==null)return NEW;
-  if("queued".equals(value))return QUEUED;
-  try(ParcelFileDescriptor descriptor=c.getContentResolver().openFileDescriptor(Uri.parse(value),"r")){
-   if(descriptor!=null)return DOWNLOADED;
-  }catch(Exception ignored){}
-  return QUEUED;
+  if(value!=null&&!"queued".equals(value)&&LocalMetadata.exists(c,value))return DOWNLOADED;
+  return queued?QUEUED:NEW;
  }
  public static void markRemovedFile(Context c,String url){markQueued(c,url);
-  if(url!=null&&!url.isEmpty())prefs(c).edit().putString(key(url),"queued").apply();
+  if(url!=null&&!url.isEmpty()){
+   prefs(c).edit().putString(key(url),"queued").apply();
+   media(c).edit().remove("height_"+key(url)).remove("quality_"+key(url)).apply();
+  }
  }
 }

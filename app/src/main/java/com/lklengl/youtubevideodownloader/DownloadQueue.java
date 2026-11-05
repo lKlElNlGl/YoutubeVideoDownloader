@@ -20,6 +20,9 @@ public final class DownloadQueue {
         public boolean audio;
         public boolean priority;
         public int progress;
+        public int streamProgress;
+        public String streamLabel="Видео";
+        public boolean progressEstimated;
         public long bytesSaved;
         public int durationSeconds=-1, actualHeight;
         public boolean metadataChecked;
@@ -29,7 +32,7 @@ public final class DownloadQueue {
             JSONObject j=new JSONObject();
             j.put("id",id); j.put("url",url);j.put("quality",quality);j.put("proxy",proxy);
             j.put("directoryUri",directoryUri);j.put("status",status);j.put("message",message);
-            j.put("durationSeconds",durationSeconds);j.put("actualHeight",actualHeight);j.put("metadataChecked",metadataChecked);j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("playlistFolder",playlistFolder);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);
+            j.put("durationSeconds",durationSeconds);j.put("actualHeight",actualHeight);j.put("metadataChecked",metadataChecked);j.put("filename",filename);j.put("format",format);j.put("contentUri",contentUri);j.put("bytesSaved",bytesSaved);j.put("title",title);j.put("playlistTitle",playlistTitle);j.put("playlistFolder",playlistFolder);j.put("audio",audio);j.put("priority",priority);j.put("progress",progress);j.put("deleteRequested",deleteRequested);j.put("streamProgress",streamProgress);j.put("streamLabel",streamLabel);j.put("progressEstimated",progressEstimated);
             return j;
         }
         static Item fromJson(JSONObject j) {
@@ -38,7 +41,7 @@ public final class DownloadQueue {
             i.directoryUri=j.optString("directoryUri");i.status=j.optString("status",WAITING);
             i.message=j.optString("message");i.filename=j.optString("filename");i.format=j.optString("format",j.optBoolean("audio")?"mp3":"mp4");i.contentUri=j.optString("contentUri","");i.bytesSaved=j.optLong("bytesSaved");i.title=j.optString("title");i.playlistTitle=j.optString("playlistTitle");i.playlistFolder=j.optString("playlistFolder","");
             i.audio=j.optBoolean("audio");i.priority=j.optBoolean("priority");i.deleteRequested=j.optBoolean("deleteRequested");
-            i.progress=j.optInt("progress");i.durationSeconds=j.optInt("durationSeconds",-1);
+            i.progress=j.optInt("progress");i.streamProgress=j.optInt("streamProgress");i.streamLabel=j.optString("streamLabel",i.audio?"Аудио":"Видео");i.progressEstimated=j.optBoolean("progressEstimated");i.durationSeconds=j.optInt("durationSeconds",-1);
              i.actualHeight=j.optInt("actualHeight",0);i.metadataChecked=j.optBoolean("metadataChecked");return i;
         }
     }
@@ -181,10 +184,10 @@ public final class DownloadQueue {
         synchronized(LOCK){
             List<Item> list=read(context);
             for(Item i:list)if(i.id.equals(id)){
-                i.status=DONE;i.message="Готово";i.progress=100;i.filename=filename;
+                i.status=DONE;i.message="Готово";i.progress=100;i.streamProgress=100;i.filename=filename;
                 i.contentUri=contentUri;i.bytesSaved=bytes;
                 if(duration>=0)i.durationSeconds=duration;
-                if(height>0)i.actualHeight=height;
+                i.actualHeight=Math.max(0,height);
                 i.metadataChecked=true;save(context,list);return;
             }
         }
@@ -194,7 +197,7 @@ public final class DownloadQueue {
             List<Item> list=read(context);
             for(Item i:list)if(i.id.equals(id)){
                 if(duration>=0)i.durationSeconds=duration;
-                if(height>0)i.actualHeight=height;
+                i.actualHeight=Math.max(0,height);
                 if(title!=null&&!title.isEmpty()&&(i.title==null||i.title.isEmpty()))i.title=title;
                 i.metadataChecked=true;save(context,list);return;
             }
@@ -219,6 +222,18 @@ public final class DownloadQueue {
             if(list.removeIf(i->i.id.equals(id)&&i.deleteRequested))save(context,list);
         }
     }
+    /** Transfer details belong to the current stream, never to the total progress. */
+    public static void progress(Context context,String id,String message,int total,int stream,String label,boolean estimated){
+        synchronized(LOCK){
+            List<Item> list=read(context);
+            for(Item i:list)if(i.id.equals(id)){
+                i.status=RUNNING;i.message=message;i.progress=Math.max(i.progress,Math.min(99,total));
+                i.streamProgress=Math.max(0,Math.min(100,stream));
+                i.streamLabel=label;i.progressEstimated=estimated;
+                save(context,list);return;
+            }
+        }
+    }
     public static void update(Context context,String id,String status,String message,int progress,String filename){
         synchronized(LOCK){
             List<Item> list=read(context);
@@ -241,7 +256,7 @@ public final class DownloadQueue {
             List<Item> list=read(context);
             for(Item i:list)if(i.id.equals(id) &&
                     (ERROR.equals(i.status)||CANCELLED.equals(i.status))) {
-                i.status=WAITING;i.progress=0;i.message="Ожидает";save(context,list);return;
+                i.status=WAITING;i.progress=0;i.streamProgress=0;i.message="Ожидает";save(context,list);return;
             }
         }
     }

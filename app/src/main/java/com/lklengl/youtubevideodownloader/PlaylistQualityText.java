@@ -3,6 +3,10 @@ package com.lklengl.youtubevideodownloader;
 public final class PlaylistQualityText {
  private PlaylistQualityText(){}
  public static String label(int status,String savedQuality,int actualHeight,String currentChoice) {
+  return label(status,savedQuality,actualHeight,currentChoice,false);
+ }
+ public static String label(int status,String savedQuality,int actualHeight,String currentChoice,boolean userOverride) {
+  if(userOverride)return PlaylistQualityPolicy.LABELS[PlaylistQualityPolicy.index(currentChoice)];
   if(status==PlaylistHistory.DOWNLOADED)
    return actualHeight>0?QueueMetadata.resolution(actualHeight):"Качество неизвестно";
   String choice=status==PlaylistHistory.QUEUED?savedQuality:currentChoice;

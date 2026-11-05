@@ -28,7 +28,7 @@ public final class QualityChoices {
             String s=raw.trim().toLowerCase(java.util.Locale.ROOT);
             if(!s.matches("[0-9]{3,4}p"))continue;
             String num=s.substring(0,s.length()-1);
-            if(DownloadOptions.isQuality(num))heights.add(Integer.parseInt(num));
+            if(DownloadOptions.isQuality(num) && Integer.parseInt(num)>=360)heights.add(Integer.parseInt(num));
         }
         if(heights.isEmpty())return fallback();
         List<String> values=new ArrayList<>(Arrays.asList("best"));

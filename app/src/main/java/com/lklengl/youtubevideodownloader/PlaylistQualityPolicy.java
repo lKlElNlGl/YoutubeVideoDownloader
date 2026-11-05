@@ -3,8 +3,8 @@ import java.util.*;
 /** Requested height is a target limit, not a claim that a stream exists. */
 public final class PlaylistQualityPolicy {
  private PlaylistQualityPolicy(){}
- public static final String[] VALUES={"best","2160","1440","1080","720","480","360","240","144"};
- public static final String[] LABELS={"Максимальное","4K · 2160p","1440p","1080p","720p","480p","360p","240p","144p"};
+ public static final String[] VALUES={"best","2160","1440","1080","720","480","360"};
+ public static final String[] LABELS={"Максимальное","4K · 2160p","1440p","1080p","720p","480p","360p"};
  public static boolean allowed(String quality){
   if(quality==null)return false;
   for(String v:VALUES)if(v.equals(quality))return true;

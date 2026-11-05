@@ -90,7 +90,7 @@ public final class MainActivity extends Activity {
             infoHandler.postDelayed(this,1000);
         }
     };
-    private boolean watchedSharedRefresh=false,openPlaylistAfterRefresh=false;
+    private boolean watchedSharedRefresh=false;
     private long processedRefreshRevision=-1;
     private final Runnable sharedPlaylistClock=new Runnable(){
         @Override public void run(){
@@ -116,32 +116,38 @@ public final class MainActivity extends Activity {
                     infoTimer.setText(UiStrings.display(MainActivity.this,
                         "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",elapsed/60,elapsed%60)+
                         "\n"+state.message));
-                }else if(watchedSharedRefresh||matches&&state.stage==PlaylistRefreshManager.Stage.DONE&&processedRefreshRevision!=state.revision){
+                }else if(matches&&(watchedSharedRefresh||
+                    state.stage!=PlaylistRefreshManager.Stage.IDLE&&
+                    processedRefreshRevision!=state.revision)){
                     watchedSharedRefresh=false;
                     if(activeInfoProcessId==null){
                         ((View)infoIndicator.getTag()).setVisibility(View.GONE);
                         previewButton.setEnabled(true);
                     }
                     updatePreviewButton.setEnabled(true);loadingPlaylist=false;
-                    if(matches&&state.stage==PlaylistRefreshManager.Stage.DONE&&processedRefreshRevision!=state.revision){
+                    if(state.stage==PlaylistRefreshManager.Stage.DONE){
                         processedRefreshRevision=state.revision;
                         PlaylistRepository.Playlist loaded=PlaylistCache.load(MainActivity.this,link);
-                        if(loaded!=null){
+                        if(loaded!=null)
                             rememberPreview(PreviewSnapshot.playlist(link,loaded.title,loaded.entries.size()),null);
-                            if(openPlaylistAfterRefresh)openPlaylist(loaded,link,false);
-                        }
-                    }else if(matches&&state.stage==PlaylistRefreshManager.Stage.ERROR){
-                        showPreviewFailure(new IllegalStateException(state.error));
-                    }else if(matches&&state.stage==PlaylistRefreshManager.Stage.CANCELLED){
+                        // Refresh is data-only: never launch PlaylistActivity from a completion callback.
+                        if(PlaylistRefreshManager.claimNotice(link,state.revision))
+                            RefreshNotice.show(MainActivity.this,true);
+                    }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){
+                        processedRefreshRevision=state.revision;
+                        if(PlaylistRefreshManager.claimNotice(link,state.revision))
+                            RefreshNotice.show(MainActivity.this,false);
+                    }else if(state.stage==PlaylistRefreshManager.Stage.CANCELLED){
+                        processedRefreshRevision=state.revision;
                         attachInfoRow(true);
                         previewCard.setVisibility(View.VISIBLE);
                         infoStatusRow.setVisibility(View.VISIBLE);
                         infoIndicator.setVisibility(View.GONE);
                         cancelInfoButton.setVisibility(View.GONE);
-                        infoTimer.setText(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                        infoTimer.setText(UiStrings.display(MainActivity.this,
+                            "Запрос обновления информации отменён"));
                         updatePreviewMessage("");
                     }
-                    openPlaylistAfterRefresh=false;
                 }
             }
             infoHandler.postDelayed(this,800);
@@ -153,6 +159,7 @@ public final class MainActivity extends Activity {
     private LinearLayout.LayoutParams previewStatsParams;
     private ImageView thumbnail;
     private LinearLayout queueList,mainPage,firstQueueCard;
+    private TextView firstQueueHeading;
     private Button queueCleanButton;
     private LinearLayout originalTabs;
     private Button checkAppButton, updateEngineButton, previewButton, defaultFolderButton;
@@ -361,7 +368,7 @@ public final class MainActivity extends Activity {
         previewCard.addView(previewAllQualities);
         reopenPlaylistButton=button(previewCard,"Открыть список видео");
         LinearLayout.LayoutParams reopenMargin=(LinearLayout.LayoutParams)reopenPlaylistButton.getLayoutParams();
-        reopenMargin.topMargin=dp(12);reopenPlaylistButton.setLayoutParams(reopenMargin);
+        reopenMargin.topMargin=dp(6);reopenPlaylistButton.setLayoutParams(reopenMargin);
         reopenPlaylistButton.setOnClickListener(v->{
             if(previewSnapshot!=null&&previewSnapshot.playlist&&previewSnapshot.matches(url.getText().toString())){
                 PlaylistRepository.Playlist stored=PlaylistCache.load(this,previewSnapshot.source);
@@ -692,9 +699,9 @@ public final class MainActivity extends Activity {
         stickyTabs.setVisibility(pinned?View.VISIBLE:View.GONE);
         boolean up=false,down=false;
         if(currentPage==1){
-            if(firstQueueCard!=null&&firstQueueCard.isAttachedToWindow()){
+            if(firstQueueHeading!=null&&firstQueueHeading.isAttachedToWindow()){
                 int[] first={0,0},tabs={0,0};
-                firstQueueCard.getLocationOnScreen(first);stickyTabs.getLocationOnScreen(tabs);
+                firstQueueHeading.getLocationOnScreen(first);stickyTabs.getLocationOnScreen(tabs);
                 up=Release056Rules.showUp(mainScroll.canScrollVertically(-1),first[1],
                     tabs[1]+stickyTabs.getHeight());
             }
@@ -1127,6 +1134,7 @@ public final class MainActivity extends Activity {
         header.setTypeface(null,android.graphics.Typeface.BOLD);
         header.setPadding(dp(2),dp(12),dp(2),dp(7));
         queueList.addView(header);
+        if(firstQueueHeading==null)firstQueueHeading=header;
     }
     private LinearLayout queueCard(boolean active){
         LinearLayout card=new LinearLayout(this);
@@ -1209,7 +1217,7 @@ public final class MainActivity extends Activity {
                 activeQueueBar.setProgress(j.streamProgress);
                 if(activeQueueTotal!=null)activeQueueTotal.setText(
                     UiStrings.display(this,"Загрузка файла: ")+
-                    (j.progressEstimated?"≈":"")+j.progress+"%");
+                    j.progress+"%");
                 if(activeQueueInfo!=null)
                     displayStreamLine(activeQueueInfo,j.message);
                 return;
@@ -1217,7 +1225,7 @@ public final class MainActivity extends Activity {
         }
         if(signature.equals(queueSignature)&&activeQueueBar==null)return;
         queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;activeQueueTotal=null;
-        firstQueueCard=null;
+        firstQueueCard=null;firstQueueHeading=null;
         renderedQueueCards.clear();renderedQueueTitles.clear();activeQueueId=null;
         queueList.removeAllViews();
         if(jobs.isEmpty()){
@@ -1254,7 +1262,7 @@ public final class MainActivity extends Activity {
                 title.setTypeface(null,android.graphics.Typeface.BOLD);labels.addView(title);
                 labels.addView(compactInfo(queueFormat(j),12,false));
                 activeQueueTotal=compactInfo(UiStrings.display(this,"Загрузка файла: ")+
-                   (j.progressEstimated?"≈":"")+j.progress+"%",12,true);
+                   j.progress+"%",12,true);
                 labels.addView(activeQueueTotal);
                 activeQueueTotal.setVisibility(j.audio?View.GONE:View.VISIBLE);
                 attachQueueRow(card,j.id,title,true);
@@ -1601,7 +1609,6 @@ public final class MainActivity extends Activity {
                 .setPositiveButton(UiStrings.display(this,"ОК"),null).show();
             return;
         }
-        openPlaylistAfterRefresh=true;
         watchedSharedRefresh=true;
         processedRefreshRevision=-1;
         infoHandler.removeCallbacks(sharedPlaylistClock);
@@ -1777,6 +1784,10 @@ public final class MainActivity extends Activity {
                 .setNegativeButton(UiStrings.display(MainActivity.this, "Позже"),null)
                 .setPositiveButton(UiStrings.display(MainActivity.this, "Установить"),(d,w)->{pendingUpdate=cached;installAppUpdate();}).show();
         }
+    }
+    @Override protected void onPause(){
+        infoHandler.removeCallbacks(sharedPlaylistClock);
+        super.onPause();
     }
     @Override protected void onDestroy(){
         if(activeInfoProcessId!=null){

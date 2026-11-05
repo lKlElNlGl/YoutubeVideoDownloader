@@ -474,7 +474,7 @@ public final class PlaylistActivity extends Activity {
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
-    list.post(this::updateListArrows);
+    list.post(PlaylistActivity.this::updateListArrows);
    }
   });
   list.post(()->{
@@ -763,7 +763,17 @@ public final class PlaylistActivity extends Activity {
        .putInt("download",downloadFilter)
        .putInt("queue",queueFilter)
        .putBoolean("selectedFirst",selectedFirst).apply();
-      rebuildVisible(true);list.setSelection(0);
+      // Preserve the first visible video and its exact pixel offset across filtering.
+      int first=list.getFirstVisiblePosition();
+      int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
+      int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
+      scrollRestoring=true;
+      rebuildVisible(true);
+      int restored=Release057Rules.anchorPosition(visibleRows,anchor);
+      list.post(()->{
+       if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
+       list.post(()->{scrollRestoring=false;updateListArrows();});
+      });
     }).show();
  }
  private void addSelected(){
@@ -785,8 +795,10 @@ public final class PlaylistActivity extends Activity {
    List<Boolean> flags=new ArrayList<>();for(boolean flag:selected)flags.add(flag);
    int count=DownloadQueue.enqueuePlaylist(this,playlist,flags,
     "mp3".equals(format)||"m4a".equals(format),qualities,proxy,folder,priority,format,source);
+   // A successfully enqueued selection is consumed; retain each video's quality.
+   Arrays.fill(selected,false);
    persistSelection();
-   refreshStatuses();rebuildVisible(false);DownloadService.kick(this);
+   refreshStatuses();rebuildVisible(true);DownloadService.kick(this);
    QueueNotice.show(this,QueueNotice.message(count,priority),()->{
      android.content.Intent intent=new android.content.Intent(this,MainActivity.class);
      intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |

@@ -156,7 +156,8 @@ public final class PlaylistActivity extends Activity {
   }else if(event.getActionMasked()==MotionEvent.ACTION_UP){
    float dx=event.getRawX()-swipeStartX,dy=event.getRawY()-swipeStartY;
    if(swipeEligible&&Release057Rules.backSwipe(swipeStartX,swipeStartY,
-       event.getRawX(),dx/dp(1),dy/dp(1))){
+       event.getRawX(),dx/getResources().getDisplayMetrics().density,
+       dy/getResources().getDisplayMetrics().density)){
     MotionEvent cancel=MotionEvent.obtain(event);cancel.setAction(MotionEvent.ACTION_CANCEL);
     super.dispatchTouchEvent(cancel);cancel.recycle();finish();return true;
    }
@@ -429,11 +430,11 @@ public final class PlaylistActivity extends Activity {
       @Override public void onItemSelected(AdapterView<?> parent,View view,int chosen,long id){
        // Programmatic row binding and bulk updates do not count as user changes.
        if(!holder.qualityUserInteraction)return;
-       holder.qualityUserInteraction=false;
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
           chosen>=PlaylistQualityPolicy.VALUES.length)return;
        String value=PlaylistQualityPolicy.VALUES[chosen];
        if(value.equals(qualities.get(holder.position)))return;
+       holder.qualityUserInteraction=false;
        qualities.set(holder.position,value);
        markQualityOverride(holder.position);
        persistQualities();updateRowQuality(holder);

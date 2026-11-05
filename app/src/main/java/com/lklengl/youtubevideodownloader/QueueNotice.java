@@ -23,7 +23,8 @@ public final class QueueNotice {
   android.widget.TextView label=new android.widget.TextView(context);
   label.setText(UiStrings.display(context,message));label.setTextColor(ThemeStyle.text(context));
   label.setTextSize(13);
-  android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(-2,-2);
+  android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(
+   action==null?-2:0,-2,action==null?0:1);
   lp.setMargins(9*d,0,0,0);panel.addView(label,lp);
   if(action!=null){
    android.widget.TextView jump=new android.widget.TextView(context);
@@ -36,7 +37,7 @@ public final class QueueNotice {
     ((android.view.ViewGroup)panel.getParent()).removeView(panel);});
   }
   android.widget.FrameLayout.LayoutParams layout=new android.widget.FrameLayout.LayoutParams(
-   -2,-2,android.view.Gravity.BOTTOM|android.view.Gravity.CENTER_HORIZONTAL);
+   action==null?-2:-1,-2,android.view.Gravity.BOTTOM|android.view.Gravity.CENTER_HORIZONTAL);
   layout.setMargins(12*d,0,12*d,75*d);
   host.addView(panel,layout);active=new java.lang.ref.WeakReference<>(panel);
   panel.setAlpha(0f);panel.setTranslationY(16*d);

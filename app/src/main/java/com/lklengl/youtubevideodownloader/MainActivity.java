@@ -442,6 +442,24 @@ public final class MainActivity extends Activity {
         folderLabel.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance());
         folderLabel.setHorizontallyScrolling(true);folderLabel.setGravity(Gravity.CENTER_VERTICAL);
         folderLabel.setPadding(dp(3),0,dp(3),0);
+        final float[] folderTouchX={0f};
+        final int[] folderStartScroll={0};
+        folderLabel.setOnTouchListener((v,event)->{
+            switch(event.getActionMasked()){
+                case MotionEvent.ACTION_DOWN:
+                    folderTouchX[0]=event.getX();
+                    folderStartScroll[0]=folderLabel.getScrollX();return true;
+                case MotionEvent.ACTION_MOVE:
+                    int width=(int)Math.ceil(folderLabel.getPaint().measureText(folderLabel.getText().toString()));
+                    int limit=Math.max(0,width-folderLabel.getWidth()+dp(6));
+                    int offset=Math.round(folderTouchX[0]-event.getX());
+                    folderLabel.scrollTo(Math.max(0,Math.min(limit,folderStartScroll[0]+offset)),0);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:return true;
+            }
+            return false;
+        });
         folderLabel.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(6)));
         LinearLayout.LayoutParams folderParams=new LinearLayout.LayoutParams(-1,dp(18));
         folderParams.setMargins(0,dp(4),0,dp(8));

@@ -255,9 +255,8 @@ public final class PlaylistActivity extends Activity {
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
   section.post(()->sectionTitle.setTranslationY(
    sectionCount.getTop()+sectionCount.getBaseline()-sectionTitle.getTop()-sectionTitle.getBaseline()-dp(2)));
-   sectionCount.setTranslationY(-dp(2));
   section.addView(sectionTitle,new LinearLayout.LayoutParams(0,-2,1));
-  sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);
+  sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);sectionCount.setTranslationY(-dp(2));
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
   listCard.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
 
@@ -394,11 +393,14 @@ public final class PlaylistActivity extends Activity {
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
    @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
-    if(visible>0)getPreferences(MODE_PRIVATE).edit().putInt("scroll_"+source.hashCode(),first).apply();
+    if(visible>0&&list.getChildCount()>0)
+     scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
    }
   });
-  list.post(()->list.setSelection(Math.max(0,getPreferences(MODE_PRIVATE)
-   .getInt("scroll_"+source.hashCode(),0))));
+  list.post(()->{
+   int[] old=scrollSession.get(source);
+   if(old!=null)list.setSelectionFromTop(old[0],old[1]);
+  });
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
   addButton=new Button(this);addButton.setText(UiStrings.display(PlaylistActivity.this, "Добавить в очередь"));
@@ -536,6 +538,25 @@ public final class PlaylistActivity extends Activity {
     new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
   Spinner queued=settingsChoice(content,"Отобразить находящиеся/отсутствующие в очереди загрузки",
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
+  TextView reset=txt("↶  Сбросить фильтры",13);
+  reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+  reset.setPadding(0,dp(5),0,dp(5));content.addView(reset);
+  Runnable updateReset=()->{
+   boolean changed=choose.getSelectedItemPosition()!=0||
+    downloads.getSelectedItemPosition()!=0||queued.getSelectedItemPosition()!=0;
+   reset.setEnabled(changed);
+   reset.setTextColor(changed?ThemeStyle.RED:ThemeStyle.subdued(this));
+   reset.setAlpha(changed?1f:.55f);
+  };
+  AdapterView.OnItemSelectedListener listener=new AdapterView.OnItemSelectedListener(){
+   @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){updateReset.run();}
+   @Override public void onNothingSelected(AdapterView<?> parent){updateReset.run();}
+  };
+  choose.setOnItemSelectedListener(listener);
+  downloads.setOnItemSelectedListener(listener);
+  queued.setOnItemSelectedListener(listener);
+  reset.setOnClickListener(v->{choose.setSelection(0);downloads.setSelection(0);queued.setSelection(0);updateReset.run();});
+  updateReset.run();
   View sectionBreak=new View(this);sectionBreak.setBackgroundColor(ThemeStyle.border(this));
   content.addView(sectionBreak,margin(13,12));
   TextView info=txt("Качество для отмеченных",13);
@@ -624,7 +645,11 @@ public final class PlaylistActivity extends Activity {
     handler.removeCallbacks(tick);tick.run();
    }
  }
- @Override protected void onPause(){handler.removeCallbacks(tick);super.onPause();}
+ @Override protected void onPause(){
+  if(list!=null&&list.getChildCount()>0)
+   scrollSession.put(source,new int[]{list.getFirstVisiblePosition(),list.getChildAt(0).getTop()});
+  handler.removeCallbacks(tick);super.onPause();
+ }
  @Override protected void onDestroy(){handler.removeCallbacks(tick);super.onDestroy();}
 
 }

@@ -655,7 +655,8 @@ public final class PlaylistActivity extends Activity {
    refreshStatuses();rebuildVisible(false);DownloadService.kick(this);
    QueueNotice.show(this,QueueNotice.message(count,priority),()->{
      android.content.Intent intent=new android.content.Intent(this,MainActivity.class);
-     intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+     intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+        android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
      intent.putExtra("open_queue_top",true);startActivity(intent);
     });
   }catch(Exception ex){

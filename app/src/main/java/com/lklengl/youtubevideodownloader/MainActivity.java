@@ -1229,7 +1229,8 @@ public final class MainActivity extends Activity {
         renderedQueueCards.clear();renderedQueueTitles.clear();activeQueueId=null;
         queueList.removeAllViews();
         if(jobs.isEmpty()){
-            queueList.addView(compactInfo("Очередь пуста",14,true));return;
+            queueList.addView(compactInfo("Очередь пуста",14,true));
+            mainScroll.post(this::updateFloatingNavigation);return;
         }
         for(DownloadQueue.Item item:jobs)if(DownloadQueue.DONE.equals(item.status)&&
            (item.actualHeight<=0||item.durationSeconds<0)&&

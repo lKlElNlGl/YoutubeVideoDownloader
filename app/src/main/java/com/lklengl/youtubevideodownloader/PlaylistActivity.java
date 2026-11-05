@@ -373,6 +373,7 @@ public final class PlaylistActivity extends Activity {
        String value=PlaylistQualityPolicy.VALUES[chosen];
        if(value.equals(qualities.get(holder.position)))return;
        qualities.set(holder.position,value);
+       markQualityOverride(holder.position);
        persistQualities();updateRowQuality(holder);
       }
      });
@@ -453,6 +454,17 @@ public final class PlaylistActivity extends Activity {
   s.setAdapter(a);s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
   return s;
  }
+ private String qualityOverrideKey(int index){
+  return source.hashCode()+"_"+playlist.entries.get(index).id;
+ }
+ private boolean hasQualityOverride(int index){
+  return getSharedPreferences("playlist_quality_display_v055",0)
+    .getBoolean(qualityOverrideKey(index),false);
+ }
+ private void markQualityOverride(int index){
+  getSharedPreferences("playlist_quality_display_v055",0).edit()
+    .putBoolean(qualityOverrideKey(index),true).apply();
+ }
  private void updateRowQuality(Row row){
   if(row.position<0||row.position>=qualities.size())return;
   PlaylistRepository.Entry entry=playlist.entries.get(row.position);
@@ -460,7 +472,7 @@ public final class PlaylistActivity extends Activity {
     row.position<videoStatus.length?videoStatus[row.position]:PlaylistHistory.NEW,
     queuedQualities.containsKey(entry.url)?queuedQualities.get(entry.url):"best",
      PlaylistHistory.actualHeight(this,entry.url),
-    qualities.get(row.position)));
+    qualities.get(row.position),hasQualityOverride(row.position)));
   ((android.widget.BaseAdapter)row.quality.getAdapter()).notifyDataSetChanged();
   android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
   paint.setTextSize(getResources().getDisplayMetrics().scaledDensity*12);
@@ -592,6 +604,7 @@ public final class PlaylistActivity extends Activity {
    int index=bulk.getSelectedItemPosition();
    if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
    qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
+   for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
    quality=PlaylistQualityPolicy.VALUES[index];
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();

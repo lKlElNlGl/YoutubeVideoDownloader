@@ -36,6 +36,7 @@ public final class PlaylistActivity extends Activity {
  private boolean selectedFirst=false,animatingSelection=false;
  private static final Map<String,int[]> scrollSession=new HashMap<>();
  private int activeTitle=-1,durationWidth=0;
+ private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel;
  private Button addButton;
  private long refreshStart;
@@ -117,8 +118,9 @@ public final class PlaylistActivity extends Activity {
  }
  private Set<String> previouslyAdded(){
   Set<String> urls=new HashSet<>();
-  for(PlaylistRepository.Entry entry:playlist.entries)
-   if(PlaylistHistory.hasAdded(this,entry.url))urls.add(entry.url);
+  for(int i=0;i<playlist.entries.size();i++)
+   if(i<videoStatus.length&&videoStatus[i]!=PlaylistHistory.NEW)
+    urls.add(playlist.entries.get(i).url);
   return urls;
  }
  private ColorStateList checkTint(){
@@ -128,6 +130,8 @@ public final class PlaylistActivity extends Activity {
  private void refreshStatuses(){
   PlaylistHistory.syncFromQueue(this);
   List<DownloadQueue.Item> items=DownloadQueue.all(this);
+  queuedQualities.clear();
+  for(DownloadQueue.Item item:items)queuedQualities.put(item.url,item.quality);
   videoStatus=new int[playlist.entries.size()];
   for(int i=0;i<videoStatus.length;i++)
    videoStatus[i]=PlaylistHistory.status(this,playlist.entries.get(i).url,items);
@@ -339,6 +343,7 @@ public final class PlaylistActivity extends Activity {
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
      h.quality.setPadding(dp(3),0,dp(23),0);
+      h.quality.setDropDownWidth(dp(190));
      h.qualityFrame.addView(h.quality,new FrameLayout.LayoutParams(-1,-1));
      ImageView arrow=new ImageView(PlaylistActivity.this);
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
@@ -352,7 +357,14 @@ public final class PlaylistActivity extends Activity {
      row.setTag(h);h.root=row;old=row;
      row.setOnClickListener(v->{activeTitle=h.position;adapter.notifyDataSetChanged();});
      h.check.setOnClickListener(v->{activeTitle=h.position;toggle(h.position,h);adapter.notifyDataSetChanged();});
-     h.quality.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+     h.quality.setOnTouchListener((v,event)->{
+       if(event.getActionMasked()==MotionEvent.ACTION_DOWN){
+        activeTitle=holder.position;
+        adapter.notifyDataSetChanged();
+       }
+       return false;
+      });
+      h.quality.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
       @Override public void onNothingSelected(AdapterView<?> parent){}
       @Override public void onItemSelected(AdapterView<?> parent,View view,int chosen,long id){
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
@@ -445,7 +457,8 @@ public final class PlaylistActivity extends Activity {
   PlaylistRepository.Entry entry=playlist.entries.get(row.position);
   row.qualityLabel=UiStrings.display(this,PlaylistQualityText.label(
     row.position<videoStatus.length?videoStatus[row.position]:PlaylistHistory.NEW,
-    PlaylistHistory.queuedQuality(this,entry.url),PlaylistHistory.actualHeight(this,entry.url),
+    queuedQualities.containsKey(entry.url)?queuedQualities.get(entry.url):"best",
+     PlaylistHistory.actualHeight(this,entry.url),
     qualities.get(row.position)));
   ((android.widget.BaseAdapter)row.quality.getAdapter()).notifyDataSetChanged();
   android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
@@ -541,6 +554,9 @@ public final class PlaylistActivity extends Activity {
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
   TextView reset=txt("↶  Сбросить фильтры",13);
   reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+  reset.setCompoundDrawablesWithIntrinsicBounds(
+   new UiIcons("refresh-cw",ThemeStyle.RED,dp(15)),null,null,null);
+  reset.setCompoundDrawablePadding(dp(6));
   reset.setPadding(0,dp(5),0,dp(5));content.addView(reset);
   Runnable updateReset=()->{
    boolean changed=choose.getSelectedItemPosition()!=0||

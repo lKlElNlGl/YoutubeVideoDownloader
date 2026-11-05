@@ -14,8 +14,9 @@ import java.util.Set;
 
 /** Tiny thumbnails cached locally per queue entry; never blocks UI or downloads. */
 public final class QueueThumbnails {
-    private static final ThreadPoolExecutor POOL=new ThreadPoolExecutor(2,2,0,
-        TimeUnit.SECONDS,new ArrayBlockingQueue<>(48),new ThreadPoolExecutor.AbortPolicy());
+    // Visible rows request images lazily. Do not discard tasks when a large playlist is scrolled fast.
+    private static final ThreadPoolExecutor POOL=new ThreadPoolExecutor(4,4,0,
+        TimeUnit.SECONDS,new LinkedBlockingQueue<>(4096),new ThreadPoolExecutor.AbortPolicy());
     private static final Set<String> ACTIVE=ConcurrentHashMap.newKeySet();
     private QueueThumbnails(){}
     private static File file(Context c,String id){
@@ -50,11 +51,13 @@ public final class QueueThumbnails {
             POOL.execute(()->{
                 HttpURLConnection conn=null;
                 try{
-                    URL u=new URL("https://i.ytimg.com/vi/"+vid+"/mqdefault.jpg");
-                    conn=(HttpURLConnection)u.openConnection();
-                    conn.setConnectTimeout(6000);conn.setReadTimeout(7000);
-                    if(conn.getResponseCode()!=200)return;
-                    try(InputStream input=conn.getInputStream();ByteArrayOutputStream buf=new ByteArrayOutputStream()){
+                    // Try a second public thumbnail variant on temporary 404/HTTP failures.
+                    for(String variant:new String[]{"mqdefault.jpg","hqdefault.jpg"}){
+                     URL u=new URL("https://i.ytimg.com/vi/"+vid+"/"+variant);
+                     conn=(HttpURLConnection)u.openConnection();
+                     conn.setConnectTimeout(5000);conn.setReadTimeout(7000);
+                     if(conn.getResponseCode()!=200){conn.disconnect();conn=null;continue;}
+                     try(InputStream input=conn.getInputStream();ByteArrayOutputStream buf=new ByteArrayOutputStream()){
                         byte[] bytes=new byte[8192];int count;
                         while((count=input.read(bytes))!=-1){
                             if(buf.size()+count>350000)return;
@@ -64,12 +67,14 @@ public final class QueueThumbnails {
                         BitmapFactory.Options options=new BitmapFactory.Options();
                         options.inSampleSize=2;
                         Bitmap b=BitmapFactory.decodeByteArray(data,0,data.length,options);
-                        if(b==null)return;
+                        if(b==null)continue;
                         store(activity.getApplicationContext(),item.id,b);
                         activity.runOnUiThread(()->{
                             if(item.id.equals(view.getTag())&&!activity.isFinishing()&&!activity.isDestroyed())
                                 view.setImageBitmap(b);
                         });
+                        break;
+                     }finally{if(conn!=null){conn.disconnect();conn=null;}}
                     }
                 }catch(Exception ignored){}
                 finally{if(conn!=null)conn.disconnect();ACTIVE.remove(item.id);}

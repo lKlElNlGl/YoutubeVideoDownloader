@@ -15,6 +15,7 @@ public final class UiCheckboxStyle {
   states.addState(new int[]{android.R.attr.state_checked},new Mark(size,true,0xFFEF2830));
   states.addState(new int[]{},new Mark(size,false,ThemeStyle.isDark(c)?0xFFF4F5F8:0xFF596477));
   box.setButtonDrawable(states);
+   box.setBackground(null); // The OEM ripple was centered on the whole label, not the box.
   box.setMinHeight(ThemeStyle.dp(c,38));
  }
  /** Only labelled checkboxes need separation; selection-only video boxes are unchanged. */

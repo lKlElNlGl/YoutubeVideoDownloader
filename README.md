@@ -30,6 +30,13 @@
 
 ## Изменения
 
+### v0.5.7
+- Плейлист: исправлены обрезанные названия индивидуального качества, массовая смена качества, восстановление позиции при фильтрации и снятие чекбоксов после добавления в очередь.
+- Подсветка выбранной строки теперь на всю ширину и немного заметнее; добавлены плавающие кнопки прокрутки как в очереди, исправлен свайп назад.
+- Обновление информации о плейлисте не открывает другие экраны: 5-секундные уведомления об успехе и ошибке, при отмене статус остаётся внутри блока. Кнопки «Отмена» унифицированы.
+- Очередь: верхняя стрелка ориентируется на заголовок первой группы, убран знак приблизительности в процентах, улучшена заметность уведомления о добавлении.
+- Сокращён межкнопочный отступ «Обновить информацию» / «Открыть список видео». Иконка A и палитра 050 сохранены.
+
 ### v0.5.6
 - Исправлены потерянные миниатюры и прокрутка больших плейлистов, восстановление точной позиции и автоматическое движение выбранного длинного названия.
 - В плейлисте: мягкая подсветка выбранной строки, свайп назад, компактные поля качества 20 dp с полным текстом и выравниванием, настройки фильтров без лишней иконки.
@@ -116,6 +123,13 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.7
+- Fixed cropped per-video quality labels, bulk quality changes and filtered scroll restoration; checkboxes reset after successful enqueue while qualities persist.
+- Full-width stronger playlist selection band, queue-style floating scroll arrows and better guarded swipe-back.
+- Playlist refresh no longer navigates: five-second success/error overlays; cancellation remains in the status panel and Cancel button matches Download.
+- Queue uses first group header for the upper arrow, removes approximate progress glyph, and improves enqueue notice visibility.
+- Standardized spacing between Refresh information and Open video list; approved icon A and Colors 050 retained.
 
 ### v0.5.6
 - Fixed thumbnail requests and precise playlist scroll restoration; selected titles automatically marquee without manual dragging.

@@ -31,8 +31,8 @@ public final class PlaylistHistory {
  }
  public static void markDownloaded(Context c,String url,String contentUri,int height){
   markDownloaded(c,url,contentUri);
-  if(url!=null&&!url.isEmpty()&&height>0)
-   media(c).edit().putInt("height_"+key(url),height).apply();
+  if(url!=null&&!url.isEmpty())
+   media(c).edit().putInt("height_"+key(url),Math.max(0,height)).apply();
  }
  private static String key(String url){
   try {
@@ -83,6 +83,9 @@ public final class PlaylistHistory {
   return queued?QUEUED:NEW;
  }
  public static void markRemovedFile(Context c,String url){markQueued(c,url);
-  if(url!=null&&!url.isEmpty())prefs(c).edit().putString(key(url),"queued").apply();
+  if(url!=null&&!url.isEmpty()){
+   prefs(c).edit().putString(key(url),"queued").apply();
+   media(c).edit().remove("height_"+key(url)).remove("quality_"+key(url)).apply();
+  }
  }
 }

@@ -136,7 +136,8 @@ public final class PlaylistActivity extends Activity {
  private boolean touchesInteractive(View v,float x,float y){
   if(v==null||v.getVisibility()!=View.VISIBLE)return false;
   if(v instanceof CompoundButton||v instanceof Spinner||v instanceof Button||
-     v instanceof EditText||v==filterIcon||v==refreshControl||v==listArrowUp||v==listArrowDown)
+     v instanceof EditText||(v instanceof ImageView&&v.isClickable())||
+      v==filterIcon||v==refreshControl||v==listArrowUp||v==listArrowDown)
    if(hit(v,x,y))return true;
   if(v instanceof ViewGroup){
    ViewGroup group=(ViewGroup)v;

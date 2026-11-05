@@ -8,7 +8,7 @@ import android.widget.Spinner;
 public final class RotatingSpinner extends Spinner {
  private ImageView arrow;
  private AdapterView.OnItemSelectedListener chosen;
- public RotatingSpinner(Context context){super(context,Spinner.MODE_DROPDOWN);}
+ public RotatingSpinner(Context context){super(context,Spinner.MODE_DROPDOWN);setOnItemSelectedListener(null);}
  public void setArrow(ImageView indicator){arrow=indicator;}
  private void rotate(boolean expanded){
   if(arrow!=null)arrow.animate().rotation(expanded?180f:0f).setDuration(150).start();

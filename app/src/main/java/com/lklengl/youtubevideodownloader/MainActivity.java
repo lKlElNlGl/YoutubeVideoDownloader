@@ -1785,10 +1785,6 @@ public final class MainActivity extends Activity {
                 .setPositiveButton(UiStrings.display(MainActivity.this, "Установить"),(d,w)->{pendingUpdate=cached;installAppUpdate();}).show();
         }
     }
-    @Override protected void onPause(){
-        infoHandler.removeCallbacks(sharedPlaylistClock);
-        super.onPause();
-    }
     @Override protected void onDestroy(){
         if(activeInfoProcessId!=null){
             try{YoutubeDL.getInstance().destroyProcessById(activeInfoProcessId);}catch(Exception ignored){}

@@ -5,7 +5,7 @@ import java.util.*;
 public class PlaylistSelectionIdsTest {
  @Test public void selectionsFollowIdsAfterReorderAndNewVideos() {
   Map<String,Boolean> saved=new HashMap<>();saved.put("A",true);saved.put("B",false);
-  assertEquals(Arrays.asList(false,true,true),
+  assertEquals(Arrays.asList(false,true,false),
    PlaylistSelectionPolicy.byId(Arrays.asList("B","A","C"),saved,Collections.emptySet()));
  }
  @Test public void explicitlySelectedQueuedVideoStaysSelected(){

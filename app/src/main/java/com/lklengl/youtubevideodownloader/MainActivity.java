@@ -58,6 +58,8 @@ public final class MainActivity extends Activity {
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo,activeQueueTotal;
     private String selectedQueueId=null;
+    private String activeQueueId=null;
+    private long lastEnqueueMs=0L;
     private final Map<String,LinearLayout> renderedQueueCards=new HashMap<>();
     private final Map<String,TextView> renderedQueueTitles=new HashMap<>();
     private Button refreshAllFilesButton;
@@ -248,7 +250,7 @@ public final class MainActivity extends Activity {
         ImageView clear=new ImageView(this);
         clear.setImageDrawable(new UiIcons("close",ThemeStyle.subdued(this),dp(18)));
         clear.setContentDescription(UiStrings.display(MainActivity.this, "Очистить ссылку"));
-        FrameLayout.LayoutParams clearParams=new FrameLayout.LayoutParams(dp(49),dp(49),Gravity.END|Gravity.CENTER_VERTICAL);
+        FrameLayout.LayoutParams clearParams=new FrameLayout.LayoutParams(dp(44),dp(44),Gravity.END|Gravity.CENTER_VERTICAL);
         clear.setPadding(dp(14),dp(14),dp(14),dp(14));
         linkRow.addView(clear,clearParams);
         clear.setOnClickListener(v->{
@@ -333,6 +335,8 @@ public final class MainActivity extends Activity {
         previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
         previewCard.addView(previewAllQualities);
         reopenPlaylistButton=button(previewCard,"Открыть список видео");
+        LinearLayout.LayoutParams reopenMargin=(LinearLayout.LayoutParams)reopenPlaylistButton.getLayoutParams();
+        reopenMargin.topMargin=dp(12);reopenPlaylistButton.setLayoutParams(reopenMargin);
         reopenPlaylistButton.setOnClickListener(v->{
             if(previewSnapshot!=null&&previewSnapshot.playlist&&previewSnapshot.matches(url.getText().toString())){
                 PlaylistRepository.Playlist stored=PlaylistCache.load(this,previewSnapshot.source);
@@ -433,7 +437,9 @@ public final class MainActivity extends Activity {
 
         LinearLayout save=ThemeStyle.card(settingsPage,"Сохранение файлов");
         label(save,"Папка сохранения");
-        folderLabel=text("",14);folderLabel.setSingleLine(true);
+        folderLabel=text("",12);folderLabel.setSingleLine(true);
+        folderLabel.setIncludeFontPadding(false);
+        folderLabel.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance());
         folderLabel.setHorizontallyScrolling(true);folderLabel.setGravity(Gravity.CENTER_VERTICAL);
         folderLabel.setPadding(dp(3),0,dp(3),0);
         folderLabel.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(6)));
@@ -916,7 +922,12 @@ public final class MainActivity extends Activity {
             }catch(Exception e){error("Выбор папки",e);}
         }
     }
-    private void enqueue(boolean priority){ enqueue(priority,false); }
+    private void enqueue(boolean priority){
+        long now=android.os.SystemClock.elapsedRealtime();
+        if(now-lastEnqueueMs<850)return;
+        lastEnqueueMs=now;
+        enqueue(priority,false);
+    }
     private void enqueue(boolean priority,boolean approvedDuplicate){
         final String link, proxyUrl;
         try{
@@ -1038,7 +1049,7 @@ public final class MainActivity extends Activity {
                 selected?(ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP_BORDER:ThemeStyle.border(this)):ThemeStyle.border(this));
             entry.getValue().setBackground(bg);
             TextView title=renderedQueueTitles.get(entry.getKey());
-            if(title!=null)TitleMarquee.show(title,selected);
+            if(title!=null)TitleMarquee.show(title,selected||entry.getKey().equals(activeQueueId));
         }
     }
     private void attachQueueRow(LinearLayout card,String id,TextView title,boolean isCurrent){
@@ -1097,7 +1108,7 @@ public final class MainActivity extends Activity {
         }
         if(signature.equals(queueSignature)&&activeQueueBar==null)return;
         queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;activeQueueTotal=null;
-        renderedQueueCards.clear();renderedQueueTitles.clear();
+        renderedQueueCards.clear();renderedQueueTitles.clear();activeQueueId=null;
         queueList.removeAllViews();
         if(jobs.isEmpty()){
             queueList.addView(compactInfo("Очередь пуста",14,true));return;
@@ -1121,6 +1132,7 @@ public final class MainActivity extends Activity {
         if(!running.isEmpty()){
             queueHeading("Текущая загрузка",-1);
             for(DownloadQueue.Item j:running){
+                activeQueueId=j.id;
                 LinearLayout card=queueCard(true);
                 LinearLayout top=new LinearLayout(this);top.setOrientation(LinearLayout.HORIZONTAL);
                 top.setGravity(Gravity.CENTER_VERTICAL);card.addView(top);

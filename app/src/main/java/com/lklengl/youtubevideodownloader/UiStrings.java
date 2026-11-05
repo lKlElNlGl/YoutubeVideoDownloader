@@ -122,6 +122,9 @@ public final class UiStrings {
         strings.put("Проверить новую версию приложения", "Check for app updates");
         strings.put("Установка обновления", "Install update");
         strings.put("Запрос отменён", "Request cancelled");
+        strings.put("Запрос обновления информации отменён", "Information refresh cancelled");
+        strings.put("Информация о плейлисте обновлена", "Playlist information updated");
+        strings.put("Не удалось обновить информацию о плейлисте", "Could not refresh playlist information");
         strings.put("Не удалось открыть файл", "Could not open file");
         strings.put("Невозможно добавить загрузку", "Could not add download");
         strings.put("Добавлено в очередь", "Added to queue");

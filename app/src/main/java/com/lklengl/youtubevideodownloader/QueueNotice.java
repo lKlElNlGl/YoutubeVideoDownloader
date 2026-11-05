@@ -3,7 +3,8 @@ public final class QueueNotice {
  private QueueNotice(){}
  private static java.lang.ref.WeakReference<android.view.View> active=new java.lang.ref.WeakReference<>(null);
  /** In-app overlay is used instead of a system Toast (Android 12+ changes custom Toast rendering). */
- public static void show(android.app.Activity context,String message){
+ public static void show(android.app.Activity context,String message){show(context,message,null);}
+ public static void show(android.app.Activity context,String message,Runnable action){
   android.widget.FrameLayout host=context.findViewById(android.R.id.content);
   if(host==null || context.isFinishing())return;
   android.view.View previous=active.get();
@@ -24,6 +25,16 @@ public final class QueueNotice {
   label.setTextSize(13);
   android.widget.LinearLayout.LayoutParams lp=new android.widget.LinearLayout.LayoutParams(-2,-2);
   lp.setMargins(9*d,0,0,0);panel.addView(label,lp);
+  if(action!=null){
+   android.widget.TextView jump=new android.widget.TextView(context);
+   jump.setText(UiStrings.display(context,"В очередь")+" ›");
+   jump.setTextSize(13);jump.setTypeface(null,android.graphics.Typeface.BOLD);
+   jump.setTextColor(ThemeStyle.RED);
+   jump.setPadding(12*d,7*d,3*d,7*d);
+   panel.addView(jump);
+   jump.setOnClickListener(v->{action.run();if(panel.getParent() instanceof android.view.ViewGroup)
+    ((android.view.ViewGroup)panel.getParent()).removeView(panel);});
+  }
   android.widget.FrameLayout.LayoutParams layout=new android.widget.FrameLayout.LayoutParams(
    -2,-2,android.view.Gravity.BOTTOM|android.view.Gravity.CENTER_HORIZONTAL);
   layout.setMargins(12*d,0,12*d,75*d);
@@ -36,7 +47,7 @@ public final class QueueNotice {
      if(panel.getParent() instanceof android.view.ViewGroup)
       ((android.view.ViewGroup)panel.getParent()).removeView(panel);
     }).start();
-  },3000);
+  },7000);
  }
  public static String message(int count,boolean priority){
   if(count!=1)return "Добавлено в очередь: "+count+" видео";

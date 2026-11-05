@@ -100,6 +100,15 @@ public final class MainActivity extends Activity {
                 boolean matches=link.equals(state.url)&&PlaylistSupport.isPlaylist(link);
                 if(matches&&state.running()){
                     watchedSharedRefresh=true;
+                    attachInfoRow(true);
+                    previewCard.setVisibility(View.VISIBLE);
+                    boolean ready=previewSnapshot!=null&&previewSnapshot.matches(link);
+                    previewHeroView.setVisibility(ready?View.VISIBLE:View.GONE);
+                    previewStatsView.setVisibility(ready?View.VISIBLE:View.GONE);
+                    previewHeader.setText(UiStrings.display(MainActivity.this,"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ"));
+                    if(!ready){reopenPlaylistButton.setVisibility(View.GONE);updatePreviewButton.setVisibility(View.GONE);}
+                    cancelInfoButton.setVisibility(View.VISIBLE);
+                    updatePreviewMessage("");
                     ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);
                     infoIndicator.setVisibility(View.VISIBLE);
                     previewButton.setEnabled(false);updatePreviewButton.setEnabled(false);
@@ -124,7 +133,13 @@ public final class MainActivity extends Activity {
                     }else if(matches&&state.stage==PlaylistRefreshManager.Stage.ERROR){
                         showPreviewFailure(new IllegalStateException(state.error));
                     }else if(matches&&state.stage==PlaylistRefreshManager.Stage.CANCELLED){
-                        updatePreviewMessage(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                        attachInfoRow(true);
+                        previewCard.setVisibility(View.VISIBLE);
+                        infoStatusRow.setVisibility(View.VISIBLE);
+                        infoIndicator.setVisibility(View.GONE);
+                        cancelInfoButton.setVisibility(View.GONE);
+                        infoTimer.setText(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                        updatePreviewMessage("");
                     }
                     openPlaylistAfterRefresh=false;
                 }
@@ -133,7 +148,8 @@ public final class MainActivity extends Activity {
         }
     };
     private String previewErrorLog="";
-    private LinearLayout previewCard,previewHeroView,previewStatsView;
+    private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow;
+    private int infoStatusBaseIndex=-1;
     private LinearLayout.LayoutParams previewStatsParams;
     private ImageView thumbnail;
     private LinearLayout queueList,mainPage,firstQueueCard;
@@ -307,6 +323,8 @@ public final class MainActivity extends Activity {
         statusRow.addView(cancelInfoButton,new LinearLayout.LayoutParams(dp(78),dp(38)));
         cancelInfoButton.setOnClickListener(v->cancelInfo());
         statusRow.setVisibility(View.GONE);
+        infoStatusRow=statusRow;infoStatusBaseIndex=linkCard.indexOfChild(statusRow);
+        downloadLinkCard=linkCard;
         infoIndicator.setTag(statusRow);
         preview=text("",14);preview.setPadding(dp(4),0,dp(4),0);
         preview.setVisibility(View.GONE);
@@ -873,10 +891,23 @@ public final class MainActivity extends Activity {
         updatePreviewMessage("");
         renderPreview(false);
     }
+    private void attachInfoRow(boolean playlistMode){
+        if(infoStatusRow==null)return;
+        LinearLayout target=playlistMode?previewCard:downloadLinkCard;
+        if(infoStatusRow.getParent()==target)return;
+        if(infoStatusRow.getParent() instanceof android.view.ViewGroup)
+            ((android.view.ViewGroup)infoStatusRow.getParent()).removeView(infoStatusRow);
+        LinearLayout.LayoutParams space=new LinearLayout.LayoutParams(-1,-2);
+        space.setMargins(0,dp(6),0,dp(3));
+        target.addView(infoStatusRow,playlistMode?3:Math.min(infoStatusBaseIndex,target.getChildCount()),space);
+    }
     private void renderPreview(boolean restoreSaved){
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
+        if(valid)attachInfoRow(previewSnapshot.playlist);
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
+        previewHeroView.setVisibility(valid?View.VISIBLE:View.GONE);
+        previewStatsView.setVisibility(valid?View.VISIBLE:View.GONE);
         if(previewButton!=null)previewButton.setVisibility(valid&&previewSnapshot.playlist?View.GONE:View.VISIBLE);
         if(previewStatsParams!=null){
             previewStatsParams.topMargin=valid&&previewSnapshot.playlist?dp(6):0;
@@ -1469,6 +1500,8 @@ public final class MainActivity extends Activity {
         if(activeInfoProcessId!=null)cancelInfo();
         String id=UUID.randomUUID().toString();
         activeInfoProcessId=id;infoStartedAt=android.os.SystemClock.elapsedRealtime();
+        attachInfoRow(false);
+        cancelInfoButton.setVisibility(View.VISIBLE);
         infoGeneration++;
         infoIndicator.setVisibility(View.VISIBLE);
         ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);

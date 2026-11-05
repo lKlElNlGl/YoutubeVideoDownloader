@@ -144,10 +144,12 @@ public final class DownloadService extends Service {
         sendBroadcast(new Intent(ACTION_CHANGED).setPackage(getPackageName()));
     }
     private int stableProgress=0;
+    private DownloadProgressTracker tracker;
+    private long lastStreamUpdate=0L;
     private void progress(DownloadQueue.Item item,String text,int percentage){
         if(pauseCurrent||cancelCurrent)return;
         stableProgress=ProgressPolicy.displayPercent(stableProgress,percentage);
-        DownloadQueue.update(this,item.id,DownloadQueue.RUNNING,text,stableProgress,null);
+        DownloadQueue.progress(this,item.id,text,stableProgress,0,"Обработка",false);
         announce();
         long now=android.os.SystemClock.elapsedRealtime();
         if(now-lastNotification>=500) {
@@ -156,7 +158,7 @@ public final class DownloadService extends Service {
         }
     }
     private void download(DownloadQueue.Item item){
-        currentId=item.id;cancelCurrent=false;pauseCurrent=false;stableProgress=0;
+        currentId=item.id;cancelCurrent=false;pauseCurrent=false;stableProgress=0;tracker=new DownloadProgressTracker(item.audio);lastStreamUpdate=0;
         if(!DownloadQueue.begin(this,item.id)){currentId=null;return;}
         File temp=new File(new File(getFilesDir(),"partial-downloads"),"download-"+item.id);
         try{
@@ -197,6 +199,7 @@ public final class DownloadService extends Service {
     private void attemptDownload(DownloadQueue.Item item,File temp) throws Exception {
             if(!temp.isDirectory()&&!temp.mkdirs())throw new IOException("Невозможно создать папку загрузки");
             progress(item,"Подготовка загрузки",0);
+            tracker=new DownloadProgressTracker(item.audio);
             YoutubeDL.getInstance().init(getApplicationContext());
             FFmpeg.getInstance().init(getApplicationContext());
             checkCancel();
@@ -224,13 +227,19 @@ public final class DownloadService extends Service {
                     progress(item,"Обработка видео и аудио",99);
                     return kotlin.Unit.INSTANCE;
                 }
-                int percent=Math.max(0,Math.min(99,Math.round(p)));
+                int percent=Math.max(0,Math.min(100,Math.round(p)));
                 // Throttle preference writes to reduce flash wear.
                 long now=android.os.SystemClock.elapsedRealtime();
-                if(now-lastNotification>400) {
+                if(now-lastStreamUpdate>300 || percent>=100) {
+                    lastStreamUpdate=now;
                     String etaText=eta>=0?" · осталось "+eta+" с":"";
-                    String transfer=DownloadTelemetry.summary(line,percent);
-                    progress(item,"Загрузка потока "+percent+"%"+(transfer.isEmpty()?etaText:" · "+transfer),percent);
+                    DownloadProgressTracker.Status value=tracker.observe(percent,line);
+                    String transfer=DownloadTelemetry.summary(line,value.streamPercent);
+                    stableProgress=Math.max(stableProgress,value.totalPercent);
+                    String info="Загрузка "+value.streamLabel.toLowerCase(Locale.ROOT)+" "+value.streamPercent+"%"+(transfer.isEmpty()?etaText:" · "+transfer);
+                    DownloadQueue.progress(this,item.id,info,stableProgress,value.streamPercent,value.streamLabel,value.estimated);
+                    announce();
+                    if(now-lastNotification>=500){promote(info,stableProgress);lastNotification=now;}
                 }
                 return kotlin.Unit.INSTANCE;
             });

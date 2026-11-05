@@ -51,12 +51,16 @@ public final class UiStrings {
         strings.put("Добавить в очередь", "Add to queue");
         strings.put("Очистить завершённые", "Clear completed");
         strings.put("Обновить информацию обо всех файлах","Refresh all file information");
+        strings.put("Обновление информации обо всех файлах","Refreshing information about all files");
         strings.put("Обновить информацию о файле","Refresh file information");
         strings.put("В очередь","View queue");
         strings.put("Сбросить фильтры","Reset filters");
+        strings.put("Прокрутить вверх","Scroll up");
+        strings.put("Прокрутить вниз","Scroll down");
         strings.put("Отобразить скачанные/нескачанные загрузки","Show downloaded/not downloaded");
         strings.put("Отобразить находящиеся/отсутствующие в очереди загрузки","Show queued/not queued downloads");
         strings.put("Загрузка файла выполнена на ","File download complete: ");
+        strings.put("Загрузка файла: ","Downloading file: ");
         strings.put("Отмена", "Cancel");
         strings.put("Отменить", "Cancel");
         strings.put("Закрыть", "Close");

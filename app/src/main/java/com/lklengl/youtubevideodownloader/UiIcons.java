@@ -84,6 +84,27 @@ public final class UiIcons extends Drawable {
             case "refresh-cw":
                 c.drawArc(new RectF(3,3,21,21),35,285,false,p);
                 c.drawLine(18,3,21,9,p);c.drawLine(21,9,15,9,p);break;
+            case "undo-2": {
+                Path turn=new Path();turn.moveTo(9,14);turn.lineTo(4,9);
+                turn.lineTo(9,4);c.drawPath(turn,p);
+                Path body=new Path();body.moveTo(4,9);body.lineTo(14.5f,9);
+                body.cubicTo(21.5f,9,21.5f,20,14.5f,20);body.lineTo(11,20);
+                c.drawPath(body,p);break;
+            }
+            case "arrow-outline-up":
+            case "arrow-outline-down": {
+                Path outline=new Path();
+                if(name.equals("arrow-outline-up")){
+                    outline.moveTo(12,2);outline.lineTo(22,12);outline.lineTo(16.5f,12);
+                    outline.lineTo(16.5f,22);outline.lineTo(7.5f,22);
+                    outline.lineTo(7.5f,12);outline.lineTo(2,12);
+                }else{
+                    outline.moveTo(12,22);outline.lineTo(22,12);outline.lineTo(16.5f,12);
+                    outline.lineTo(16.5f,2);outline.lineTo(7.5f,2);
+                    outline.lineTo(7.5f,12);outline.lineTo(2,12);
+                }
+                outline.close();p.setStrokeWidth(1.5f);c.drawPath(outline,p);break;
+            }
             case "info":
                 c.drawCircle(12,12,9,p);c.drawLine(12,10,12,17,p);
                 c.drawCircle(12,7,0.8f,p);break;

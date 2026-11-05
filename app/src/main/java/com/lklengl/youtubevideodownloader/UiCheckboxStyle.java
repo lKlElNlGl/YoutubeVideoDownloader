@@ -14,11 +14,10 @@ public final class UiCheckboxStyle {
   StateListDrawable states=new StateListDrawable();
   states.addState(new int[]{android.R.attr.state_checked},new Mark(size,true,0xFFEF2830));
   states.addState(new int[]{},new Mark(size,false,ThemeStyle.isDark(c)?0xFFF4F5F8:0xFF596477));
-  android.graphics.drawable.GradientDrawable mask=new android.graphics.drawable.GradientDrawable();
-   mask.setShape(android.graphics.drawable.GradientDrawable.OVAL);mask.setColor(Color.WHITE);
-   box.setButtonDrawable(new RippleDrawable(android.content.res.ColorStateList.valueOf(
-     ThemeStyle.isDark(c)?0x55FFFFFF:0x33000000),states,mask));
-   box.setBackground(null); // Ripple follows the icon, not the center of the full label.
+  // No OEM press halo or ripple: retain the approved checked/unchecked glyphs.
+  box.setButtonDrawable(states);
+  box.setBackground(null);
+  box.setForeground(null);
   box.setMinHeight(ThemeStyle.dp(c,38));
  }
  /** Only labelled checkboxes need separation; selection-only video boxes are unchanged. */

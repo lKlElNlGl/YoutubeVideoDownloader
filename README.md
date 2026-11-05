@@ -30,6 +30,13 @@
 
 ## Изменения
 
+### v0.5.6
+- Исправлены потерянные миниатюры и прокрутка больших плейлистов, восстановление точной позиции и автоматическое движение выбранного длинного названия.
+- В плейлисте: мягкая подсветка выбранной строки, свайп назад, компактные поля качества 20 dp с полным текстом и выравниванием, настройки фильтров без лишней иконки.
+- Очередь: контурные стрелки 78×38 dp, плавное появление за 300 мс, точные границы показа и полная прокрутка до краёв страницы.
+- Убраны ореолы чекбоксов и подёргивание закреплённых вкладок.
+- Обновление плейлиста теперь отображается внутри карточки; отмена показывает статус на месте индикатора. Уточнены кнопки, отступы, отображение пути и прогресс видео/аудио.
+
 ### v0.5.5
 - Общий прогресс файла и отдельный прогресс видео/аудио; исправлены скачки процентов и несоответствие полосы прогресса.
 - Очередь: выделение записей, бегущие названия, кнопки прокрутки на экран и до края по удержанию, сохранение позиции при переключении страниц.
@@ -109,6 +116,12 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.6
+- Fixed thumbnail requests and precise playlist scroll restoration; selected titles automatically marquee without manual dragging.
+- Playlist selection highlighting, protected back swipe, 20 dp quality pickers, filter reset layout, and touch halo removal.
+- Compact outline queue navigation with 300 ms fade, exact boundary conditions, and smooth edge scrolling.
+- Fixed pinned tab jitter, progress descriptions for video versus audio, storage path display, and playlist metadata refresh/cancellation panel.
 
 ### v0.5.5
 - Distinct overall-file and video/audio-stream progress, with fixes for percentage jumps and progress-bar mismatch.

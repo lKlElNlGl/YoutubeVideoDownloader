@@ -53,7 +53,7 @@ public final class MainActivity extends Activity {
     private FrameLayout viewport;
     private LinearLayout stickyTabs;
     private LinearLayout[] stickyPageTabs;
-    private TextView jumpUp,jumpDown;
+    private ImageView jumpUp,jumpDown;
     private final android.os.Handler jumpHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo,activeQueueTotal;
@@ -100,6 +100,15 @@ public final class MainActivity extends Activity {
                 boolean matches=link.equals(state.url)&&PlaylistSupport.isPlaylist(link);
                 if(matches&&state.running()){
                     watchedSharedRefresh=true;
+                    attachInfoRow(true);
+                    previewCard.setVisibility(View.VISIBLE);
+                    boolean ready=previewSnapshot!=null&&previewSnapshot.matches(link);
+                    previewHeroView.setVisibility(ready?View.VISIBLE:View.GONE);
+                    previewStatsView.setVisibility(ready?View.VISIBLE:View.GONE);
+                    previewHeader.setText(UiStrings.display(MainActivity.this,"ИНФОРМАЦИЯ О ПЛЕЙЛИСТЕ"));
+                    if(!ready){reopenPlaylistButton.setVisibility(View.GONE);updatePreviewButton.setVisibility(View.GONE);}
+                    cancelInfoButton.setVisibility(View.VISIBLE);
+                    updatePreviewMessage("");
                     ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);
                     infoIndicator.setVisibility(View.VISIBLE);
                     previewButton.setEnabled(false);updatePreviewButton.setEnabled(false);
@@ -124,7 +133,13 @@ public final class MainActivity extends Activity {
                     }else if(matches&&state.stage==PlaylistRefreshManager.Stage.ERROR){
                         showPreviewFailure(new IllegalStateException(state.error));
                     }else if(matches&&state.stage==PlaylistRefreshManager.Stage.CANCELLED){
-                        updatePreviewMessage(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                        attachInfoRow(true);
+                        previewCard.setVisibility(View.VISIBLE);
+                        infoStatusRow.setVisibility(View.VISIBLE);
+                        infoIndicator.setVisibility(View.GONE);
+                        cancelInfoButton.setVisibility(View.GONE);
+                        infoTimer.setText(UiStrings.display(MainActivity.this,"Запрос отменён"));
+                        updatePreviewMessage("");
                     }
                     openPlaylistAfterRefresh=false;
                 }
@@ -133,9 +148,13 @@ public final class MainActivity extends Activity {
         }
     };
     private String previewErrorLog="";
-    private LinearLayout previewCard;
+    private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow;
+    private int infoStatusBaseIndex=-1;
+    private LinearLayout.LayoutParams previewStatsParams;
     private ImageView thumbnail;
-    private LinearLayout queueList;
+    private LinearLayout queueList,mainPage,firstQueueCard;
+    private Button queueCleanButton;
+    private LinearLayout originalTabs;
     private Button checkAppButton, updateEngineButton, previewButton, defaultFolderButton;
     private ScrollView mainScroll;
     private float swipeStartX,swipeStartY;
@@ -198,6 +217,7 @@ public final class MainActivity extends Activity {
         mainScroll.setBackgroundColor(ThemeStyle.background(this));
         LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(16),dp(16),dp(16),dp(28));
+        mainPage=page;
         mainScroll.addView(page);
         viewport=new FrameLayout(this);
         viewport.addView(mainScroll,new FrameLayout.LayoutParams(-1,-1));
@@ -303,6 +323,8 @@ public final class MainActivity extends Activity {
         statusRow.addView(cancelInfoButton,new LinearLayout.LayoutParams(dp(78),dp(38)));
         cancelInfoButton.setOnClickListener(v->cancelInfo());
         statusRow.setVisibility(View.GONE);
+        infoStatusRow=statusRow;infoStatusBaseIndex=linkCard.indexOfChild(statusRow);
+        downloadLinkCard=linkCard;
         infoIndicator.setTag(statusRow);
         preview=text("",14);preview.setPadding(dp(4),0,dp(4),0);
         preview.setVisibility(View.GONE);
@@ -319,6 +341,7 @@ public final class MainActivity extends Activity {
         previewHeader.setTextColor(ThemeStyle.subdued(this));previewHeader.setLetterSpacing(0.06f);
         previewHeader.setPadding(0,0,0,dp(9));previewCard.addView(previewHeader);
         LinearLayout previewHero=new LinearLayout(this);previewHero.setGravity(Gravity.CENTER_VERTICAL);
+        previewHeroView=previewHero;
         previewCard.addView(previewHero);
         thumbnail=new ImageView(this);thumbnail.setScaleType(ImageView.ScaleType.CENTER_CROP);
         thumbnail.setVisibility(View.GONE);
@@ -327,7 +350,9 @@ public final class MainActivity extends Activity {
         previewTitle.setPadding(dp(10),dp(7),0,dp(12));
         previewHero.addView(previewTitle,new LinearLayout.LayoutParams(0,-2,1));
         LinearLayout stats=new LinearLayout(this);stats.setOrientation(LinearLayout.HORIZONTAL);
-        previewCard.addView(stats);
+        previewStatsView=stats;
+        previewStatsParams=new LinearLayout.LayoutParams(-1,-2);
+        previewCard.addView(stats,previewStatsParams);
         previewDuration=statView(stats,"clock");
         previewQuality=statView(stats,"quality");
         previewAllQualities=text("",12);
@@ -353,6 +378,8 @@ public final class MainActivity extends Activity {
                 loadPlaylist(false,true);
             }else loadPreview(true);
         });
+        previewCard.removeView(reopenPlaylistButton);
+        previewCard.addView(reopenPlaylistButton);
         previewCard.setVisibility(View.GONE);
 
         LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
@@ -385,6 +412,7 @@ public final class MainActivity extends Activity {
         ThemeStyle.icon(refreshAllFilesButton,"refresh-cw",17);
         refreshAllFilesButton.setOnClickListener(v->refreshAllQueueFiles());
         Button clean=button(pagePanels[1],"Очистить завершённые");ThemeStyle.icon(clean,"trash",17);
+        queueCleanButton=clean;
         clean.setOnClickListener(v->{
             for(DownloadQueue.Item j:DownloadQueue.all(this))
                 if(DownloadQueue.DONE.equals(j.status)||DownloadQueue.ERROR.equals(j.status)||
@@ -441,7 +469,7 @@ public final class MainActivity extends Activity {
         folderLabel.setIncludeFontPadding(false);
         folderLabel.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance());
         folderLabel.setHorizontallyScrolling(true);folderLabel.setGravity(Gravity.CENTER_VERTICAL);
-        folderLabel.setPadding(dp(3),0,dp(3),0);
+        folderLabel.setPadding(dp(8),0,dp(8),0);
         final float[] folderTouchX={0f};
         final int[] folderStartScroll={0};
         folderLabel.setOnTouchListener((v,event)->{
@@ -451,7 +479,7 @@ public final class MainActivity extends Activity {
                     folderStartScroll[0]=folderLabel.getScrollX();return true;
                 case MotionEvent.ACTION_MOVE:
                     int width=(int)Math.ceil(folderLabel.getPaint().measureText(folderLabel.getText().toString()));
-                    int limit=Math.max(0,width-folderLabel.getWidth()+dp(6));
+                    int limit=Math.max(0,width-folderLabel.getWidth()+dp(16));
                     int offset=Math.round(folderTouchX[0]-event.getX());
                     folderLabel.scrollTo(Math.max(0,Math.min(limit,folderStartScroll[0]+offset)),0);
                     return true;
@@ -461,7 +489,7 @@ public final class MainActivity extends Activity {
             return false;
         });
         folderLabel.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(6)));
-        LinearLayout.LayoutParams folderParams=new LinearLayout.LayoutParams(-1,dp(18));
+        LinearLayout.LayoutParams folderParams=new LinearLayout.LayoutParams(-1,dp(20));
         folderParams.setMargins(0,dp(4),0,dp(8));
         save.addView(folderLabel,folderParams);
         CheckBox playlistFolders=new CheckBox(this);
@@ -481,6 +509,7 @@ public final class MainActivity extends Activity {
             startActivityForResult(tree,PICK_FOLDER);
         });
         defaultFolderButton=button(save,"Вернуть папку по умолчанию");
+        ThemeStyle.icon(defaultFolderButton,"undo-2",17);
         defaultFolderButton.setOnClickListener(v->{
             getPreferences(MODE_PRIVATE).edit().remove("folderUri").apply();
             showFolderLabel();
@@ -512,7 +541,7 @@ public final class MainActivity extends Activity {
     private TextView statView(LinearLayout parent,String icon){
         LinearLayout cell=new LinearLayout(this);cell.setOrientation(LinearLayout.HORIZONTAL);
         cell.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(36),1);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(30),1);
         params.setMargins(0,0,dp(6),0);
         cell.setPadding(dp(7),0,dp(4),0);
         cell.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),
@@ -568,6 +597,7 @@ public final class MainActivity extends Activity {
     }
 
     private void installFloatingNavigation(LinearLayout originalTabs){
+        this.originalTabs=originalTabs;
         stickyTabs=new LinearLayout(this);
         stickyTabs.setOrientation(LinearLayout.HORIZONTAL);
         stickyTabs.setPadding(dp(16),0,dp(16),dp(5));
@@ -587,19 +617,27 @@ public final class MainActivity extends Activity {
         }
         viewport.addView(stickyTabs,new FrameLayout.LayoutParams(-1,dp(59),Gravity.TOP));
         stickyTabs.setVisibility(View.GONE);
-        jumpUp=floatingArrow("↑",true);
-        jumpDown=floatingArrow("↓",false);
+        jumpUp=floatingArrow(true);
+        jumpDown=floatingArrow(false);
         mainScroll.setOnScrollChangeListener((View v,int sx,int sy,int ox,int oy)->{
             updateFloatingNavigation();
         });
         viewport.post(()->updateFloatingNavigation());
     }
-    private TextView floatingArrow(String value,boolean up){
-        TextView arrow=text(value,25);
-        arrow.setGravity(Gravity.CENTER);
-        arrow.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(22)));
-        arrow.setAlpha(.94f);arrow.setElevation(dp(6));
-        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(44),dp(44),
+    private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
+        int fill=ThemeStyle.buttonFill(this);
+        fill=(fill&0x00FFFFFF)|(pressed?0xFF000000:0xD9000000);
+        return ThemeStyle.rounded(fill,ThemeStyle.buttonStroke(this),dp(11));
+    }
+    private ImageView floatingArrow(boolean up){
+        ImageView arrow=new ImageView(this);
+        arrow.setImageDrawable(new UiIcons(up?"arrow-outline-up":"arrow-outline-down",
+            ThemeStyle.text(this),dp(21)));
+        arrow.setScaleType(ImageView.ScaleType.CENTER);
+        arrow.setContentDescription(UiStrings.display(this,up?"Прокрутить вверх":"Прокрутить вниз"));
+        arrow.setBackground(arrowSkin(false));
+        arrow.setElevation(dp(6));arrow.setAlpha(0f);
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(78),dp(38),
             (up?Gravity.TOP:Gravity.BOTTOM)|Gravity.CENTER_HORIZONTAL);
         if(up)p.topMargin=dp(62);else p.bottomMargin=dp(12);
         viewport.addView(arrow,p);arrow.setVisibility(View.GONE);
@@ -616,24 +654,58 @@ public final class MainActivity extends Activity {
         arrow.setOnTouchListener((v,event)->{
             switch(event.getActionMasked()){
                 case MotionEvent.ACTION_DOWN:
+                    arrow.setBackground(arrowSkin(true));
                     held[0]=false;jumpHandler.postDelayed(longPress,600);return true;
                 case MotionEvent.ACTION_UP:
+                    arrow.setBackground(arrowSkin(false));
                     jumpHandler.removeCallbacks(longPress);
                     if(!held[0])mainScroll.smoothScrollBy(0,(up?-1:1)*mainScroll.getHeight());
                     return true;
                 case MotionEvent.ACTION_CANCEL:
+                    arrow.setBackground(arrowSkin(false));
                     jumpHandler.removeCallbacks(longPress);return true;
             }
             return true;
         });
         return arrow;
     }
+    private void showFloatingArrow(ImageView arrow,boolean show){
+        if(arrow==null||Boolean.valueOf(show).equals(arrow.getTag()))return;
+        arrow.setTag(show);
+        arrow.animate().cancel();
+        if(show){
+            arrow.setVisibility(View.VISIBLE);
+            arrow.setAlpha(0f);
+            arrow.animate().alpha(1f).setDuration(300).start();
+        }else{
+            if(currentPage!=1){arrow.setVisibility(View.GONE);arrow.setAlpha(0f);}
+            else arrow.animate().alpha(0f).setDuration(300)
+                .withEndAction(()->{
+                    if(Boolean.FALSE.equals(arrow.getTag()))arrow.setVisibility(View.GONE);
+                }).start();
+        }
+    }
     private void updateFloatingNavigation(){
         if(stickyTabs==null||mainScroll==null)return;
-        boolean pinned=mainScroll.getScrollY()>=dp(85);
+        // Replace the original tab row before even its top border can be clipped.
+        boolean pinned=originalTabs!=null&&mainScroll.getScrollY()>=originalTabs.getTop();
         stickyTabs.setVisibility(pinned?View.VISIBLE:View.GONE);
-        if(jumpUp!=null)jumpUp.setVisibility(currentPage==1&&mainScroll.canScrollVertically(-1)?View.VISIBLE:View.GONE);
-        if(jumpDown!=null)jumpDown.setVisibility(currentPage==1&&mainScroll.canScrollVertically(1)?View.VISIBLE:View.GONE);
+        boolean up=false,down=false;
+        if(currentPage==1){
+            if(firstQueueCard!=null&&firstQueueCard.isAttachedToWindow()){
+                int[] first={0,0},tabs={0,0};
+                firstQueueCard.getLocationOnScreen(first);stickyTabs.getLocationOnScreen(tabs);
+                up=Release056Rules.showUp(mainScroll.canScrollVertically(-1),first[1],
+                    tabs[1]+stickyTabs.getHeight());
+            }
+            if(queueCleanButton!=null&&queueCleanButton.isAttachedToWindow()){
+                int[] last={0,0},frame={0,0};
+                queueCleanButton.getLocationOnScreen(last);mainScroll.getLocationOnScreen(frame);
+                down=Release056Rules.showDown(mainScroll.canScrollVertically(1),
+                    last[1]+queueCleanButton.getHeight(),frame[1]+mainScroll.getHeight());
+            }
+        }
+        showFloatingArrow(jumpUp,up);showFloatingArrow(jumpDown,down);
     }
     private void openQueueAtTop(){
         pageScrollPosition[1]=0;
@@ -649,6 +721,7 @@ public final class MainActivity extends Activity {
     private void showPage(int index){
         if(mainScroll!=null)pageScrollPosition[currentPage]=mainScroll.getScrollY();
         currentPage=Math.max(0,Math.min(2,index));
+        if(mainPage!=null)mainPage.setPadding(dp(16),dp(16),dp(16),dp(currentPage==1?6:28));
         for(int i=0;i<pagePanels.length;i++){
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
             ThemeStyle.styleTab(pageTabs[i],i==currentPage,
@@ -862,11 +935,28 @@ public final class MainActivity extends Activity {
         updatePreviewMessage("");
         renderPreview(false);
     }
+    private void attachInfoRow(boolean playlistMode){
+        if(infoStatusRow==null)return;
+        LinearLayout target=playlistMode?previewCard:downloadLinkCard;
+        if(infoStatusRow.getParent()==target)return;
+        if(infoStatusRow.getParent() instanceof android.view.ViewGroup)
+            ((android.view.ViewGroup)infoStatusRow.getParent()).removeView(infoStatusRow);
+        LinearLayout.LayoutParams space=new LinearLayout.LayoutParams(-1,-2);
+        space.setMargins(0,dp(6),0,dp(3));
+        target.addView(infoStatusRow,playlistMode?3:Math.min(infoStatusBaseIndex,target.getChildCount()),space);
+    }
     private void renderPreview(boolean restoreSaved){
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
+        if(valid)attachInfoRow(previewSnapshot.playlist);
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
+        previewHeroView.setVisibility(valid?View.VISIBLE:View.GONE);
+        previewStatsView.setVisibility(valid?View.VISIBLE:View.GONE);
         if(previewButton!=null)previewButton.setVisibility(valid&&previewSnapshot.playlist?View.GONE:View.VISIBLE);
+        if(previewStatsParams!=null){
+            previewStatsParams.topMargin=valid&&previewSnapshot.playlist?dp(6):0;
+            previewStatsView.setLayoutParams(previewStatsParams);
+        }
         if(!valid){
             updateQualityChoices(QualityChoices.fallback(),false);
             updateFormatChoices(FormatChoices.fallback(),false);
@@ -924,7 +1014,7 @@ public final class MainActivity extends Activity {
     private void showFolderLabel(){
         String selected=selectedFolder();
         folderLabel.setText(UiStrings.display(MainActivity.this, selected.isEmpty()?"Загрузки / YoutubeVideoDownloader":
-            "Выбрана: "+Uri.parse(selected).getLastPathSegment()));
+            Release056Rules.folderDisplay(Uri.parse(selected).getLastPathSegment())));
         defaultFolderButton.setVisibility(FolderRules.isCustom(selected)?View.VISIBLE:View.GONE);
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
@@ -1000,7 +1090,7 @@ public final class MainActivity extends Activity {
         if(refreshAllFilesButton!=null)refreshAllFilesButton.setEnabled(false);
         java.util.concurrent.atomic.AtomicBoolean cancelled=new java.util.concurrent.atomic.AtomicBoolean(false);
         AlertDialog dialog=ThemeStyle.dialog(this)
-            .setTitle(UiStrings.display(this,"Обновить информацию обо всех файлах"))
+            .setTitle(UiStrings.display(this,"Обновление информации обо всех файлах"))
             .setMessage(UiStrings.display(this,"Обработано 0 из "+all.size()))
             .setNegativeButton(UiStrings.display(this,"Отмена"),(d,w)->cancelled.set(true))
             .create();
@@ -1047,6 +1137,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
         params.setMargins(0,0,0,dp(active?7:4));
         queueList.addView(card,params);
+        if(firstQueueCard==null)firstQueueCard=card;
         return card;
     }
     private TextView compactInfo(String value,int size,boolean secondary){
@@ -1117,7 +1208,7 @@ public final class MainActivity extends Activity {
             for(DownloadQueue.Item j:jobs)if(DownloadQueue.RUNNING.equals(j.status)){
                 activeQueueBar.setProgress(j.streamProgress);
                 if(activeQueueTotal!=null)activeQueueTotal.setText(
-                    UiStrings.display(this,"Загрузка файла выполнена на ")+
+                    UiStrings.display(this,"Загрузка файла: ")+
                     (j.progressEstimated?"≈":"")+j.progress+"%");
                 if(activeQueueInfo!=null)
                     displayStreamLine(activeQueueInfo,j.message);
@@ -1126,6 +1217,7 @@ public final class MainActivity extends Activity {
         }
         if(signature.equals(queueSignature)&&activeQueueBar==null)return;
         queueSignature=signature;activeQueueBar=null;activeQueueInfo=null;activeQueueTotal=null;
+        firstQueueCard=null;
         renderedQueueCards.clear();renderedQueueTitles.clear();activeQueueId=null;
         queueList.removeAllViews();
         if(jobs.isEmpty()){
@@ -1161,9 +1253,10 @@ public final class MainActivity extends Activity {
                 TextView title=compactInfo(queueName(j),14,false);
                 title.setTypeface(null,android.graphics.Typeface.BOLD);labels.addView(title);
                 labels.addView(compactInfo(queueFormat(j),12,false));
-                activeQueueTotal=compactInfo(UiStrings.display(this,"Загрузка файла выполнена на ")+
+                activeQueueTotal=compactInfo(UiStrings.display(this,"Загрузка файла: ")+
                    (j.progressEstimated?"≈":"")+j.progress+"%",12,true);
                 labels.addView(activeQueueTotal);
+                activeQueueTotal.setVisibility(j.audio?View.GONE:View.VISIBLE);
                 attachQueueRow(card,j.id,title,true);
                 ImageView pause=queueAction(top,"pause",ThemeStyle.text(this),"Приостановить загрузку");
                 pause.setOnClickListener(v->{selectQueueRow(j.id);DownloadService.pause(this,j.id);queueSignature=null;refreshQueue();});
@@ -1195,6 +1288,7 @@ public final class MainActivity extends Activity {
                 compactQueueRow(problems.get(n),false);
             if(problems.size()>queueVisibleCount)queueMoreButton(problems.size()-queueVisibleCount);
         }
+        mainScroll.post(this::updateFloatingNavigation);
     }
     private void queueMoreButton(int remaining){
         Button more=button(queueList,"Показать ещё ("+remaining+")");
@@ -1451,6 +1545,8 @@ public final class MainActivity extends Activity {
         if(activeInfoProcessId!=null)cancelInfo();
         String id=UUID.randomUUID().toString();
         activeInfoProcessId=id;infoStartedAt=android.os.SystemClock.elapsedRealtime();
+        attachInfoRow(false);
+        cancelInfoButton.setVisibility(View.VISIBLE);
         infoGeneration++;
         infoIndicator.setVisibility(View.VISIBLE);
         ((View)infoIndicator.getTag()).setVisibility(View.VISIBLE);

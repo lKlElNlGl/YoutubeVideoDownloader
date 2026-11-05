@@ -344,12 +344,15 @@ public final class PlaylistActivity extends Activity {
   filterFrame.setOnClickListener(v->showListSettings());
   updateFilterIcon();
   list=new ListView(this);
-  list.setDivider(new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)));
+  list.setDivider(new android.graphics.drawable.InsetDrawable(
+    new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)),dp(10),0,dp(10),0));
   list.setDividerHeight(dp(1));list.setCacheColorHint(Color.TRANSPARENT);
   list.setBackgroundColor(ThemeStyle.cardColor(this));
   list.setVerticalScrollBarEnabled(true);
-  FrameLayout listFrame=new FrameLayout(this);
-  listCard.addView(listFrame,new LinearLayout.LayoutParams(-1,0,1));
+  listFrame=new FrameLayout(this);
+  LinearLayout.LayoutParams listSpan=new LinearLayout.LayoutParams(-1,0,1);
+  listSpan.setMargins(-dp(10),0,-dp(10),0);
+  listCard.addView(listFrame,listSpan);
   listFrame.addView(list,new FrameLayout.LayoutParams(-1,-1));
   TextView empty=txt("Нет видео, соответствующих фильтру",13);
   empty.setGravity(Gravity.CENTER);
@@ -366,7 +369,7 @@ public final class PlaylistActivity extends Activity {
      h=new Row();
      LinearLayout row=new LinearLayout(PlaylistActivity.this);
      row.setGravity(Gravity.CENTER_VERTICAL);
-     row.setPadding(dp(1),dp(4),dp(1),dp(4));row.setMinimumHeight(dp(67));
+     row.setPadding(dp(11),dp(4),dp(11),dp(4));row.setMinimumHeight(dp(67));
      h.check=new CheckBox(PlaylistActivity.this);
       UiCheckboxStyle.apply(h.check);
      row.addView(h.check,new LinearLayout.LayoutParams(dp(37),dp(43)));
@@ -380,6 +383,7 @@ public final class PlaylistActivity extends Activity {
      description.addView(h.name);
      LinearLayout detail=new LinearLayout(PlaylistActivity.this);
      detail.setGravity(Gravity.CENTER_VERTICAL);
+     h.detail=detail;
      description.addView(detail);
      h.duration=txt("",11);h.duration.setTextColor(ThemeStyle.subdued(PlaylistActivity.this));
      h.duration.setSingleLine(true);h.duration.setEllipsize(TextUtils.TruncateAt.END);
@@ -391,18 +395,29 @@ public final class PlaylistActivity extends Activity {
      LinearLayout.LayoutParams qp=new LinearLayout.LayoutParams(dp(80),dp(20));
      qp.setMargins(dp(1),0,0,0);detail.addView(h.qualityFrame,qp);
      final Row holder=h;
+     h.qualityValue=txt("",12);
+     h.qualityValue.setGravity(Gravity.CENTER_VERTICAL|Gravity.LEFT);
+     h.qualityValue.setIncludeFontPadding(false);
+     h.qualityValue.setSingleLine(true);
+     h.qualityValue.setEllipsize(TextUtils.TruncateAt.END);
+     h.qualityValue.setPadding(dp(3),0,dp(18),0);
+     h.qualityFrame.addView(h.qualityValue,new FrameLayout.LayoutParams(-1,-1));
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
      h.quality.setPadding(dp(3),0,dp(18),0);
-      h.quality.setDropDownWidth(dp(190));
+     h.quality.setDropDownWidth(dp(190));
      h.qualityFrame.addView(h.quality,new FrameLayout.LayoutParams(-1,-1));
+     h.quality.setOnTouchListener((v,event)->{
+      if(event.getActionMasked()==MotionEvent.ACTION_DOWN)holder.qualityUserInteraction=true;
+      return false;
+     });
      ImageView arrow=new ImageView(PlaylistActivity.this);
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
      arrow.setPadding(dp(4),0,dp(4),0);
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(18),-1,Gravity.END));
       ((RotatingSpinner)h.quality).setArrow(arrow);
       // Closed spinner is 20dp; popup menu rows stay at 46dp.
-     arrow.setOnClickListener(v->holder.quality.performClick());
+     arrow.setOnClickListener(v->{holder.qualityUserInteraction=true;holder.quality.performClick();});
      h.already=txt("",10);
      description.addView(h.already);
      row.setTag(h);h.root=row;old=row;
@@ -411,6 +426,9 @@ public final class PlaylistActivity extends Activity {
       h.quality.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
       @Override public void onNothingSelected(AdapterView<?> parent){}
       @Override public void onItemSelected(AdapterView<?> parent,View view,int chosen,long id){
+       // Programmatic row binding and bulk updates do not count as user changes.
+       if(!holder.qualityUserInteraction)return;
+       holder.qualityUserInteraction=false;
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
           chosen>=PlaylistQualityPolicy.VALUES.length)return;
        String value=PlaylistQualityPolicy.VALUES[chosen];
@@ -436,8 +454,9 @@ public final class PlaylistActivity extends Activity {
      TitleMarquee.show(h.name,activeTitle==h.position);
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
+    h.qualityUserInteraction=false;
     h.quality.setSelection(PlaylistQualityPolicy.index(qualities.get(h.position)));
-     updateRowQuality(h);
+    updateRowQuality(h);
      int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
      h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
      h.already.setText(UiStrings.display(PlaylistActivity.this,
@@ -471,7 +490,7 @@ public final class PlaylistActivity extends Activity {
   int base=ThemeStyle.cardColor(this);
   if(!active)return base;
   int tint=ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP:ThemeStyle.field(this);
-  float amount=.20f;
+  float amount=.26f;
   return Color.rgb(
    Math.round(Color.red(base)*(1-amount)+Color.red(tint)*amount),
    Math.round(Color.green(base)*(1-amount)+Color.green(tint)*amount),
@@ -479,7 +498,8 @@ public final class PlaylistActivity extends Activity {
  }
  private static final class Row{
   LinearLayout root;CheckBox check;ImageView image;TextView name,duration,already;
-  Spinner quality;FrameLayout qualityFrame;String qualityLabel="";
+  Spinner quality;FrameLayout qualityFrame;LinearLayout detail;
+  TextView qualityValue;boolean qualityUserInteraction=false;String qualityLabel="";
   String imageId="";int position=-1;
  }
  private Spinner spinner(String[] labels){return spinner(labels,null);}
@@ -489,7 +509,7 @@ public final class PlaylistActivity extends Activity {
    @Override public View getView(int p,View old,android.view.ViewGroup parent){
     TextView t=(TextView)super.getView(p,old,parent);
     t.setTextColor(ThemeStyle.text(PlaylistActivity.this));t.setTextSize(12);
-    if(shown!=null){t.setText(shown.get());t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);}
+    if(shown!=null){t.setText(shown.get());t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);t.setTextColor(Color.TRANSPARENT);}
     return t;
    }
    @Override public View getDropDownView(int p,View old,android.view.ViewGroup parent){
@@ -524,16 +544,24 @@ public final class PlaylistActivity extends Activity {
   row.qualityLabel=UiStrings.display(this,PlaylistQualityText.label(
     row.position<videoStatus.length?videoStatus[row.position]:PlaylistHistory.NEW,
     queuedQualities.containsKey(entry.url)?queuedQualities.get(entry.url):"best",
-     PlaylistHistory.actualHeight(this,entry.url),
+    PlaylistHistory.actualHeight(this,entry.url),
     qualities.get(row.position),hasQualityOverride(row.position)));
-  ((android.widget.BaseAdapter)row.quality.getAdapter()).notifyDataSetChanged();
-  android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-  paint.setTextSize(getResources().getDisplayMetrics().scaledDensity*12);
-  int textWidth=(int)Math.ceil(paint.measureText(row.qualityLabel));
-  int available=getResources().getDisplayMetrics().widthPixels-dp(143+1)-durationWidth;
-  row.qualityFrame.getLayoutParams().width=Release056Rules.qualityWidth(
-   textWidth,dp(3+18+4),Math.max(dp(50),available));
-  row.qualityFrame.requestLayout();
+  // Draw closed-state text ourselves: OEM Spinner padding otherwise truncates it.
+  row.qualityValue.setText(row.qualityLabel);
+  int textWidth=(int)Math.ceil(row.qualityValue.getPaint().measureText(row.qualityLabel));
+  int available=row.detail.getWidth()-durationWidth-dp(1);
+  if(row.detail.getWidth()==0){
+   row.detail.post(()->{
+    if(row.root.isAttachedToWindow())updateRowQuality(row);
+   });
+   available=getResources().getDisplayMetrics().widthPixels-dp(165)-durationWidth;
+  }
+  int wanted=Release057Rules.qualityWidth(textWidth,dp(3+18+7),
+    Math.max(dp(50),available));
+  if(row.qualityFrame.getLayoutParams().width!=wanted){
+   row.qualityFrame.getLayoutParams().width=wanted;
+   row.qualityFrame.requestLayout();
+  }
  }
  private void toggle(int position,Row row){
   if(position<0||position>=selected.length||animatingSelection)return;

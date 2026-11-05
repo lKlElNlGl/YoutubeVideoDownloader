@@ -30,3 +30,5 @@ Publish v0.5.3: stable playlist selections by ID, unified metadata refresh, queu
 Publish v0.5.4: exact approved Icon Lab A_192px launcher, 28dp native quality spinners, aligned playlist rows, saved per-playlist subfolders, RU/EN icons, checkbox spacing, unknown quality labels, signed APK.
 
 Publish v0.5.5: per-stream and total progress, fixed playlist state, 46dp UI standards, local file metadata refresh, queue navigation controls, filter reset, and signed Android APK.
+
+Publish v0.5.6: approved playlist/queue UI fixes, correct progress and folder labels, thumbnail retries and 300ms queue navigation fade. Signed release from main.

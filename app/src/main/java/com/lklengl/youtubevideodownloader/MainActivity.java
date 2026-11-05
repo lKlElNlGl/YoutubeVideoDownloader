@@ -49,6 +49,12 @@ public final class MainActivity extends Activity {
     private FormatChoices formatChoices=FormatChoices.fallback();
     private String queueSignature=null;
     private int queueVisibleCount=40;
+    private final int[] pageScrollPosition={0,0,0};
+    private FrameLayout viewport;
+    private LinearLayout stickyTabs;
+    private LinearLayout[] stickyPageTabs;
+    private TextView jumpUp,jumpDown;
+    private final android.os.Handler jumpHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private ProgressBar activeQueueBar;
     private TextView activeQueueInfo;
     private TextView preview, folderLabel, previewTitle, previewDuration, previewQuality, previewHeader, previewAllQualities;
@@ -166,6 +172,8 @@ public final class MainActivity extends Activity {
             if(shared!=null)url.setText(shared.trim());
         }
         refreshQueue();
+        if(getIntent()!=null&&getIntent().getBooleanExtra("open_queue_top",false))
+            openQueueAtTop();
         if(DownloadQueue.hasActive(this)) DownloadService.kick(this);
         checkAppUpdate(false);
     }
@@ -182,7 +190,10 @@ public final class MainActivity extends Activity {
         mainScroll.setBackgroundColor(ThemeStyle.background(this));
         LinearLayout page=new LinearLayout(this);page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(16),dp(16),dp(16),dp(28));
-        mainScroll.addView(page);setContentView(mainScroll);
+        mainScroll.addView(page);
+        viewport=new FrameLayout(this);
+        viewport.addView(mainScroll,new FrameLayout.LayoutParams(-1,-1));
+        setContentView(viewport);
 
         TextView heading=text("YoutubeVideoDownloader",23);
         heading.setTypeface(null,android.graphics.Typeface.BOLD);
@@ -210,6 +221,7 @@ public final class MainActivity extends Activity {
             pagePanels[i]=panel;page.addView(panel);
         }
         // Activity-level dispatchTouchEvent observes gestures even if a child consumes them.
+        installFloatingNavigation(tabs);
 
         LinearLayout download=pagePanels[0];
         LinearLayout linkCard=ThemeStyle.card(download,"Ссылка на YouTube");
@@ -226,7 +238,7 @@ public final class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable value){}
         });
         url.setPadding(dp(12),0,dp(51),0);
-        linkRow.addView(url,new FrameLayout.LayoutParams(-1,dp(51)));
+        linkRow.addView(url,new FrameLayout.LayoutParams(-1,dp(46)));
         ImageView clear=new ImageView(this);
         clear.setImageDrawable(new UiIcons("close",ThemeStyle.subdued(this),dp(18)));
         clear.setContentDescription(UiStrings.display(MainActivity.this, "Очистить ссылку"));
@@ -253,7 +265,7 @@ public final class MainActivity extends Activity {
                     renderPreview(false);
                 }).show();
         });
-        LinearLayout.LayoutParams linkSpacing=new LinearLayout.LayoutParams(-1,dp(51));
+        LinearLayout.LayoutParams linkSpacing=new LinearLayout.LayoutParams(-1,dp(46));
         linkSpacing.setMargins(0,0,0,dp(6));linkCard.addView(linkRow,linkSpacing);
         Button paste=button(linkCard,"Вставить ссылку");ThemeStyle.icon(paste,"clipboard",17);
         paste.setOnClickListener(v->{
@@ -403,9 +415,12 @@ public final class MainActivity extends Activity {
 
         LinearLayout network=ThemeStyle.card(settingsPage,"Сетевые параметры");
         proxyEnabled=new CheckBox(this);UiCheckboxStyle.apply(proxyEnabled);proxyEnabled.setText(UiStrings.translate(this,"Использовать HTTP/HTTPS-прокси"));UiCheckboxStyle.applyLabelGap(proxyEnabled);
-        proxyEnabled.setTextColor(ThemeStyle.text(this));network.addView(proxyEnabled);
+        proxyEnabled.setTextColor(ThemeStyle.text(this));
+         LinearLayout.LayoutParams proxySpace=new LinearLayout.LayoutParams(-1,-2);
+         proxySpace.setMargins(0,0,0,dp(7));network.addView(proxyEnabled,proxySpace);
         proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
-        network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(50)));
+        proxy.setHintTextColor(ThemeStyle.isDark(this)?0xFF404A5E:0xFFC3C4C7);
+         network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(46)));
 
         LinearLayout save=ThemeStyle.card(settingsPage,"Сохранение файлов");
         label(save,"Папка сохранения");
@@ -417,7 +432,8 @@ public final class MainActivity extends Activity {
         UiCheckboxStyle.applyLabelGap(playlistFolders);
         playlistFolders.setTextSize(13);playlistFolders.setTextColor(ThemeStyle.text(this));
         playlistFolders.setChecked(PlaylistFolders.enabled(this));
-        save.addView(playlistFolders);
+        LinearLayout.LayoutParams playlistFoldersSpacing=new LinearLayout.LayoutParams(-1,-2);
+         playlistFoldersSpacing.setMargins(0,0,0,dp(7));save.addView(playlistFolders,playlistFoldersSpacing);
         playlistFolders.setOnCheckedChangeListener((control,enabled)->PlaylistFolders.setEnabled(this,enabled));
         Button chooseFolder=button(save,"Изменить папку");ThemeStyle.icon(chooseFolder,"folder-edit",17);
         chooseFolder.setOnClickListener(v->{
@@ -514,6 +530,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showPage(int index){
+        if(mainScroll!=null)pageScrollPosition[currentPage]=mainScroll.getScrollY();
         currentPage=Math.max(0,Math.min(2,index));
         for(int i=0;i<pagePanels.length;i++){
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
@@ -521,7 +538,14 @@ public final class MainActivity extends Activity {
                 new String[]{"play","queue","settings"}[i],
                 new String[]{UiStrings.translate(this,"Загрузка"),UiStrings.translate(this,"Очередь"),UiStrings.translate(this,"Настройки")}[i]);
         }
-        mainScroll.scrollTo(0,0);
+        if(stickyPageTabs!=null)for(int i=0;i<stickyPageTabs.length;i++)
+            ThemeStyle.styleTab(stickyPageTabs[i],i==currentPage,
+               new String[]{"play","queue","settings"}[i],
+               new String[]{UiStrings.translate(this,"Загрузка"),UiStrings.translate(this,"Очередь"),UiStrings.translate(this,"Настройки")}[i]);
+        mainScroll.post(()->{
+            mainScroll.scrollTo(0,Math.max(0,pageScrollPosition[currentPage]));
+            updateFloatingNavigation();
+        });
         // Tab selection is intentionally not persisted across fresh launches.
     }
 
@@ -544,7 +568,7 @@ public final class MainActivity extends Activity {
     }
     private void label(LinearLayout parent,String value){
         TextView t=text(value,15);t.setTextColor(ThemeStyle.subdued(this));
-        t.setPadding(0,dp(13),0,dp(4));parent.addView(t);
+        t.setPadding(0,dp(parent.getChildCount()==1?4:10),0,dp(4));parent.addView(t);
     }
     private Button button(LinearLayout parent,String value){
         Button b=new Button(this);b.setText(UiStrings.display(this,value));ThemeStyle.styleButton(b,false);
@@ -579,7 +603,9 @@ public final class MainActivity extends Activity {
             }
             @Override public View getDropDownView(int position,View old,ViewGroup parent){
                 TextView v=decorate((TextView)super.getDropDownView(position,old,parent),position);
-                v.setPadding(dp(16),dp(12),dp(16),dp(12));
+                v.setPadding(dp(16),0,dp(16),0);
+                 v.setGravity(Gravity.CENTER_VERTICAL);
+                 v.setLayoutParams(new AbsListView.LayoutParams(-1,dp(ThemeStyle.POPUP_ITEM_HEIGHT_DP)));
                 v.setBackground(ThemeStyle.popupRowBackground(MainActivity.this,
                     position==s.getSelectedItemPosition(),position,getCount()));
                 return v;
@@ -589,7 +615,7 @@ public final class MainActivity extends Activity {
         s.setAdapter(adapter);ThemeStyle.styleSpinner(s);
         FrameLayout shell=new FrameLayout(this);
         shell.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(10)));
-        LinearLayout.LayoutParams shellParams=new LinearLayout.LayoutParams(-1,dp(52));
+        LinearLayout.LayoutParams shellParams=new LinearLayout.LayoutParams(-1,dp(46));
         shellParams.setMargins(0,dp(4),0,dp(7));parent.addView(shell,shellParams);
         shell.addView(s,new FrameLayout.LayoutParams(-1,-1));
         ImageView arrow=new ImageView(this);
@@ -609,7 +635,7 @@ public final class MainActivity extends Activity {
         row.addView(heading,new LinearLayout.LayoutParams(0,-2,0.39f));
         Spinner result=spinner(row,values);
         View shell=row.getChildAt(row.getChildCount()-1);
-        shell.setLayoutParams(new LinearLayout.LayoutParams(0,dp(52),0.61f));
+        shell.setLayoutParams(new LinearLayout.LayoutParams(0,dp(46),0.61f));
         return result;
     }
     private String selectedFormat(){
@@ -720,6 +746,7 @@ public final class MainActivity extends Activity {
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
+        if(previewButton!=null)previewButton.setVisibility(valid&&previewSnapshot.playlist?View.GONE:View.VISIBLE);
         if(!valid){
             updateQualityChoices(QualityChoices.fallback(),false);
             updateFormatChoices(FormatChoices.fallback(),false);
@@ -824,7 +851,7 @@ public final class MainActivity extends Activity {
         refreshQueue();
         try{
             DownloadService.kick(this);
-            QueueNotice.show(this,QueueNotice.message(1,priority));
+            QueueNotice.show(this,QueueNotice.message(1,priority),()->openQueueAtTop());
         }catch(Exception e){error("Запуск загрузки",e);}
     }
     private String queueName(DownloadQueue.Item j){

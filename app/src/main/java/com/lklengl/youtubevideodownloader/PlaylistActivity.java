@@ -136,7 +136,7 @@ public final class PlaylistActivity extends Activity {
  private boolean touchesInteractive(View v,float x,float y){
   if(v==null||v.getVisibility()!=View.VISIBLE)return false;
   if(v instanceof CompoundButton||v instanceof Spinner||v instanceof Button||
-     v instanceof EditText||v==filterIcon||v==refreshControl)
+     v instanceof EditText||v==filterIcon||v==refreshControl||v==listArrowUp||v==listArrowDown)
    if(hit(v,x,y))return true;
   if(v instanceof ViewGroup){
    ViewGroup group=(ViewGroup)v;
@@ -303,6 +303,7 @@ public final class PlaylistActivity extends Activity {
 
   LinearLayout listCard=column();
   listCard.setPadding(dp(10),dp(8),dp(10),dp(6));
+  listCard.setClipChildren(false);listCard.setClipToPadding(false);
   listCard.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(14)));
   root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);
@@ -467,16 +468,18 @@ public final class PlaylistActivity extends Activity {
   };
   final int[] savedScroll=scrollSession.get(source);
   list.setAdapter(adapter);
+  listArrowUp=playlistArrow(true);listArrowDown=playlistArrow(false);
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
    @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
+    list.post(this::updateListArrows);
    }
   });
   list.post(()->{
    if(savedScroll!=null)list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
-   list.post(()->scrollRestoring=false);
+   list.post(()->{scrollRestoring=false;updateListArrows();});
   });
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
@@ -485,6 +488,59 @@ public final class PlaylistActivity extends Activity {
   ThemeStyle.icon(addButton,"plus",18);
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
   addButton.setOnClickListener(v->addSelected());
+ }
+ /** Floating queue-style arrows control only the playlist ListView. */
+ private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
+  int fill=ThemeStyle.buttonFill(this);
+  fill=(fill&0x00FFFFFF)|(pressed?0xFF000000:0xD9000000);
+  return ThemeStyle.rounded(fill,ThemeStyle.buttonStroke(this),dp(11));
+ }
+ private ImageView playlistArrow(boolean up){
+  ImageView button=new ImageView(this);
+  button.setImageDrawable(new UiIcons(up?"arrow-outline-up":"arrow-outline-down",ThemeStyle.text(this),dp(21)));
+  button.setScaleType(ImageView.ScaleType.CENTER);
+  button.setBackground(arrowSkin(false));button.setElevation(dp(6));
+  button.setContentDescription(UiStrings.display(this,up?"Прокрутить вверх":"Прокрутить вниз"));
+  FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(78),dp(38),
+   Gravity.CENTER_HORIZONTAL|(up?Gravity.TOP:Gravity.BOTTOM));
+  if(up)p.topMargin=dp(8);else p.bottomMargin=dp(8);
+  listFrame.addView(button,p);button.setVisibility(View.GONE);button.setAlpha(0f);
+  final boolean[] held={false};
+  final Runnable edge=()->{
+   held[0]=true;
+   if(list.getCount()==0)return;
+   list.smoothScrollToPositionFromTop(up?0:list.getCount()-1,0,600);
+  };
+  button.setOnTouchListener((v,event)->{
+   switch(event.getActionMasked()){
+    case MotionEvent.ACTION_DOWN:
+     held[0]=false;button.setBackground(arrowSkin(true));
+     arrowHandler.postDelayed(edge,600);return true;
+    case MotionEvent.ACTION_UP:
+     button.setBackground(arrowSkin(false));arrowHandler.removeCallbacks(edge);
+     if(!held[0])list.smoothScrollBy((up?-1:1)*list.getHeight(),600);
+     return true;
+    case MotionEvent.ACTION_CANCEL:
+     arrowHandler.removeCallbacks(edge);button.setBackground(arrowSkin(false));return true;
+   }
+   return true;
+  });
+  return button;
+ }
+ private void fadeListArrow(ImageView button,boolean show){
+  if(button==null||Boolean.valueOf(show).equals(button.getTag()))return;
+  button.setTag(show);button.animate().cancel();
+  if(show){
+   button.setVisibility(View.VISIBLE);button.setAlpha(0f);
+   button.animate().alpha(1f).setDuration(300).start();
+  }else button.animate().alpha(0f).setDuration(300).withEndAction(()->{
+    if(Boolean.FALSE.equals(button.getTag()))button.setVisibility(View.GONE);
+  }).start();
+ }
+ private void updateListArrows(){
+  if(list==null)return;
+  fadeListArrow(listArrowUp,list.canScrollVertically(-1));
+  fadeListArrow(listArrowDown,list.canScrollVertically(1));
  }
  private int rowHighlight(boolean active){
   int base=ThemeStyle.cardColor(this);

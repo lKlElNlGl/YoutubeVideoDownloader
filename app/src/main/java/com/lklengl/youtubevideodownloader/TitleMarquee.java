@@ -31,7 +31,9 @@ public final class TitleMarquee {
      return true;
     }
     if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
-     title.postDelayed(()->title.setSelected(true),200);
+     title.postDelayed(()->{
+      if(title.getEllipsize()==TextUtils.TruncateAt.MARQUEE)title.setSelected(true);
+     },200);
      return true;
     }
     return true;

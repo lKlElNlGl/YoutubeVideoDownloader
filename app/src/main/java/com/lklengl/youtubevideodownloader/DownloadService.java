@@ -62,7 +62,7 @@ public final class DownloadService extends Service {
     }
     public static void discardPartial(Context context,String id){
         File dir=new File(new File(context.getFilesDir(),"partial-downloads"),"download-"+id);
-        deletePartial(new File(context.getCacheDir(),"download-"+id));
+        deletePartial(new File(new File(context.getFilesDir(),"partial-downloads"),"download-"+id));
         deletePartial(dir);
     }
     private static void deletePartial(File path){
@@ -149,7 +149,8 @@ public final class DownloadService extends Service {
     private void progress(DownloadQueue.Item item,String text,int percentage){
         if(pauseCurrent||cancelCurrent)return;
         stableProgress=ProgressPolicy.displayPercent(stableProgress,percentage);
-        DownloadQueue.progress(this,item.id,text,stableProgress,0,"Обработка",false);
+        DownloadQueue.progress(this,item.id,text,stableProgress,
+            percentage>=99?100:0,percentage>=99?"Обработка":"Подготовка",false);
         announce();
         long now=android.os.SystemClock.elapsedRealtime();
         if(now-lastNotification>=500) {

@@ -947,6 +947,51 @@ public final class MainActivity extends Activity {
             QueueNotice.show(this,QueueNotice.message(1,priority),()->openQueueAtTop());
         }catch(Exception e){error("Запуск загрузки",e);}
     }
+    private void refreshQueueFile(DownloadQueue.Item job){
+        if(metadataRefreshBusy)return;
+        uiWorker.execute(()->{
+            boolean found=LocalMetadata.refresh(getApplicationContext(),job);
+            runOnUiThread(()->{
+                queueSignature=null;refreshQueue();
+                Toast.makeText(this,UiStrings.display(this,found?
+                    "Информация о файле обновлена":"Файл не найден"),Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+    private void refreshAllQueueFiles(){
+        if(metadataRefreshBusy)return;
+        List<DownloadQueue.Item> all=new ArrayList<>();
+        for(DownloadQueue.Item j:DownloadQueue.all(this))
+            if(DownloadQueue.DONE.equals(j.status))all.add(j);
+        if(all.isEmpty())return;
+        metadataRefreshBusy=true;
+        if(refreshAllFilesButton!=null)refreshAllFilesButton.setEnabled(false);
+        java.util.concurrent.atomic.AtomicBoolean cancelled=new java.util.concurrent.atomic.AtomicBoolean(false);
+        AlertDialog dialog=ThemeStyle.dialog(this)
+            .setTitle(UiStrings.display(this,"Обновить информацию обо всех файлах"))
+            .setMessage(UiStrings.display(this,"Обработано 0 из "+all.size()))
+            .setNegativeButton(UiStrings.display(this,"Отмена"),(d,w)->cancelled.set(true))
+            .create();
+        dialog.show();
+        uiWorker.execute(()->{
+            int finished=0;
+            for(DownloadQueue.Item j:all){
+                if(cancelled.get())break;
+                LocalMetadata.refresh(getApplicationContext(),j);
+                final int done=++finished;
+                runOnUiThread(()->dialog.setMessage(
+                    UiStrings.display(MainActivity.this,"Обработано "+done+" из "+all.size())));
+            }
+            final int done=finished;
+            runOnUiThread(()->{
+                metadataRefreshBusy=false;
+                if(dialog.isShowing())dialog.dismiss();
+                queueSignature=null;refreshQueue();
+                Toast.makeText(this,UiStrings.display(this,"Обработано "+done+" из "+all.size()),
+                    Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
     private String queueName(DownloadQueue.Item j){
         return !TextUtils.isEmpty(j.title)?j.title:
             (!TextUtils.isEmpty(j.filename)?j.filename:j.url);

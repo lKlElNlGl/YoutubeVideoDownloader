@@ -597,6 +597,7 @@ public final class MainActivity extends Activity {
     }
 
     private void installFloatingNavigation(LinearLayout originalTabs){
+        this.originalTabs=originalTabs;
         stickyTabs=new LinearLayout(this);
         stickyTabs.setOrientation(LinearLayout.HORIZONTAL);
         stickyTabs.setPadding(dp(16),0,dp(16),dp(5));
@@ -616,19 +617,27 @@ public final class MainActivity extends Activity {
         }
         viewport.addView(stickyTabs,new FrameLayout.LayoutParams(-1,dp(59),Gravity.TOP));
         stickyTabs.setVisibility(View.GONE);
-        jumpUp=floatingArrow("↑",true);
-        jumpDown=floatingArrow("↓",false);
+        jumpUp=floatingArrow(true);
+        jumpDown=floatingArrow(false);
         mainScroll.setOnScrollChangeListener((View v,int sx,int sy,int ox,int oy)->{
             updateFloatingNavigation();
         });
         viewport.post(()->updateFloatingNavigation());
     }
-    private TextView floatingArrow(String value,boolean up){
-        TextView arrow=text(value,25);
-        arrow.setGravity(Gravity.CENTER);
-        arrow.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(22)));
-        arrow.setAlpha(.94f);arrow.setElevation(dp(6));
-        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(44),dp(44),
+    private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
+        int fill=ThemeStyle.buttonFill(this);
+        fill=(fill&0x00FFFFFF)|(pressed?0xFF000000:0xD9000000);
+        return ThemeStyle.rounded(fill,ThemeStyle.buttonStroke(this),dp(11));
+    }
+    private ImageView floatingArrow(boolean up){
+        ImageView arrow=new ImageView(this);
+        arrow.setImageDrawable(new UiIcons(up?"arrow-outline-up":"arrow-outline-down",
+            ThemeStyle.text(this),dp(21)));
+        arrow.setScaleType(ImageView.ScaleType.CENTER);
+        arrow.setContentDescription(UiStrings.display(this,up?"Прокрутить вверх":"Прокрутить вниз"));
+        arrow.setBackground(arrowSkin(false));
+        arrow.setElevation(dp(6));arrow.setAlpha(0f);
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(78),dp(38),
             (up?Gravity.TOP:Gravity.BOTTOM)|Gravity.CENTER_HORIZONTAL);
         if(up)p.topMargin=dp(62);else p.bottomMargin=dp(12);
         viewport.addView(arrow,p);arrow.setVisibility(View.GONE);
@@ -645,24 +654,58 @@ public final class MainActivity extends Activity {
         arrow.setOnTouchListener((v,event)->{
             switch(event.getActionMasked()){
                 case MotionEvent.ACTION_DOWN:
+                    arrow.setBackground(arrowSkin(true));
                     held[0]=false;jumpHandler.postDelayed(longPress,600);return true;
                 case MotionEvent.ACTION_UP:
+                    arrow.setBackground(arrowSkin(false));
                     jumpHandler.removeCallbacks(longPress);
                     if(!held[0])mainScroll.smoothScrollBy(0,(up?-1:1)*mainScroll.getHeight());
                     return true;
                 case MotionEvent.ACTION_CANCEL:
+                    arrow.setBackground(arrowSkin(false));
                     jumpHandler.removeCallbacks(longPress);return true;
             }
             return true;
         });
         return arrow;
     }
+    private void showFloatingArrow(ImageView arrow,boolean show){
+        if(arrow==null||Boolean.valueOf(show).equals(arrow.getTag()))return;
+        arrow.setTag(show);
+        arrow.animate().cancel();
+        if(show){
+            arrow.setVisibility(View.VISIBLE);
+            arrow.setAlpha(0f);
+            arrow.animate().alpha(1f).setDuration(300).start();
+        }else{
+            if(currentPage!=1){arrow.setVisibility(View.GONE);arrow.setAlpha(0f);}
+            else arrow.animate().alpha(0f).setDuration(300)
+                .withEndAction(()->{
+                    if(Boolean.FALSE.equals(arrow.getTag()))arrow.setVisibility(View.GONE);
+                }).start();
+        }
+    }
     private void updateFloatingNavigation(){
         if(stickyTabs==null||mainScroll==null)return;
-        boolean pinned=mainScroll.getScrollY()>=dp(85);
+        // Replace the original tab row before even its top border can be clipped.
+        boolean pinned=originalTabs!=null&&mainScroll.getScrollY()>=originalTabs.getTop();
         stickyTabs.setVisibility(pinned?View.VISIBLE:View.GONE);
-        if(jumpUp!=null)jumpUp.setVisibility(currentPage==1&&mainScroll.canScrollVertically(-1)?View.VISIBLE:View.GONE);
-        if(jumpDown!=null)jumpDown.setVisibility(currentPage==1&&mainScroll.canScrollVertically(1)?View.VISIBLE:View.GONE);
+        boolean up=false,down=false;
+        if(currentPage==1){
+            if(firstQueueCard!=null&&firstQueueCard.isAttachedToWindow()){
+                int[] first={0,0},tabs={0,0};
+                firstQueueCard.getLocationOnScreen(first);stickyTabs.getLocationOnScreen(tabs);
+                up=Release056Rules.showUp(mainScroll.canScrollVertically(-1),first[1],
+                    tabs[1]+stickyTabs.getHeight());
+            }
+            if(queueCleanButton!=null&&queueCleanButton.isAttachedToWindow()){
+                int[] last={0,0},frame={0,0};
+                queueCleanButton.getLocationOnScreen(last);mainScroll.getLocationOnScreen(frame);
+                down=Release056Rules.showDown(mainScroll.canScrollVertically(1),
+                    last[1]+queueCleanButton.getHeight(),frame[1]+mainScroll.getHeight());
+            }
+        }
+        showFloatingArrow(jumpUp,up);showFloatingArrow(jumpDown,down);
     }
     private void openQueueAtTop(){
         pageScrollPosition[1]=0;
@@ -678,6 +721,7 @@ public final class MainActivity extends Activity {
     private void showPage(int index){
         if(mainScroll!=null)pageScrollPosition[currentPage]=mainScroll.getScrollY();
         currentPage=Math.max(0,Math.min(2,index));
+        if(mainPage!=null)mainPage.setPadding(dp(16),dp(16),dp(16),dp(currentPage==1?6:28));
         for(int i=0;i<pagePanels.length;i++){
             pagePanels[i].setVisibility(i==currentPage?View.VISIBLE:View.GONE);
             ThemeStyle.styleTab(pageTabs[i],i==currentPage,
@@ -1244,6 +1288,7 @@ public final class MainActivity extends Activity {
                 compactQueueRow(problems.get(n),false);
             if(problems.size()>queueVisibleCount)queueMoreButton(problems.size()-queueVisibleCount);
         }
+        mainScroll.post(this::updateFloatingNavigation);
     }
     private void queueMoreButton(int remaining){
         Button more=button(queueList,"Показать ещё ("+remaining+")");

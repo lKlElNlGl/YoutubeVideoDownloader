@@ -41,7 +41,11 @@ public final class PlaylistActivity extends Activity {
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel;
- private Button addButton;
+ private ProgressBar refreshSpinner;
+ private Button cancelRefreshButton,addButton;
+ private FrameLayout listFrame;
+ private ImageView listArrowUp,listArrowDown;
+ private final Handler arrowHandler=new Handler(Looper.getMainLooper());
  private long refreshStart;
  private boolean observedRunning=false;
  private final Handler handler=new Handler(Looper.getMainLooper());
@@ -59,23 +63,32 @@ public final class PlaylistActivity extends Activity {
    if(running){
     observedRunning=true;refreshStart=state.startedMs;
     progressPanel.setVisibility(View.VISIBLE);refreshControl.setEnabled(false);
+    refreshSpinner.setVisibility(View.VISIBLE);
+    cancelRefreshButton.setVisibility(View.VISIBLE);
     long seconds=Math.max(0,(SystemClock.elapsedRealtime()-refreshStart)/1000L);
     int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
     progressText.setText(UiStrings.display(PlaylistActivity.this,
       "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)+
        "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
    }else{
-    progressPanel.setVisibility(View.GONE);refreshControl.setEnabled(true);
-    if(observedRunning&&source.equals(state.url)){
+    boolean same=source!=null&&source.equals(state.url);
+    boolean cancelled=same&&state.stage==PlaylistRefreshManager.Stage.CANCELLED;
+    progressPanel.setVisibility(cancelled?View.VISIBLE:View.GONE);
+    refreshControl.setEnabled(true);
+    if(cancelled){
+     refreshSpinner.setVisibility(View.GONE);
+     cancelRefreshButton.setVisibility(View.GONE);
+     progressText.setText(UiStrings.display(PlaylistActivity.this,
+         "Запрос обновления информации отменён"));
+    }
+    if(observedRunning&&same){
      if(state.stage==PlaylistRefreshManager.Stage.DONE){
       refreshData(true);
-      Toast.makeText(PlaylistActivity.this,UiStrings.display(PlaylistActivity.this,
-       "Плейлист обновлён"),Toast.LENGTH_SHORT).show();
+      if(PlaylistRefreshManager.claimNotice(source,state.revision))
+       RefreshNotice.show(PlaylistActivity.this,true);
      }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){
-      ThemeStyle.dialog(PlaylistActivity.this)
-       .setTitle(UiStrings.display(PlaylistActivity.this,"Не удалось обновить плейлист"))
-       .setMessage(UiStrings.display(PlaylistActivity.this,state.error))
-       .setPositiveButton(UiStrings.display(PlaylistActivity.this,"ОК"),null).show();
+      if(PlaylistRefreshManager.claimNotice(source,state.revision))
+       RefreshNotice.show(PlaylistActivity.this,false);
      }
     }
     observedRunning=false;
@@ -119,14 +132,31 @@ public final class PlaylistActivity extends Activity {
   selectedFirst=display.getBoolean("selectedFirst",false);
   buildScreen();ThemeStyle.applySystemBarInsets(this);refreshData(false);
  }
- /** Deliberate left-to-right return without stealing vertical scroll gestures. */
+ /** Back swipe begins in free screen space; inputs and vertical scrolling win. */
+ private boolean touchesInteractive(View v,float x,float y){
+  if(v==null||v.getVisibility()!=View.VISIBLE)return false;
+  if(v instanceof CompoundButton||v instanceof Spinner||v instanceof Button||
+     v instanceof EditText||v==filterIcon||v==refreshControl)
+   if(hit(v,x,y))return true;
+  if(v instanceof ViewGroup){
+   ViewGroup group=(ViewGroup)v;
+   for(int i=0;i<group.getChildCount();i++)
+    if(touchesInteractive(group.getChildAt(i),x,y))return true;
+  }
+  return false;
+ }
+ private boolean hit(View view,float x,float y){
+  int[] pos=new int[2];view.getLocationOnScreen(pos);
+  return x>=pos[0]&&y>=pos[1]&&x<pos[0]+view.getWidth()&&y<pos[1]+view.getHeight();
+ }
  @Override public boolean dispatchTouchEvent(MotionEvent event){
   if(event.getActionMasked()==MotionEvent.ACTION_DOWN){
    swipeStartX=event.getRawX();swipeStartY=event.getRawY();
-   swipeEligible=swipeStartX<=dp(105);
+   swipeEligible=!touchesInteractive(getWindow().getDecorView(),swipeStartX,swipeStartY);
   }else if(event.getActionMasked()==MotionEvent.ACTION_UP){
    float dx=event.getRawX()-swipeStartX,dy=event.getRawY()-swipeStartY;
-   if(swipeEligible&&dx>=dp(95)&&dx>Math.abs(dy)*2.2f){
+   if(swipeEligible&&Release057Rules.backSwipe(swipeStartX,swipeStartY,
+       event.getRawX(),dx/dp(1),dy/dp(1))){
     MotionEvent cancel=MotionEvent.obtain(event);cancel.setAction(MotionEvent.ACTION_CANCEL);
     super.dispatchTouchEvent(cancel);cancel.recycle();finish();return true;
    }
@@ -237,15 +267,18 @@ public final class PlaylistActivity extends Activity {
   progressPanel=panel();
   LinearLayout statusRow=new LinearLayout(this);statusRow.setGravity(Gravity.CENTER_VERTICAL);
   progressPanel.addView(statusRow);
-  ProgressBar spinner=new ProgressBar(this);
-  spinner.setIndeterminateTintList(ColorStateList.valueOf(ThemeStyle.RED));
-  statusRow.addView(spinner,new LinearLayout.LayoutParams(dp(33),dp(33)));
+  refreshSpinner=new ProgressBar(this);
+  refreshSpinner.setIndeterminateTintList(ColorStateList.valueOf(ThemeStyle.RED));
+  statusRow.addView(refreshSpinner,new LinearLayout.LayoutParams(dp(33),dp(33)));
   progressText=txt("",12);progressText.setTextColor(ThemeStyle.subdued(this));
   LinearLayout.LayoutParams progressTextParams=new LinearLayout.LayoutParams(0,-2,1);
   progressTextParams.setMargins(dp(10),0,0,0);statusRow.addView(progressText,progressTextParams);
-  TextView cancel=txt("Отмена",13);cancel.setTextColor(ThemeStyle.RED);
-  cancel.setPadding(dp(12),dp(8),dp(8),dp(8));statusRow.addView(cancel);
-  cancel.setOnClickListener(v->cancelRefresh());
+  cancelRefreshButton=new Button(this);
+  cancelRefreshButton.setText(UiStrings.display(this,"Отмена"));
+  ThemeStyle.styleButton(cancelRefreshButton,false);
+  cancelRefreshButton.setTextSize(12);
+  statusRow.addView(cancelRefreshButton,new LinearLayout.LayoutParams(dp(78),dp(38)));
+  cancelRefreshButton.setOnClickListener(v->cancelRefresh());
   root.addView(progressPanel,margin(1,6));progressPanel.setVisibility(View.GONE);
 
   LinearLayout header=panel();root.addView(header,margin(2,9));

@@ -344,6 +344,7 @@ public final class PlaylistActivity extends Activity {
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
      arrow.setPadding(dp(7),0,dp(7),0);
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(23),-1,Gravity.END));
+      ((RotatingSpinner)h.quality).setArrow(arrow);
       // Closed spinner is intentionally 18dp; popup rows stay at shared 46dp.
      arrow.setOnClickListener(v->holder.quality.performClick());
      h.already=txt("",10);
@@ -416,7 +417,7 @@ public final class PlaylistActivity extends Activity {
  }
  private Spinner spinner(String[] labels){return spinner(labels,null);}
  private Spinner spinner(String[] labels,java.util.function.Supplier<String> shown){
-  Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
+  Spinner s=new RotatingSpinner(this);
   ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,UiStrings.translateChoices(this,labels)){
    @Override public View getView(int p,View old,android.view.ViewGroup parent){
     TextView t=(TextView)super.getView(p,old,parent);

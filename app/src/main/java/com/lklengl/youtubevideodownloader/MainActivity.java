@@ -674,7 +674,7 @@ public final class MainActivity extends Activity {
         return translated;
     }
     private Spinner spinner(LinearLayout parent,String[] items){
-        Spinner s=new Spinner(this,Spinner.MODE_DROPDOWN);
+        Spinner s=new RotatingSpinner(this);
         s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
         boolean themeChoices=items==ThemeStyle.MODES;
         boolean languageChoices=items==UiStrings.LANGUAGE_NAMES;
@@ -717,6 +717,7 @@ public final class MainActivity extends Activity {
         arrow.setPadding(dp(10),0,dp(10),0);
         arrow.setContentDescription(UiStrings.display(MainActivity.this, "Открыть список"));
         shell.addView(arrow,arrParams);
+        ((RotatingSpinner)s).setArrow(arrow);
         arrow.setOnClickListener(v->s.performClick());
         return s;
     }
@@ -747,7 +748,9 @@ public final class MainActivity extends Activity {
             @Override public View getDropDownView(int position,View old,ViewGroup parent){
                 TextView v=(TextView)super.getDropDownView(position,old,parent);
                 v.setTextColor(ThemeStyle.text(MainActivity.this));
-                v.setPadding(dp(16),dp(12),dp(16),dp(12));
+                v.setPadding(dp(16),0,dp(16),0);
+                v.setGravity(Gravity.CENTER_VERTICAL);
+                v.setLayoutParams(new AbsListView.LayoutParams(-1,dp(ThemeStyle.POPUP_ITEM_HEIGHT_DP)));
                 v.setBackground(ThemeStyle.popupRowBackground(MainActivity.this,
                     position==mode.getSelectedItemPosition(),position,getCount()));
                 return v;

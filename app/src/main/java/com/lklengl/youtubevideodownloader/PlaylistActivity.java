@@ -36,6 +36,7 @@ public final class PlaylistActivity extends Activity {
  private boolean selectedFirst=false,animatingSelection=false;
  private static final Map<String,int[]> scrollSession=new HashMap<>();
  private int activeTitle=-1,durationWidth=0;
+ private boolean scrollRestoring=true;
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel;
  private Button addButton;

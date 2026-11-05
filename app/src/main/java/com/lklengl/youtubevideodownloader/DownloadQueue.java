@@ -187,7 +187,7 @@ public final class DownloadQueue {
                 i.status=DONE;i.message="Готово";i.progress=100;i.streamProgress=100;i.filename=filename;
                 i.contentUri=contentUri;i.bytesSaved=bytes;
                 if(duration>=0)i.durationSeconds=duration;
-                if(height>0)i.actualHeight=height;
+                i.actualHeight=Math.max(0,height);
                 i.metadataChecked=true;save(context,list);return;
             }
         }
@@ -197,7 +197,7 @@ public final class DownloadQueue {
             List<Item> list=read(context);
             for(Item i:list)if(i.id.equals(id)){
                 if(duration>=0)i.durationSeconds=duration;
-                if(height>0)i.actualHeight=height;
+                i.actualHeight=Math.max(0,height);
                 if(title!=null&&!title.isEmpty()&&(i.title==null||i.title.isEmpty()))i.title=title;
                 i.metadataChecked=true;save(context,list);return;
             }

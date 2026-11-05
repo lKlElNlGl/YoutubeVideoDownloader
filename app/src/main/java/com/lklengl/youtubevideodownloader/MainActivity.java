@@ -424,8 +424,13 @@ public final class MainActivity extends Activity {
 
         LinearLayout save=ThemeStyle.card(settingsPage,"Сохранение файлов");
         label(save,"Папка сохранения");
-        folderLabel=text("",14);folderLabel.setPadding(dp(3),dp(4),dp(3),dp(8));
-        save.addView(folderLabel);
+        folderLabel=text("",14);folderLabel.setSingleLine(true);
+        folderLabel.setHorizontallyScrolling(true);folderLabel.setGravity(Gravity.CENTER_VERTICAL);
+        folderLabel.setPadding(dp(3),0,dp(3),0);
+        folderLabel.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(6)));
+        LinearLayout.LayoutParams folderParams=new LinearLayout.LayoutParams(-1,dp(18));
+        folderParams.setMargins(0,dp(4),0,dp(8));
+        save.addView(folderLabel,folderParams);
         CheckBox playlistFolders=new CheckBox(this);
         UiCheckboxStyle.apply(playlistFolders);
         playlistFolders.setText(UiStrings.display(this,"Сохранять плейлисты в отдельные папки"));
@@ -529,6 +534,85 @@ public final class MainActivity extends Activity {
         return false;
     }
 
+    private void installFloatingNavigation(LinearLayout originalTabs){
+        stickyTabs=new LinearLayout(this);
+        stickyTabs.setOrientation(LinearLayout.HORIZONTAL);
+        stickyTabs.setPadding(dp(16),0,dp(16),dp(5));
+        stickyTabs.setBackgroundColor(ThemeStyle.background(this));
+        stickyPageTabs=new LinearLayout[3];
+        String[] labels={"Загрузка","Очередь","Настройки"};
+        String[] icons={"play","queue","settings"};
+        for(int i=0;i<3;i++){
+            LinearLayout tab=new LinearLayout(this);
+            stickyPageTabs[i]=tab;
+            ThemeStyle.styleTab(tab,i==currentPage,icons[i],UiStrings.translate(this,labels[i]));
+            LinearLayout.LayoutParams item=new LinearLayout.LayoutParams(0,dp(48),1);
+            item.setMargins(dp(2),dp(4),dp(2),0);
+            stickyTabs.addView(tab,item);
+            final int index=i;
+            tab.setOnClickListener(v->showPage(index));
+        }
+        viewport.addView(stickyTabs,new FrameLayout.LayoutParams(-1,dp(59),Gravity.TOP));
+        stickyTabs.setVisibility(View.GONE);
+        jumpUp=floatingArrow("↑",true);
+        jumpDown=floatingArrow("↓",false);
+        mainScroll.setOnScrollChangeListener((View v,int sx,int sy,int ox,int oy)->{
+            updateFloatingNavigation();
+        });
+        viewport.post(()->updateFloatingNavigation());
+    }
+    private TextView floatingArrow(String value,boolean up){
+        TextView arrow=text(value,25);
+        arrow.setGravity(Gravity.CENTER);
+        arrow.setBackground(ThemeStyle.rounded(ThemeStyle.field(this),ThemeStyle.buttonStroke(this),dp(22)));
+        arrow.setAlpha(.94f);arrow.setElevation(dp(6));
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(44),dp(44),
+            (up?Gravity.TOP:Gravity.BOTTOM)|Gravity.CENTER_HORIZONTAL);
+        if(up)p.topMargin=dp(62);else p.bottomMargin=dp(12);
+        viewport.addView(arrow,p);arrow.setVisibility(View.GONE);
+        final boolean[] held={false};
+        Runnable longPress=()->{
+            held[0]=true;
+            int target=up?0:Math.max(0,mainScroll.getChildAt(0).getHeight()-mainScroll.getHeight());
+            android.animation.ValueAnimator animation=android.animation.ValueAnimator.ofInt(mainScroll.getScrollY(),target);
+            animation.setDuration(600);
+            animation.setInterpolator(new android.view.animation.DecelerateInterpolator());
+            animation.addUpdateListener(a->mainScroll.scrollTo(0,(Integer)a.getAnimatedValue()));
+            animation.start();
+        };
+        arrow.setOnTouchListener((v,event)->{
+            switch(event.getActionMasked()){
+                case MotionEvent.ACTION_DOWN:
+                    held[0]=false;jumpHandler.postDelayed(longPress,600);return true;
+                case MotionEvent.ACTION_UP:
+                    jumpHandler.removeCallbacks(longPress);
+                    if(!held[0])mainScroll.smoothScrollBy(0,(up?-1:1)*mainScroll.getHeight());
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    jumpHandler.removeCallbacks(longPress);return true;
+            }
+            return true;
+        });
+        return arrow;
+    }
+    private void updateFloatingNavigation(){
+        if(stickyTabs==null||mainScroll==null)return;
+        boolean pinned=mainScroll.getScrollY()>=dp(85);
+        stickyTabs.setVisibility(pinned?View.VISIBLE:View.GONE);
+        if(jumpUp!=null)jumpUp.setVisibility(currentPage==1&&mainScroll.canScrollVertically(-1)?View.VISIBLE:View.GONE);
+        if(jumpDown!=null)jumpDown.setVisibility(currentPage==1&&mainScroll.canScrollVertically(1)?View.VISIBLE:View.GONE);
+    }
+    private void openQueueAtTop(){
+        pageScrollPosition[1]=0;
+        showPage(1);
+        mainScroll.post(()->{mainScroll.scrollTo(0,0);updateFloatingNavigation();});
+    }
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);setIntent(intent);
+        if(intent!=null&&intent.getBooleanExtra("open_queue_top",false)){
+            intent.removeExtra("open_queue_top");openQueueAtTop();
+        }
+    }
     private void showPage(int index){
         if(mainScroll!=null)pageScrollPosition[currentPage]=mainScroll.getScrollY();
         currentPage=Math.max(0,Math.min(2,index));

@@ -3,10 +3,10 @@ import java.util.*;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class PlaylistSelectionPolicyTest {
- @Test public void previouslyAddedEntriesAreUnselectedAndFreshOnesSelected(){
+ @Test public void brandNewPlaylistEntriesAreAllUnchecked(){
   List<String> urls=Arrays.asList("u1","u2","u3");
   Set<String> added=new HashSet<>(Arrays.asList("u1","u2"));
-  assertEquals(Arrays.asList(false,false,true),PlaylistSelectionPolicy.initial(urls,added));
+  assertEquals(Arrays.asList(false,false,false),PlaylistSelectionPolicy.initial(urls,added));
  }
  @Test public void explicitUnselectedItemsStayUnselectedAcrossReopening(){
   List<Boolean> current=Arrays.asList(false,true,false);

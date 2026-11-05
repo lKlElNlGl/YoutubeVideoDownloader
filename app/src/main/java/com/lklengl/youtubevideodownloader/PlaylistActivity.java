@@ -527,6 +527,7 @@ public final class PlaylistActivity extends Activity {
   arrow.setPadding(dp(9),0,dp(9),0);
   FrameLayout.LayoutParams location=new FrameLayout.LayoutParams(dp(32),-1,Gravity.END);
   frame.addView(arrow,location);
+  ((RotatingSpinner)spinner).setArrow(arrow);
   arrow.setOnClickListener(v->spinner.performClick());
  }
  private Spinner settingsChoice(LinearLayout content,String title,String[] choices,int value){

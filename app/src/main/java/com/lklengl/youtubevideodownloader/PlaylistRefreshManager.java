@@ -21,6 +21,15 @@ public final class PlaylistRefreshManager {
  }
  private static final ExecutorService worker=Executors.newSingleThreadExecutor();
  private static volatile Snapshot latest=new Snapshot("","",Stage.IDLE,"","",0,0);
+ private static long displayedNoticeRevision=-1;
+ /** Only the currently visible screen can claim a terminal refresh notification. */
+ public static synchronized boolean claimNotice(String url,long revision){
+  if(latest.revision!=revision||!latest.url.equals(url)||
+     !Release057Rules.shouldNotifyRefresh(latest.stage)||
+     displayedNoticeRevision==revision)return false;
+  displayedNoticeRevision=revision;
+  return true;
+ }
  private PlaylistRefreshManager(){}
  public static Snapshot current(){return latest;}
  public static synchronized boolean start(Context context,String url,String proxy){

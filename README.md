@@ -30,6 +30,14 @@
 
 ## Изменения
 
+### v0.5.5
+- Общий прогресс файла и отдельный прогресс видео/аудио; исправлены скачки процентов и несоответствие полосы прогресса.
+- Очередь: выделение записей, бегущие названия, кнопки прокрутки на экран и до края по удержанию, сохранение позиции при переключении страниц.
+- Обновление информации о завершённых файлах из локального хранилища: для отдельного файла и массовое с прогрессом и отменой. Исправлены статусы удалённых файлов и очистка временных загрузок.
+- Плейлисты: новые списки открываются без отметок, сохраняются выбранные качества и положение прокрутки, статусы синхронизируются с реальной очередью. Быстрый переход в начало очереди из уведомления о добавлении.
+- Унифицированы кнопки, поля и элементы списков (46 dp), кроме верхних вкладок и индивидуального поля качества (18 dp). Качество ниже 360p больше не предлагается.
+- Компактные индивидуальные поля качества, выравнивание по длительности, обновлённые фильтры и сброс, динамические стрелки выпадающих меню, согласованные отступы и оформление настроек.
+
 ### v0.5.4
 - Установлена окончательно утверждённая иконка _A_192px из Icon Lab v0.5.11: оригинальный PNG без adaptive-обработки и подложек, с проверкой SHA-256 в сборке.
 - Индивидуальный выбор качества переведён на стандартный Spinner приложения: 28 dp, динамическая ширина, длительность и качество на одной строке, никаких галочек в меню.
@@ -101,6 +109,14 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.5
+- Distinct overall-file and video/audio-stream progress, with fixes for percentage jumps and progress-bar mismatch.
+- Queue row selection, marquee titles, page-sized arrow scrolling and long-press jumps, and retained scroll position when switching tabs.
+- Local-only metadata refresh for an individual completed file or all completed files, with progress and cancellation; safer partial-download cleanup and missing-file statuses.
+- Playlists start unchecked, preserve chosen qualities and scroll position, and reflect actual queue state. Added a quick jump to the top of the queue after enqueueing.
+- Unified regular button, field and menu-item heights to 46 dp (top tabs and the 18 dp per-video quality field remain exceptions). Minimum offered quality is 360p.
+- Refined per-video quality sizing and alignment, filters and reset action, rotating dropdown arrows, and Settings spacing and styling.
 
 ### v0.5.4
 - Adopted the user-approved original _A_192px PNG launcher from Icon Lab v0.5.11, with no adaptive icon or background and an SHA-256 build guard.

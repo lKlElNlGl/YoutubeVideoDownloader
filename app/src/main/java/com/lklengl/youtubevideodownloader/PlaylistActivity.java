@@ -391,7 +391,7 @@ public final class PlaylistActivity extends Activity {
     h.position=visibleRows.get(pos);
      PlaylistRepository.Entry entry=playlist.entries.get(h.position);
     String imageKey="playlist-"+entry.id;
-    if(!imageKey.equals(h.imageId)){
+    if(!imageKey.equals(h.imageId)||h.image.getDrawable() instanceof UiIcons){
      h.imageId=imageKey;
      DownloadQueue.Item imageItem=new DownloadQueue.Item();
      imageItem.id=imageKey;imageItem.url=entry.url;

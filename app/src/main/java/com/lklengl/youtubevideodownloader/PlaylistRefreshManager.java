@@ -53,6 +53,7 @@ public final class PlaylistRefreshManager {
     }
     if(!isActive(id))return;
     PlaylistCache.save(application,url,data);
+    PlaylistResolutionWorker.markPlaylistRefreshed(application,url);
     finish(id,Stage.DONE,"");
    }catch(Exception e){finish(id,Stage.ERROR,e.getMessage()==null?"Не удалось обновить плейлист":e.getMessage());}
   });

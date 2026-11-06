@@ -601,6 +601,8 @@ public final class PlaylistActivity extends Activity {
   p.topMargin=Math.round(dp(2)*fraction);
   p.bottomMargin=Math.round(dp(9)*fraction);
   headerClip.setLayoutParams(p);
+  // Translate upward inside the clipping viewport, rather than cutting the cover from below.
+  if(headerClip.getChildCount()>0)headerClip.getChildAt(0).setTranslationY(-next);
   updateListArrows();
  }
  private void scrollToPlaylistTop(){

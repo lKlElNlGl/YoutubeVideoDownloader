@@ -143,6 +143,9 @@ public final class MainActivity extends Activity {
                             RefreshNotice.show(MainActivity.this,false);
                     }else if(state.stage==PlaylistRefreshManager.Stage.CANCELLED){
                         processedRefreshRevision=state.revision;
+                        if(!Release058Rules.showCancel(PlaylistRefreshManager.cancellationTimeMs(),
+                             android.os.SystemClock.elapsedRealtime()))continueRefreshCleanup();
+                        else{
                         attachInfoRow(true);
                         previewCard.setVisibility(View.VISIBLE);
                         if(cancelInfoExpiryRevision!=state.revision){
@@ -168,7 +171,10 @@ public final class MainActivity extends Activity {
                                 infoStatusRow.setMinimumHeight(0);
                                 cancelInfoExpiry=null;
                             };
-                            infoHandler.postDelayed(cancelInfoExpiry,15000);
+                            infoHandler.postDelayed(cancelInfoExpiry,Math.max(0,
+                                15000-(android.os.SystemClock.elapsedRealtime()-
+                                 PlaylistRefreshManager.cancellationTimeMs())));
+                        }
                         }
                     }
                 }
@@ -176,6 +182,11 @@ public final class MainActivity extends Activity {
             infoHandler.postDelayed(this,800);
         }
     };
+    private void continueRefreshCleanup(){
+        if(infoStatusRow!=null&&infoStatusRow.getVisibility()==View.VISIBLE){
+            infoStatusRow.setVisibility(View.GONE);infoStatusRow.setMinimumHeight(0);
+        }
+    }
     private String previewErrorLog="";
     private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow;
     private int infoStatusBaseIndex=-1;

@@ -12,6 +12,22 @@ public final class Release058Rules {
     values.add(PlaylistQualityPolicy.VALUES[i]);
   return values;
  }
+ /** Keep manual requested quality if supported, otherwise select nearest real height. */
+ public static String closestSupported(String requested,Collection<String> available){
+  if("best".equals(requested)||available==null||available.contains(requested))return requested;
+  int target;
+  try{target=Integer.parseInt(requested);}catch(Exception ex){return "best";}
+  int bestBelow=-1,smallestAbove=Integer.MAX_VALUE;
+  for(String value:available){
+   if("best".equals(value))continue;
+   int height;
+   try{height=Integer.parseInt(value);}catch(Exception ex){continue;}
+   if(height<=target)bestBelow=Math.max(bestBelow,height);
+   else smallestAbove=Math.min(smallestAbove,height);
+  }
+  if(bestBelow>0)return Integer.toString(bestBelow);
+  return smallestAbove<Integer.MAX_VALUE?Integer.toString(smallestAbove):"best";
+ }
  public static boolean canSelect(boolean cached,boolean done,boolean failed){
   return cached||done||failed;
  }

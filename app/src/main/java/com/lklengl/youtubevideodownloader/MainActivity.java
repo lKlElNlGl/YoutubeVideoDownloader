@@ -92,6 +92,8 @@ public final class MainActivity extends Activity {
     };
     private boolean watchedSharedRefresh=false;
     private long processedRefreshRevision=-1;
+    private Runnable cancelInfoExpiry;
+    private long cancelInfoExpiryRevision=-1;
     private final Runnable sharedPlaylistClock=new Runnable(){
         @Override public void run(){
             if(url!=null&&infoIndicator!=null){
@@ -99,6 +101,8 @@ public final class MainActivity extends Activity {
                 String link=url.getText().toString().trim();
                 boolean matches=link.equals(state.url)&&PlaylistSupport.isPlaylist(link);
                 if(matches&&state.running()){
+                    if(cancelInfoExpiry!=null){infoHandler.removeCallbacks(cancelInfoExpiry);cancelInfoExpiry=null;}
+                    infoStatusRow.setMinimumHeight(0);
                     watchedSharedRefresh=true;
                     attachInfoRow(true);
                     previewCard.setVisibility(View.VISIBLE);
@@ -141,12 +145,31 @@ public final class MainActivity extends Activity {
                         processedRefreshRevision=state.revision;
                         attachInfoRow(true);
                         previewCard.setVisibility(View.VISIBLE);
-                        infoStatusRow.setVisibility(View.VISIBLE);
-                        infoIndicator.setVisibility(View.GONE);
-                        cancelInfoButton.setVisibility(View.GONE);
-                        infoTimer.setText(UiStrings.display(MainActivity.this,
-                            "Запрос обновления информации отменён"));
-                        updatePreviewMessage("");
+                        if(cancelInfoExpiryRevision!=state.revision){
+                            cancelInfoExpiryRevision=state.revision;
+                            android.view.ViewGroup holder=(android.view.ViewGroup)infoStatusRow.getParent();
+                            if(holder!=null)android.transition.TransitionManager.beginDelayedTransition(
+                                holder,new android.transition.AutoTransition().setDuration(600));
+                            // The cancellation line occupies additional space, then collapses on expiry.
+                            infoStatusRow.setMinimumHeight(infoStatusRow.getHeight()+dp(18));
+                            infoStatusRow.setVisibility(View.VISIBLE);
+                            infoIndicator.setVisibility(View.GONE);
+                            cancelInfoButton.setVisibility(View.GONE);
+                            infoTimer.setText(UiStrings.display(MainActivity.this,
+                                "Запрос обновления информации отменён"));
+                            updatePreviewMessage("");
+                            final long revision=state.revision;
+                            cancelInfoExpiry=()->{
+                                if(revision!=cancelInfoExpiryRevision)return;
+                                android.view.ViewGroup container=(android.view.ViewGroup)infoStatusRow.getParent();
+                                if(container!=null)android.transition.TransitionManager.beginDelayedTransition(
+                                    container,new android.transition.AutoTransition().setDuration(600));
+                                infoStatusRow.setVisibility(View.GONE);
+                                infoStatusRow.setMinimumHeight(0);
+                                cancelInfoExpiry=null;
+                            };
+                            infoHandler.postDelayed(cancelInfoExpiry,15000);
+                        }
                     }
                 }
             }
@@ -1808,6 +1831,7 @@ public final class MainActivity extends Activity {
         }
         infoHandler.removeCallbacks(sharedPlaylistClock);
         infoHandler.removeCallbacks(infoClock);
+        if(cancelInfoExpiry!=null)infoHandler.removeCallbacks(cancelInfoExpiry);
         artworkWorker.shutdownNow();
         uiWorker.shutdownNow();
         if(updateDialog!=null)updateDialog.close();

@@ -650,8 +650,11 @@ public final class PlaylistActivity extends Activity {
     case MotionEvent.ACTION_UP:
      button.setBackground(arrowSkin(false));arrowHandler.removeCallbacks(edge);
      if(!held[0]){
-      if(up)scrollToPlaylistTop();
-      else list.smoothScrollBy(list.getHeight(),600);
+      if(up){
+       if(Release058Rules.playlistArrowShouldJumpToTop(false,!list.canScrollVertically(-1)))
+        scrollToPlaylistTop();
+       else list.smoothScrollBy(-list.getHeight(),600);
+      }else list.smoothScrollBy(list.getHeight(),600);
      }
      return true;
     case MotionEvent.ACTION_CANCEL:

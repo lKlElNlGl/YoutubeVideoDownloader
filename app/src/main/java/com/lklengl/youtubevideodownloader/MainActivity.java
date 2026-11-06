@@ -92,6 +92,8 @@ public final class MainActivity extends Activity {
     };
     private boolean watchedSharedRefresh=false;
     private long processedRefreshRevision=-1;
+    private Runnable cancelInfoExpiry;
+    private long cancelInfoExpiryRevision=-1;
     private final Runnable sharedPlaylistClock=new Runnable(){
         @Override public void run(){
             if(url!=null&&infoIndicator!=null){
@@ -99,6 +101,8 @@ public final class MainActivity extends Activity {
                 String link=url.getText().toString().trim();
                 boolean matches=link.equals(state.url)&&PlaylistSupport.isPlaylist(link);
                 if(matches&&state.running()){
+                    if(cancelInfoExpiry!=null){infoHandler.removeCallbacks(cancelInfoExpiry);cancelInfoExpiry=null;}
+                    infoStatusRow.setMinimumHeight(0);
                     watchedSharedRefresh=true;
                     attachInfoRow(true);
                     previewCard.setVisibility(View.VISIBLE);
@@ -139,20 +143,50 @@ public final class MainActivity extends Activity {
                             RefreshNotice.show(MainActivity.this,false);
                     }else if(state.stage==PlaylistRefreshManager.Stage.CANCELLED){
                         processedRefreshRevision=state.revision;
+                        if(!Release058Rules.showCancel(PlaylistRefreshManager.cancellationTimeMs(),
+                             android.os.SystemClock.elapsedRealtime()))continueRefreshCleanup();
+                        else{
                         attachInfoRow(true);
                         previewCard.setVisibility(View.VISIBLE);
-                        infoStatusRow.setVisibility(View.VISIBLE);
-                        infoIndicator.setVisibility(View.GONE);
-                        cancelInfoButton.setVisibility(View.GONE);
-                        infoTimer.setText(UiStrings.display(MainActivity.this,
-                            "Запрос обновления информации отменён"));
-                        updatePreviewMessage("");
+                        if(cancelInfoExpiryRevision!=state.revision){
+                            cancelInfoExpiryRevision=state.revision;
+                            android.view.ViewGroup holder=(android.view.ViewGroup)infoStatusRow.getParent();
+                            if(holder!=null)android.transition.TransitionManager.beginDelayedTransition(
+                                holder,new android.transition.AutoTransition().setDuration(600));
+                            // The cancellation line occupies additional space, then collapses on expiry.
+                            infoStatusRow.setMinimumHeight(infoStatusRow.getHeight()+dp(18));
+                            infoStatusRow.setVisibility(View.VISIBLE);
+                            infoIndicator.setVisibility(View.GONE);
+                            cancelInfoButton.setVisibility(View.GONE);
+                            infoTimer.setText(UiStrings.display(MainActivity.this,
+                                "Запрос обновления информации отменён"));
+                            updatePreviewMessage("");
+                            final long revision=state.revision;
+                            cancelInfoExpiry=()->{
+                                if(revision!=cancelInfoExpiryRevision)return;
+                                android.view.ViewGroup container=(android.view.ViewGroup)infoStatusRow.getParent();
+                                if(container!=null)android.transition.TransitionManager.beginDelayedTransition(
+                                    container,new android.transition.AutoTransition().setDuration(600));
+                                infoStatusRow.setVisibility(View.GONE);
+                                infoStatusRow.setMinimumHeight(0);
+                                cancelInfoExpiry=null;
+                            };
+                            infoHandler.postDelayed(cancelInfoExpiry,Math.max(0,
+                                15000-(android.os.SystemClock.elapsedRealtime()-
+                                 PlaylistRefreshManager.cancellationTimeMs())));
+                        }
+                        }
                     }
                 }
             }
             infoHandler.postDelayed(this,800);
         }
     };
+    private void continueRefreshCleanup(){
+        if(infoStatusRow!=null&&infoStatusRow.getVisibility()==View.VISIBLE){
+            infoStatusRow.setVisibility(View.GONE);infoStatusRow.setMinimumHeight(0);
+        }
+    }
     private String previewErrorLog="";
     private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow;
     private int infoStatusBaseIndex=-1;
@@ -362,6 +396,9 @@ public final class MainActivity extends Activity {
         previewCard.addView(stats,previewStatsParams);
         previewDuration=statView(stats,"clock");
         previewQuality=statView(stats,"quality");
+        // Equal badge widths: the 6dp gap belongs to the first badge only.
+        LinearLayout.LayoutParams secondBadge=(LinearLayout.LayoutParams)stats.getChildAt(1).getLayoutParams();
+        secondBadge.rightMargin=0;stats.getChildAt(1).setLayoutParams(secondBadge);
         previewAllQualities=text("",12);
         previewAllQualities.setTextColor(ThemeStyle.subdued(this));
         previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
@@ -739,9 +776,17 @@ public final class MainActivity extends Activity {
             ThemeStyle.styleTab(stickyPageTabs[i],i==currentPage,
                new String[]{"play","queue","settings"}[i],
                new String[]{UiStrings.translate(this,"Загрузка"),UiStrings.translate(this,"Очередь"),UiStrings.translate(this,"Настройки")}[i]);
-        mainScroll.post(()->{
-            mainScroll.scrollTo(0,Math.max(0,pageScrollPosition[currentPage]));
-            updateFloatingNavigation();
+        // Restore position immediately before drawing the destination, never a stale frame.
+        final int destination=currentPage;
+        viewport.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener(){
+            @Override public boolean onPreDraw(){
+                viewport.getViewTreeObserver().removeOnPreDrawListener(this);
+                if(destination==currentPage){
+                    mainScroll.scrollTo(0,Math.max(0,pageScrollPosition[destination]));
+                    updateFloatingNavigation();
+                }
+                return true;
+            }
         });
         // Tab selection is intentionally not persisted across fresh launches.
     }
@@ -956,6 +1001,11 @@ public final class MainActivity extends Activity {
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
         if(valid)attachInfoRow(previewSnapshot.playlist);
+        LinearLayout.LayoutParams previewGap=(LinearLayout.LayoutParams)previewCard.getLayoutParams();
+        if(previewGap!=null){
+            int wanted=dp(valid&&previewSnapshot.playlist?6:8);
+            if(previewGap.topMargin!=wanted){previewGap.topMargin=wanted;previewCard.setLayoutParams(previewGap);}
+        }
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
         previewHeroView.setVisibility(valid?View.VISIBLE:View.GONE);
         previewStatsView.setVisibility(valid?View.VISIBLE:View.GONE);
@@ -1792,6 +1842,7 @@ public final class MainActivity extends Activity {
         }
         infoHandler.removeCallbacks(sharedPlaylistClock);
         infoHandler.removeCallbacks(infoClock);
+        if(cancelInfoExpiry!=null)infoHandler.removeCallbacks(cancelInfoExpiry);
         artworkWorker.shutdownNow();
         uiWorker.shutdownNow();
         if(updateDialog!=null)updateDialog.close();

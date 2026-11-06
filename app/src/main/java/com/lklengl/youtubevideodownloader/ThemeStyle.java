@@ -22,7 +22,7 @@ public final class ThemeStyle {
     public static final int CONTROL_HEIGHT_DP=46;
     public static final int POPUP_ITEM_HEIGHT_DP=46;
     public static final String[] MODES={"Светлая","Тёмная","Как в системе"};
-    public static final int RED=0xFFEF2830;
+    public static final int RED=0xFFFE1F2C;
     public static final int NIGHT_BG=0xFF0D1119;
     public static final int NIGHT_CARD=Palette050.NIGHT_CARD;
     public static final int DAY_BG=0xFFF5F6F9;

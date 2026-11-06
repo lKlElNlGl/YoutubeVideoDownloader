@@ -22,13 +22,14 @@ public final class PlaylistActivity extends Activity {
  private boolean priority;
  private String source,quality,format,proxy,folder;
  private PlaylistRepository.Playlist playlist;
+ private PlaylistResolutionWorker formatsWorker;
  private boolean[] selected;
  private List<String> qualities;
  private ListView list;
  private BaseAdapter adapter;
  private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
  private CheckBox selectAll;
- private ImageView filterIcon;
+ private ImageView filterIcon,bulkQualityIcon;
  private View filterDot;
  private final List<Integer> visibleRows=new ArrayList<>();
  private int[] videoStatus=new int[0];
@@ -40,7 +41,10 @@ public final class PlaylistActivity extends Activity {
  private float swipeStartX,swipeStartY;
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
- private LinearLayout progressPanel;
+ private LinearLayout progressPanel,rootLayout;
+ private FrameLayout headerClip;
+ private int headerExpandedHeight=-1,headerCollapsePx=0,priorListFirst=-1,priorListTop=0;
+ private boolean returningToTop=false;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
  private FrameLayout listFrame;
@@ -61,29 +65,56 @@ public final class PlaylistActivity extends Activity {
    PlaylistRefreshManager.Snapshot state=PlaylistRefreshManager.current();
    boolean running=source!=null&&source.equals(state.url)&&state.running();
    if(running){
+    if(cancelExpiry!=null){handler.removeCallbacks(cancelExpiry);cancelExpiry=null;}
+    cancelledRevision=-1;
+    progressPanel.setMinimumHeight(0);
     observedRunning=true;refreshStart=state.startedMs;
     progressPanel.setVisibility(View.VISIBLE);refreshControl.setEnabled(false);
-    refreshSpinner.setVisibility(View.VISIBLE);
-    cancelRefreshButton.setVisibility(View.VISIBLE);
+    refreshSpinner.setVisibility(View.VISIBLE);cancelRefreshButton.setVisibility(View.VISIBLE);
     long seconds=Math.max(0,(SystemClock.elapsedRealtime()-refreshStart)/1000L);
     int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
     progressText.setText(UiStrings.display(PlaylistActivity.this,
       "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)+
-       "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
+      "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
    }else{
     boolean same=source!=null&&source.equals(state.url);
-    boolean cancelled=same&&state.stage==PlaylistRefreshManager.Stage.CANCELLED;
-    progressPanel.setVisibility(cancelled?View.VISIBLE:View.GONE);
+    long cancelledAt=PlaylistRefreshManager.cancellationTimeMs();
+    boolean cancelled=same&&state.stage==PlaylistRefreshManager.Stage.CANCELLED&&
+       Release058Rules.showCancel(cancelledAt,SystemClock.elapsedRealtime());
     refreshControl.setEnabled(true);
-    if(cancelled){
-     refreshSpinner.setVisibility(View.GONE);
-     cancelRefreshButton.setVisibility(View.GONE);
+    if(cancelled&&cancelledRevision!=state.revision){
+     cancelledRevision=state.revision;
+     android.transition.TransitionManager.beginDelayedTransition(
+       rootLayout,new android.transition.AutoTransition().setDuration(600));
+     progressPanel.setMinimumHeight(progressPanel.getHeight()+dp(18));
+     progressPanel.setVisibility(View.VISIBLE);
+     refreshSpinner.setVisibility(View.GONE);cancelRefreshButton.setVisibility(View.GONE);
      progressText.setText(UiStrings.display(PlaylistActivity.this,
-         "Запрос обновления информации отменён"));
+          "Запрос обновления информации отменён"));
+     final long revision=state.revision;
+     cancelExpiry=()->{
+      if(revision!=cancelledRevision)return;
+      expiredCancelledRevision=revision;
+      android.transition.TransitionManager.beginDelayedTransition(
+       rootLayout,new android.transition.AutoTransition().setDuration(600));
+      progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
+      cancelExpiry=null;
+     };
+     handler.postDelayed(cancelExpiry,Math.max(0,15000-(SystemClock.elapsedRealtime()-cancelledAt)));
+    }else if(!cancelled&&progressPanel.getVisibility()!=View.GONE){
+     if(cancelledRevision!=state.revision||
+       expiredCancelledRevision!=state.revision){
+      android.transition.TransitionManager.beginDelayedTransition(
+        rootLayout,new android.transition.AutoTransition().setDuration(600));
+      progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
+     }
     }
     if(observedRunning&&same){
      if(state.stage==PlaylistRefreshManager.Stage.DONE){
       refreshData(true);
+      PlaylistResolutionWorker.takeRefreshFlag(PlaylistActivity.this,source);
+      formatsWorker.start(playlist,true);
+      promoteVisibleFormats();
       if(PlaylistRefreshManager.claimNotice(source,state.revision))
        RefreshNotice.show(PlaylistActivity.this,true);
      }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){
@@ -96,6 +127,8 @@ public final class PlaylistActivity extends Activity {
    handler.postDelayed(this,600);
   }
  };
+ private long cancelledRevision=-1,expiredCancelledRevision=-1;
+ private Runnable cancelExpiry;
  private int dp(float v){return ThemeStyle.dp(this,v);}
  private TextView txt(String t,int size){
   TextView view=new TextView(this);view.setText(UiStrings.display(this,t));view.setTextSize(size);
@@ -130,7 +163,14 @@ public final class PlaylistActivity extends Activity {
   downloadFilter=display.getInt("download",0);
   queueFilter=display.getInt("queue",0);
   selectedFirst=display.getBoolean("selectedFirst",false);
+  formatsWorker=new PlaylistResolutionWorker(this,proxy,(id,failed)->{
+   if(isFinishing()||isDestroyed()||adapter==null)return;
+   adapter.notifyDataSetChanged();updateFooter();
+  });
   buildScreen();ThemeStyle.applySystemBarInsets(this);refreshData(false);
+  boolean force=PlaylistResolutionWorker.takeRefreshFlag(this,source);
+  formatsWorker.start(playlist,force);
+  list.post(()->{promoteVisibleFormats();adapter.notifyDataSetChanged();});
  }
  /** Back swipe begins in free screen space; inputs and vertical scrolling win. */
  private boolean touchesInteractive(View v,float x,float y){
@@ -228,7 +268,10 @@ public final class PlaylistActivity extends Activity {
      PlaylistSelectionPolicy.resume(legacy,urls,already);
   }
   selected=new boolean[flags.size()];
-  for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
+  for(int i=0;i<flags.size();i++){
+   // Pending formats never permit a prechecked item.
+   selected[i]=flags.get(i)&&formatsWorker.ready(playlist.entries.get(i).id);
+  }
   PlaylistCache.saveSelectionById(this,source,playlist,selected);
   qualities=PlaylistCache.readQualities(this,source,playlist,quality);
   heading.setText(playlist.title);
@@ -250,7 +293,7 @@ public final class PlaylistActivity extends Activity {
   rebuildVisible(true);
  }
  private void buildScreen(){
-  LinearLayout root=column();
+  LinearLayout root=column();rootLayout=root;
   root.setBackgroundColor(ThemeStyle.background(this));
   root.setPadding(dp(13),dp(8),dp(13),dp(8));setContentView(root);
   LinearLayout toolbar=new LinearLayout(this);toolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -283,7 +326,12 @@ public final class PlaylistActivity extends Activity {
   cancelRefreshButton.setOnClickListener(v->cancelRefresh());
   root.addView(progressPanel,margin(1,6));progressPanel.setVisibility(View.GONE);
 
-  LinearLayout header=panel();root.addView(header,margin(2,9));
+  LinearLayout header=panel();
+  headerClip=new FrameLayout(this);
+  headerClip.setClipChildren(true);headerClip.setClipToPadding(true);
+  headerClip.addView(header,new FrameLayout.LayoutParams(-1,-2));
+  root.addView(headerClip,margin(2,9));
+  headerClip.post(()->{if(headerExpandedHeight<0)headerExpandedHeight=headerClip.getHeight();});
   LinearLayout hero=new LinearLayout(this);hero.setGravity(Gravity.CENTER_VERTICAL);
   header.addView(hero);
   ImageView cover=new ImageView(this);
@@ -327,8 +375,9 @@ public final class PlaylistActivity extends Activity {
   UiCheckboxStyle.apply(selectAll);UiCheckboxStyle.applyLabelGap(selectAll);
   selectRow.addView(selectAll,new LinearLayout.LayoutParams(0,dp(44),1));
   selectAll.setOnClickListener(v->{
-   boolean all=true;for(int i:visibleRows)if(!selected[i]){all=false;break;}
-   for(int i:new ArrayList<>(visibleRows))selected[i]=!all;
+   boolean all=true;for(int i:visibleRows)if(formatsWorker.ready(playlist.entries.get(i).id)&&!selected[i]){all=false;break;}
+   for(int i:new ArrayList<>(visibleRows))
+    if(formatsWorker.ready(playlist.entries.get(i).id))selected[i]=!all;
    persistSelection();
    if(selectionFilter!=0)rebuildVisible(false);
    else{adapter.notifyDataSetChanged();updateFooter();}
@@ -336,6 +385,17 @@ public final class PlaylistActivity extends Activity {
   filterIcon=new ImageView(this);filterIcon.setScaleType(ImageView.ScaleType.CENTER);
   filterIcon.setContentDescription(UiStrings.display(this,"Настройки списка видео"));
   FrameLayout filterFrame=new FrameLayout(this);
+  bulkQualityIcon=new ImageView(this);
+  bulkQualityIcon.setScaleType(ImageView.ScaleType.CENTER);
+  android.graphics.drawable.Drawable approved=getDrawable(R.drawable.ic_quality_480_symmetric).mutate();
+  approved.setTint(ThemeStyle.text(this));
+  bulkQualityIcon.setImageDrawable(approved);
+  bulkQualityIcon.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(this),
+   ThemeStyle.buttonStroke(this),dp(9)));
+  bulkQualityIcon.setContentDescription(UiStrings.display(this,"Качество для отмеченных"));
+  LinearLayout.LayoutParams batchButton=new LinearLayout.LayoutParams(dp(42),dp(38));
+  batchButton.rightMargin=dp(6);selectRow.addView(bulkQualityIcon,batchButton);
+  bulkQualityIcon.setOnClickListener(v->showBulkQuality());
   selectRow.addView(filterFrame,new LinearLayout.LayoutParams(dp(42),dp(38)));
   filterFrame.addView(filterIcon,new FrameLayout.LayoutParams(-1,-1));
   filterDot=new View(this);
@@ -399,11 +459,11 @@ public final class PlaylistActivity extends Activity {
      qp.setMargins(dp(1),0,0,0);detail.addView(h.qualityFrame,qp);
      final Row holder=h;
      h.qualityValue=txt("",12);
-     h.qualityValue.setGravity(Gravity.CENTER_VERTICAL|Gravity.LEFT);
+     h.qualityValue.setGravity(Gravity.CENTER_VERTICAL|Gravity.CENTER_HORIZONTAL);
      h.qualityValue.setIncludeFontPadding(false);
      h.qualityValue.setSingleLine(true);
      h.qualityValue.setEllipsize(TextUtils.TruncateAt.END);
-     h.qualityValue.setPadding(dp(3),0,dp(18),0);
+     h.qualityValue.setPadding(0,0,dp(18),0);
      h.qualityFrame.addView(h.qualityValue,new FrameLayout.LayoutParams(-1,-1));
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
@@ -418,9 +478,18 @@ public final class PlaylistActivity extends Activity {
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
      arrow.setPadding(dp(4),0,dp(4),0);
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(18),-1,Gravity.END));
+     h.qualityLoader=new ProgressBar(PlaylistActivity.this,null,
+       android.R.attr.progressBarStyleSmall);
+     h.qualityLoader.setIndeterminateTintList(ColorStateList.valueOf(ThemeStyle.text(PlaylistActivity.this)));
+     LinearLayout.LayoutParams loaderParams=new LinearLayout.LayoutParams(dp(20),dp(20));
+     loaderParams.leftMargin=dp(6);
+     detail.addView(h.qualityLoader,loaderParams);
       ((RotatingSpinner)h.quality).setArrow(arrow);
       // Closed spinner is 20dp; popup menu rows stay at 46dp.
-     arrow.setOnClickListener(v->{holder.qualityUserInteraction=true;holder.quality.performClick();});
+     arrow.setOnClickListener(v->{
+      if(!holder.quality.isEnabled())return;
+      holder.qualityUserInteraction=true;holder.quality.performClick();
+     });
      h.already=txt("",10);
      description.addView(h.already);
      row.setTag(h);h.root=row;old=row;
@@ -432,8 +501,8 @@ public final class PlaylistActivity extends Activity {
        // Programmatic row binding and bulk updates do not count as user changes.
        if(!holder.qualityUserInteraction)return;
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
-          chosen>=PlaylistQualityPolicy.VALUES.length)return;
-       String value=PlaylistQualityPolicy.VALUES[chosen];
+          chosen>=holder.qualityOptions.size())return;
+       String value=holder.qualityOptions.get(chosen);
        if(value.equals(qualities.get(holder.position)))return;
        holder.qualityUserInteraction=false;
        qualities.set(holder.position,value);
@@ -451,14 +520,25 @@ public final class PlaylistActivity extends Activity {
      imageItem.id=imageKey;imageItem.url=entry.url;
      QueueThumbnails.show(PlaylistActivity.this,imageItem,h.image,dp(7));
     }
-    h.check.setChecked(selected[h.position]);
+    h.check.setChecked(formatsWorker.ready(entry.id)&&selected[h.position]);
     h.root.setBackgroundColor(rowHighlight(activeTitle==h.position));
     h.name.setText(entry.title);
      TitleMarquee.show(h.name,activeTitle==h.position);
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
     h.qualityUserInteraction=false;
-    h.quality.setSelection(PlaylistQualityPolicy.index(qualities.get(h.position)));
+    boolean waiting=!formatsWorker.ready(entry.id);
+    List<String> allowed=formatsWorker.choices(entry.id);
+    if(!allowed.equals(h.qualityOptions)){
+     h.qualityOptions=new ArrayList<>(allowed);
+     replaceRowQualityChoices(h);
+    }
+    int choice=h.qualityOptions.indexOf(qualities.get(h.position));
+    h.quality.setSelection(waiting?0:Math.max(0,choice));
+    h.quality.setEnabled(!waiting);
+    h.qualityLoader.setVisibility(waiting?View.VISIBLE:View.GONE);
+    h.qualityValue.setTextColor(waiting?ThemeStyle.subdued(PlaylistActivity.this):ThemeStyle.text(PlaylistActivity.this));
+    h.check.setEnabled(!waiting);h.check.setAlpha(waiting?.55f:1f);
     updateRowQuality(h);
      int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
      h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
@@ -472,15 +552,51 @@ public final class PlaylistActivity extends Activity {
   list.setAdapter(adapter);
   listArrowUp=playlistArrow(true);listArrowDown=playlistArrow(false);
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
-   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
+   private boolean moving=false;
+   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){
+    moving=state!=android.widget.AbsListView.OnScrollListener.SCROLL_STATE_IDLE;
+   }
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
+    promoteVisibleFormats();
+    if(list.getChildCount()>0){
+     int top=list.getChildAt(0).getTop();
+     if(moving&&!returningToTop&&!scrollRestoring&&priorListFirst>=0){
+      int delta=(first-priorListFirst)*dp(70)+priorListTop-top;
+      if(delta>0&&headerCollapsePx<headerExpandedHeight)
+       setHeaderCollapse(headerCollapsePx+delta);
+      else if(delta<0&&first==0&&!list.canScrollVertically(-1))
+       setHeaderCollapse(headerCollapsePx+delta);
+     }
+     priorListFirst=first;priorListTop=top;
+    }
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
     list.post(PlaylistActivity.this::updateListArrows);
    }
   });
+  // At the list boundary, consume vertical drag to reveal/hide the cover first.
+  final float[] lastTouch={Float.NaN};
+  list.setOnTouchListener((v,event)->{
+   int action=event.getActionMasked();
+   if(action==MotionEvent.ACTION_DOWN){lastTouch[0]=event.getRawY();return false;}
+   if(action==MotionEvent.ACTION_MOVE){
+    float dy=event.getRawY()-lastTouch[0];lastTouch[0]=event.getRawY();
+    if(!returningToTop&&headerExpandedHeight>0&&
+       !list.canScrollVertically(-1)&&Math.abs(dy)>0.5f&&
+       ((dy>0&&headerCollapsePx>0)||(dy<0&&headerCollapsePx<headerExpandedHeight))){
+     setHeaderCollapse(headerCollapsePx-Math.round(dy));
+     return true;
+    }
+   }else if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
+    lastTouch[0]=Float.NaN;
+   }
+   return false;
+  });
   list.post(()->{
-   if(savedScroll!=null)list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
+   if(savedScroll!=null){
+    list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
+    if(savedScroll[0]>0)setHeaderCollapse(headerExpandedHeight);
+   }
    list.post(()->{scrollRestoring=false;updateListArrows();});
   });
 
@@ -490,6 +606,36 @@ public final class PlaylistActivity extends Activity {
   ThemeStyle.icon(addButton,"plus",18);
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
   addButton.setOnClickListener(v->addSelected());
+ }
+ /** Hide the cover as the list scrolls; the toolbar and list heading stay fixed. */
+ private void setHeaderCollapse(int pixels){
+  if(headerClip==null||headerExpandedHeight<=0)return;
+  int next=Math.max(0,Math.min(headerExpandedHeight,pixels));
+  if(headerCollapsePx==next)return;
+  headerCollapsePx=next;
+  LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)headerClip.getLayoutParams();
+  p.height=headerExpandedHeight-next;
+  float fraction=(headerExpandedHeight-next)/(float)headerExpandedHeight;
+  p.topMargin=Math.round(dp(2)*fraction);
+  p.bottomMargin=Math.round(dp(9)*fraction);
+  headerClip.setLayoutParams(p);
+  // Translate upward inside the clipping viewport, rather than cutting the cover from below.
+  if(headerClip.getChildCount()>0)headerClip.getChildAt(0).setTranslationY(-next);
+  updateListArrows();
+ }
+ private void scrollToPlaylistTop(){
+  if(list==null)return;
+  returningToTop=true;
+  list.smoothScrollToPositionFromTop(0,0,600);
+  if(headerExpandedHeight<=0){returningToTop=false;return;}
+  android.animation.ValueAnimator anim=android.animation.ValueAnimator.ofInt(headerCollapsePx,0);
+  anim.setDuration(600);
+  anim.addUpdateListener(a->setHeaderCollapse((Integer)a.getAnimatedValue()));
+  anim.addListener(new android.animation.AnimatorListenerAdapter(){
+   @Override public void onAnimationEnd(android.animation.Animator a){
+    returningToTop=false;priorListFirst=-1;updateListArrows();
+   }
+  });anim.start();
  }
  /** Floating queue-style arrows control only the playlist ListView. */
  private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
@@ -511,7 +657,8 @@ public final class PlaylistActivity extends Activity {
   final Runnable edge=()->{
    held[0]=true;
    if(list.getCount()==0)return;
-   list.smoothScrollToPositionFromTop(up?0:list.getCount()-1,0,600);
+   if(up)scrollToPlaylistTop();
+   else list.smoothScrollToPositionFromTop(list.getCount()-1,0,600);
   };
   button.setOnTouchListener((v,event)->{
    switch(event.getActionMasked()){
@@ -520,7 +667,13 @@ public final class PlaylistActivity extends Activity {
      arrowHandler.postDelayed(edge,600);return true;
     case MotionEvent.ACTION_UP:
      button.setBackground(arrowSkin(false));arrowHandler.removeCallbacks(edge);
-     if(!held[0])list.smoothScrollBy((up?-1:1)*list.getHeight(),600);
+     if(!held[0]){
+      if(up){
+       if(Release058Rules.playlistArrowShouldJumpToTop(false,!list.canScrollVertically(-1)))
+        scrollToPlaylistTop();
+       else list.smoothScrollBy(-list.getHeight(),600);
+      }else list.smoothScrollBy(list.getHeight(),600);
+     }
      return true;
     case MotionEvent.ACTION_CANCEL:
      arrowHandler.removeCallbacks(edge);button.setBackground(arrowSkin(false));return true;
@@ -541,14 +694,14 @@ public final class PlaylistActivity extends Activity {
  }
  private void updateListArrows(){
   if(list==null)return;
-  fadeListArrow(listArrowUp,list.canScrollVertically(-1));
+  fadeListArrow(listArrowUp,headerExpandedHeight>0&&headerCollapsePx>=headerExpandedHeight);
   fadeListArrow(listArrowDown,list.canScrollVertically(1));
  }
  private int rowHighlight(boolean active){
   int base=ThemeStyle.cardColor(this);
   if(!active)return base;
   int tint=ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP:ThemeStyle.field(this);
-  float amount=.26f;
+  float amount=.30f;
   return Color.rgb(
    Math.round(Color.red(base)*(1-amount)+Color.red(tint)*amount),
    Math.round(Color.green(base)*(1-amount)+Color.green(tint)*amount),
@@ -557,6 +710,8 @@ public final class PlaylistActivity extends Activity {
  private static final class Row{
   LinearLayout root;CheckBox check;ImageView image;TextView name,duration,already;
   Spinner quality;FrameLayout qualityFrame;LinearLayout detail;
+  ProgressBar qualityLoader;
+  List<String> qualityOptions=Collections.emptyList();
   TextView qualityValue;boolean qualityUserInteraction=false;String qualityLabel="";
   String imageId="";int position=-1;
  }
@@ -585,6 +740,41 @@ public final class PlaylistActivity extends Activity {
   s.setAdapter(a);s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
   return s;
  }
+ /** Restrict popup options to this video's confirmed heights. */
+ private void replaceRowQualityChoices(Row row){
+  String[] labels=new String[row.qualityOptions.size()];
+  for(int i=0;i<labels.length;i++)
+   labels[i]=UiStrings.display(this,PlaylistQualityPolicy.LABELS[
+     PlaylistQualityPolicy.index(row.qualityOptions.get(i))]);
+  final RotatingSpinner spinner=(RotatingSpinner)row.quality;
+  ArrayAdapter<String> choices=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,labels){
+   @Override public View getView(int index,View recycled,ViewGroup parent){
+    TextView t=(TextView)super.getView(index,recycled,parent);
+    t.setTextColor(Color.TRANSPARENT);t.setTextSize(12);
+    t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);return t;
+   }
+   @Override public View getDropDownView(int index,View recycled,ViewGroup parent){
+    TextView t=(TextView)super.getDropDownView(index,recycled,parent);
+    t.setTextColor(ThemeStyle.text(PlaylistActivity.this));t.setTextSize(13);
+    t.setPadding(dp(12),0,dp(12),0);t.setGravity(Gravity.CENTER_VERTICAL);
+    t.setLayoutParams(new AbsListView.LayoutParams(-1,dp(ThemeStyle.POPUP_ITEM_HEIGHT_DP)));
+    t.setBackground(ThemeStyle.popupRowBackground(PlaylistActivity.this,
+      index==spinner.getSelectedItemPosition(),index,getCount()));
+    return t;
+   }
+  };
+  row.qualityUserInteraction=false;
+  spinner.setAdapter(choices);
+  spinner.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
+ }
+ private void promoteVisibleFormats(){
+  if(formatsWorker==null||list==null||playlist==null)return;
+  List<PlaylistRepository.Entry> visible=new ArrayList<>();
+  int first=list.getFirstVisiblePosition();
+  for(int i=first;i<first+list.getChildCount()&&i<visibleRows.size();i++)
+   visible.add(playlist.entries.get(visibleRows.get(i)));
+  formatsWorker.prioritize(visible);
+ }
  private String qualityOverrideKey(int index){
   return source.hashCode()+"_"+playlist.entries.get(index).id;
  }
@@ -605,9 +795,10 @@ public final class PlaylistActivity extends Activity {
     PlaylistHistory.actualHeight(this,entry.url),
     qualities.get(row.position),hasQualityOverride(row.position)));
   // Draw closed-state text ourselves: OEM Spinner padding otherwise truncates it.
-  row.qualityValue.setText(row.qualityLabel);
-  int textWidth=(int)Math.ceil(row.qualityValue.getPaint().measureText(row.qualityLabel));
-  int available=row.detail.getWidth()-durationWidth-dp(1);
+  row.qualityValue.setText(formatsWorker.ready(entry.id)?row.qualityLabel:"Максимальное");
+  int textWidth=(int)Math.ceil(row.qualityValue.getPaint().measureText(row.qualityValue.getText().toString()));
+  int available=row.detail.getWidth()-durationWidth-dp(1)-
+    (formatsWorker.ready(entry.id)?0:dp(26));
   if(row.detail.getWidth()==0){
    row.detail.post(()->{
     if(row.root.isAttachedToWindow())updateRowQuality(row);
@@ -622,7 +813,8 @@ public final class PlaylistActivity extends Activity {
   }
  }
  private void toggle(int position,Row row){
-  if(position<0||position>=selected.length||animatingSelection)return;
+  if(position<0||position>=selected.length||animatingSelection||
+     !formatsWorker.ready(playlist.entries.get(position).id))return;
   selected[position]=!selected[position];persistSelection();
   row.check.setChecked(selected[position]);updateFooter();
   boolean disappears=selectionFilter==1&&!selected[position]||
@@ -662,9 +854,12 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  boolean all=!visibleRows.isEmpty();
-  for(int i:visibleRows)if(!selected[i]){all=false;break;}
-  selectAll.setChecked(all);
+  boolean all=true;int enabled=0;
+  for(int i:visibleRows)if(formatsWorker.ready(playlist.entries.get(i).id)){
+   enabled++;if(!selected[i])all=false;
+  }
+  selectAll.setChecked(enabled>0&&all);
+  selectAll.setEnabled(enabled>0);selectAll.setAlpha(enabled>0?1f:.55f);
  }
  private void addCompactSpinner(LinearLayout content,Spinner spinner){
   FrameLayout frame=new FrameLayout(this);
@@ -694,89 +889,98 @@ public final class PlaylistActivity extends Activity {
  }
  private void showListSettings(){
   ScrollView scroll=new ScrollView(this);
-  LinearLayout content=column();
-  content.setPadding(dp(17),dp(6),dp(17),dp(9));
+  LinearLayout content=column();content.setPadding(dp(17),dp(6),dp(17),dp(9));
   scroll.addView(content);
-  TextView filterHeading=txt("Фильтр отображения загрузок",15);
-  filterHeading.setTypeface(null,Typeface.BOLD);content.addView(filterHeading,margin(7,8));
+  TextView title=txt("Фильтр отображения загрузок",15);
+  title.setTypeface(null,Typeface.BOLD);content.addView(title,margin(7,8));
   Spinner choose=settingsChoice(content,"Отобразить отмеченные/неотмеченные загрузки",
     new String[]{"Все","Только отмеченные","Только неотмеченные"},selectionFilter);
   Spinner downloads=settingsChoice(content,"Отобразить скачанные/нескачанные загрузки",
     new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
   Spinner queued=settingsChoice(content,"Отобразить находящиеся/отсутствующие в очереди загрузки",
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
-  TextView reset=txt("Сбросить фильтры",13);
-  reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
-  reset.setPadding(0,dp(1),0,dp(1));content.addView(reset);
-  Runnable updateReset=()->{
-   boolean changed=choose.getSelectedItemPosition()!=0||
-    downloads.getSelectedItemPosition()!=0||queued.getSelectedItemPosition()!=0;
-   reset.setEnabled(changed);
-   reset.setTextColor(changed?(ThemeStyle.isDark(this)?0xFFE77A80:ThemeStyle.RED):ThemeStyle.subdued(this));
-   reset.setAlpha(changed?1f:.55f);
-  };
-  AdapterView.OnItemSelectedListener listener=new AdapterView.OnItemSelectedListener(){
-   @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){updateReset.run();}
-   @Override public void onNothingSelected(AdapterView<?> parent){updateReset.run();}
-  };
-  choose.setOnItemSelectedListener(listener);
-  downloads.setOnItemSelectedListener(listener);
-  queued.setOnItemSelectedListener(listener);
-  reset.setOnClickListener(v->{choose.setSelection(0);downloads.setSelection(0);queued.setSelection(0);updateReset.run();});
-  updateReset.run();
-  View sectionBreak=new View(this);sectionBreak.setBackgroundColor(ThemeStyle.border(this));
-  content.addView(sectionBreak,margin(4,4));
-  TextView info=txt("Качество для отмеченных",13);
-  info.setTypeface(null,Typeface.BOLD);
-  content.addView(info,margin(3,4));
-  Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
-  bulk.setSelection(PlaylistQualityPolicy.index(quality));
-  addCompactSpinner(content,bulk);
-  TextView applyQuality=txt("Применить качество к отмеченным",13);
-  applyQuality.setTextColor(ThemeStyle.isDark(this)?0xFFE77A80:ThemeStyle.RED);
-  applyQuality.setGravity(Gravity.CENTER);
-  content.addView(applyQuality,margin(4,8));
-  applyQuality.setOnClickListener(v->{
-   int index=bulk.getSelectedItemPosition();
-   if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
-   qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
-   for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
-   quality=PlaylistQualityPolicy.VALUES[index];
-   persistQualities();adapter.notifyDataSetChanged();
-   Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
-  });
   CheckBox sort=new CheckBox(this);
   UiCheckboxStyle.apply(sort);UiCheckboxStyle.applyLabelGap(sort);
   sort.setText(UiStrings.display(this,"Сначала отмеченные"));
   sort.setTextColor(ThemeStyle.text(this));sort.setTextSize(13);
-  sort.setChecked(selectedFirst);
-  content.addView(sort,margin(12,4));
+  sort.setChecked(selectedFirst);content.addView(sort,margin(12,4));
+  TextView reset=txt("Сбросить фильтры",13);
+  reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+  reset.setPadding(0,dp(10),dp(1),dp(1));content.addView(reset,margin(5,3));
+  Runnable updateReset=()->{
+   boolean changed=Release058Rules.hasActiveFilters(
+    choose.getSelectedItemPosition(),downloads.getSelectedItemPosition(),
+    queued.getSelectedItemPosition(),sort.isChecked());
+   reset.setEnabled(changed);
+   reset.setTextColor(changed?ThemeStyle.text(this):ThemeStyle.subdued(this));
+   reset.setAlpha(changed?1f:.55f);
+  };
+  AdapterView.OnItemSelectedListener changes=new AdapterView.OnItemSelectedListener(){
+   @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){updateReset.run();}
+   @Override public void onNothingSelected(AdapterView<?> parent){updateReset.run();}
+  };
+  choose.setOnItemSelectedListener(changes);
+  downloads.setOnItemSelectedListener(changes);
+  queued.setOnItemSelectedListener(changes);
+  sort.setOnCheckedChangeListener((button,checked)->updateReset.run());
+  reset.setOnClickListener(v->{
+   choose.setSelection(0);downloads.setSelection(0);queued.setSelection(0);
+   sort.setChecked(false);updateReset.run();
+  });
+  updateReset.run();
   ThemeStyle.dialog(this)
-    .setTitle(UiStrings.display(this,"Настройки списка видео"))
-    .setView(scroll)
+   .setTitle(UiStrings.display(this,"Настройки списка видео"))
+   .setView(scroll)
+   .setNegativeButton(UiStrings.display(this,"Отмена"),null)
+   .setPositiveButton(UiStrings.display(this,"Применить"),(d,w)->{
+    selectionFilter=choose.getSelectedItemPosition();
+    downloadFilter=downloads.getSelectedItemPosition();
+    queueFilter=queued.getSelectedItemPosition();selectedFirst=sort.isChecked();
+    getSharedPreferences("playlist_display",0).edit()
+      .putInt("selection",selectionFilter).putInt("download",downloadFilter)
+      .putInt("queue",queueFilter).putBoolean("selectedFirst",selectedFirst).apply();
+    int first=list.getFirstVisiblePosition();
+    int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
+    int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
+    scrollRestoring=true;
+    rebuildVisible(true);
+    int restored=Release057Rules.anchorPosition(visibleRows,anchor);
+    list.post(()->{
+     if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
+     list.post(()->{scrollRestoring=false;updateListArrows();});
+    });
+   }).show();
+ }
+ private void showBulkQuality(){
+  LinearLayout content=column();content.setPadding(dp(17),dp(6),dp(17),dp(12));
+  Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
+  bulk.setSelection(PlaylistQualityPolicy.index(quality));
+  addCompactSpinner(content,bulk);
+  AlertDialog dialog=ThemeStyle.dialog(this)
+    .setTitle(UiStrings.display(this,"Качество для отмеченных"))
+    .setView(content)
     .setNegativeButton(UiStrings.display(this,"Отмена"),null)
-    .setPositiveButton(UiStrings.display(this,"Применить"),(d,w)->{
-      selectionFilter=choose.getSelectedItemPosition();
-      downloadFilter=downloads.getSelectedItemPosition();
-      queueFilter=queued.getSelectedItemPosition();
-      selectedFirst=sort.isChecked();
-      getSharedPreferences("playlist_display",0).edit()
-       .putInt("selection",selectionFilter)
-       .putInt("download",downloadFilter)
-       .putInt("queue",queueFilter)
-       .putBoolean("selectedFirst",selectedFirst).apply();
-      // Preserve the first visible video and its exact pixel offset across filtering.
-      int first=list.getFirstVisiblePosition();
-      int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
-      int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
-      scrollRestoring=true;
-      rebuildVisible(true);
-      int restored=Release057Rules.anchorPosition(visibleRows,anchor);
-      list.post(()->{
-       if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
-       list.post(()->{scrollRestoring=false;updateListArrows();});
-      });
-    }).show();
+    .setPositiveButton(UiStrings.display(this,"Применить"),null)
+    .create();
+  dialog.setOnShowListener(v->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(click->{
+   int index=bulk.getSelectedItemPosition(),count=0;
+   for(boolean checked:selected)if(checked)count++;
+   if(count==0){
+    Toast.makeText(this,UiStrings.display(this,"Выберите видео"),Toast.LENGTH_SHORT).show();return;
+   }
+   if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
+   qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
+   for(int i=0;i<selected.length;i++)if(selected[i]){
+    List<String> available=formatsWorker.cached(playlist.entries.get(i).id);
+    if(available!=null)qualities.set(i,Release058Rules.closestSupported(qualities.get(i),available));
+    markQualityOverride(i);
+   }
+   quality=PlaylistQualityPolicy.VALUES[index];
+   persistQualities();adapter.notifyDataSetChanged();
+   Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
+   dialog.dismiss();
+  }));
+  dialog.show();
  }
  private void addSelected(){
   int count=0,duplicates=0;
@@ -831,6 +1035,11 @@ public final class PlaylistActivity extends Activity {
    scrollSession.put(source,new int[]{list.getFirstVisiblePosition(),list.getChildAt(0).getTop()});
   handler.removeCallbacks(tick);super.onPause();
  }
- @Override protected void onDestroy(){handler.removeCallbacks(tick);super.onDestroy();}
+ @Override protected void onDestroy(){
+  handler.removeCallbacks(tick);
+  if(cancelExpiry!=null)handler.removeCallbacks(cancelExpiry);
+  if(formatsWorker!=null)formatsWorker.close();
+  super.onDestroy();
+ }
 
 }

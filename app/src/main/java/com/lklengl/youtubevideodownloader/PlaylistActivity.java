@@ -43,7 +43,7 @@ public final class PlaylistActivity extends Activity {
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
  private FrameLayout headerClip;
- private int headerExpandedHeight=-1,priorListFirst=-1,priorListTop=0;
+ private int headerExpandedHeight=-1,headerCollapsePx=0,priorListFirst=-1,priorListTop=0;
  private boolean returningToTop=false;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
@@ -525,16 +525,33 @@ public final class PlaylistActivity extends Activity {
   list.setAdapter(adapter);
   listArrowUp=playlistArrow(true);listArrowDown=playlistArrow(false);
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
-   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
+   private boolean moving=false;
+   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){
+    moving=state!=android.widget.AbsListView.OnScrollListener.SCROLL_STATE_IDLE;
+   }
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
     promoteVisibleFormats();
+    if(list.getChildCount()>0){
+     int top=list.getChildAt(0).getTop();
+     if(moving&&!returningToTop&&!scrollRestoring&&priorListFirst>=0){
+      int delta=(first-priorListFirst)*dp(70)+priorListTop-top;
+      if(delta>0&&headerCollapsePx<headerExpandedHeight)
+       setHeaderCollapse(headerCollapsePx+delta);
+      else if(delta<0&&first==0&&!list.canScrollVertically(-1))
+       setHeaderCollapse(headerCollapsePx+delta);
+     }
+     priorListFirst=first;priorListTop=top;
+    }
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
     list.post(PlaylistActivity.this::updateListArrows);
    }
   });
   list.post(()->{
-   if(savedScroll!=null)list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
+   if(savedScroll!=null){
+    list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
+    if(savedScroll[0]>0)setHeaderCollapse(headerExpandedHeight);
+   }
    list.post(()->{scrollRestoring=false;updateListArrows();});
   });
 
@@ -544,6 +561,34 @@ public final class PlaylistActivity extends Activity {
   ThemeStyle.icon(addButton,"plus",18);
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
   addButton.setOnClickListener(v->addSelected());
+ }
+ /** Hide the cover as the list scrolls; the toolbar and list heading stay fixed. */
+ private void setHeaderCollapse(int pixels){
+  if(headerClip==null||headerExpandedHeight<=0)return;
+  int next=Math.max(0,Math.min(headerExpandedHeight,pixels));
+  if(headerCollapsePx==next)return;
+  headerCollapsePx=next;
+  LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)headerClip.getLayoutParams();
+  p.height=headerExpandedHeight-next;
+  float fraction=(headerExpandedHeight-next)/(float)headerExpandedHeight;
+  p.topMargin=Math.round(dp(2)*fraction);
+  p.bottomMargin=Math.round(dp(9)*fraction);
+  headerClip.setLayoutParams(p);
+  updateListArrows();
+ }
+ private void scrollToPlaylistTop(){
+  if(list==null)return;
+  returningToTop=true;
+  list.smoothScrollToPositionFromTop(0,0,600);
+  if(headerExpandedHeight<=0){returningToTop=false;return;}
+  android.animation.ValueAnimator anim=android.animation.ValueAnimator.ofInt(headerCollapsePx,0);
+  anim.setDuration(600);
+  anim.addUpdateListener(a->setHeaderCollapse((Integer)a.getAnimatedValue()));
+  anim.addListener(new android.animation.AnimatorListenerAdapter(){
+   @Override public void onAnimationEnd(android.animation.Animator a){
+    returningToTop=false;priorListFirst=-1;updateListArrows();
+   }
+  });anim.start();
  }
  /** Floating queue-style arrows control only the playlist ListView. */
  private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
@@ -565,7 +610,8 @@ public final class PlaylistActivity extends Activity {
   final Runnable edge=()->{
    held[0]=true;
    if(list.getCount()==0)return;
-   list.smoothScrollToPositionFromTop(up?0:list.getCount()-1,0,600);
+   if(up)scrollToPlaylistTop();
+   else list.smoothScrollToPositionFromTop(list.getCount()-1,0,600);
   };
   button.setOnTouchListener((v,event)->{
    switch(event.getActionMasked()){
@@ -574,7 +620,10 @@ public final class PlaylistActivity extends Activity {
      arrowHandler.postDelayed(edge,600);return true;
     case MotionEvent.ACTION_UP:
      button.setBackground(arrowSkin(false));arrowHandler.removeCallbacks(edge);
-     if(!held[0])list.smoothScrollBy((up?-1:1)*list.getHeight(),600);
+     if(!held[0]){
+      if(up)scrollToPlaylistTop();
+      else list.smoothScrollBy(list.getHeight(),600);
+     }
      return true;
     case MotionEvent.ACTION_CANCEL:
      arrowHandler.removeCallbacks(edge);button.setBackground(arrowSkin(false));return true;
@@ -595,7 +644,7 @@ public final class PlaylistActivity extends Activity {
  }
  private void updateListArrows(){
   if(list==null)return;
-  fadeListArrow(listArrowUp,list.canScrollVertically(-1));
+  fadeListArrow(listArrowUp,headerExpandedHeight>0&&headerCollapsePx>=headerExpandedHeight);
   fadeListArrow(listArrowDown,list.canScrollVertically(1));
  }
  private int rowHighlight(boolean active){

@@ -19,6 +19,11 @@ public class Release058RulesTest {
   assertTrue(Release058Rules.showCancel(1000,15999));
   assertFalse(Release058Rules.showCancel(1000,16000));
  }
+ @Test public void shortUpArrowMovesOneScreenAndLongPressOrTopRestoresHeader(){
+  assertFalse(Release058Rules.playlistArrowShouldJumpToTop(false,false));
+  assertTrue(Release058Rules.playlistArrowShouldJumpToTop(true,false));
+  assertTrue(Release058Rules.playlistArrowShouldJumpToTop(false,true));
+ }
  @Test public void resetIncludesSortCheckbox(){
   assertTrue(Release058Rules.hasActiveFilters(0,0,0,true));
   assertFalse(Release058Rules.hasActiveFilters(0,0,0,false));

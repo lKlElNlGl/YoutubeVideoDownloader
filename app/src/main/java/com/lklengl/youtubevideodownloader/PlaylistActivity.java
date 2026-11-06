@@ -65,29 +65,56 @@ public final class PlaylistActivity extends Activity {
    PlaylistRefreshManager.Snapshot state=PlaylistRefreshManager.current();
    boolean running=source!=null&&source.equals(state.url)&&state.running();
    if(running){
+    if(cancelExpiry!=null){handler.removeCallbacks(cancelExpiry);cancelExpiry=null;}
+    cancelledRevision=-1;
+    progressPanel.setMinimumHeight(0);
     observedRunning=true;refreshStart=state.startedMs;
     progressPanel.setVisibility(View.VISIBLE);refreshControl.setEnabled(false);
-    refreshSpinner.setVisibility(View.VISIBLE);
-    cancelRefreshButton.setVisibility(View.VISIBLE);
+    refreshSpinner.setVisibility(View.VISIBLE);cancelRefreshButton.setVisibility(View.VISIBLE);
     long seconds=Math.max(0,(SystemClock.elapsedRealtime()-refreshStart)/1000L);
     int index=seconds<12?0:1+(int)((seconds-12)/8%(waitingMessages.length-1));
     progressText.setText(UiStrings.display(PlaylistActivity.this,
       "Обновление плейлиста · "+String.format(Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)+
-       "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
+      "\n"+(state.message.isEmpty()?waitingMessages[index]:state.message)));
    }else{
     boolean same=source!=null&&source.equals(state.url);
-    boolean cancelled=same&&state.stage==PlaylistRefreshManager.Stage.CANCELLED;
-    progressPanel.setVisibility(cancelled?View.VISIBLE:View.GONE);
+    long cancelledAt=PlaylistRefreshManager.cancellationTimeMs();
+    boolean cancelled=same&&state.stage==PlaylistRefreshManager.Stage.CANCELLED&&
+       Release058Rules.showCancel(cancelledAt,SystemClock.elapsedRealtime());
     refreshControl.setEnabled(true);
-    if(cancelled){
-     refreshSpinner.setVisibility(View.GONE);
-     cancelRefreshButton.setVisibility(View.GONE);
+    if(cancelled&&cancelledRevision!=state.revision){
+     cancelledRevision=state.revision;
+     android.transition.TransitionManager.beginDelayedTransition(
+       rootLayout,new android.transition.AutoTransition().setDuration(600));
+     progressPanel.setMinimumHeight(progressPanel.getHeight()+dp(18));
+     progressPanel.setVisibility(View.VISIBLE);
+     refreshSpinner.setVisibility(View.GONE);cancelRefreshButton.setVisibility(View.GONE);
      progressText.setText(UiStrings.display(PlaylistActivity.this,
-         "Запрос обновления информации отменён"));
+          "Запрос обновления информации отменён"));
+     final long revision=state.revision;
+     cancelExpiry=()->{
+      if(revision!=cancelledRevision)return;
+      expiredCancelledRevision=revision;
+      android.transition.TransitionManager.beginDelayedTransition(
+       rootLayout,new android.transition.AutoTransition().setDuration(600));
+      progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
+      cancelExpiry=null;
+     };
+     handler.postDelayed(cancelExpiry,Math.max(0,15000-(SystemClock.elapsedRealtime()-cancelledAt)));
+    }else if(!cancelled&&progressPanel.getVisibility()!=View.GONE){
+     if(cancelledRevision!=state.revision||
+       expiredCancelledRevision!=state.revision){
+      android.transition.TransitionManager.beginDelayedTransition(
+        rootLayout,new android.transition.AutoTransition().setDuration(600));
+      progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
+     }
     }
     if(observedRunning&&same){
      if(state.stage==PlaylistRefreshManager.Stage.DONE){
       refreshData(true);
+      PlaylistResolutionWorker.takeRefreshFlag(PlaylistActivity.this,source);
+      formatsWorker.start(playlist,true);
+      promoteVisibleFormats();
       if(PlaylistRefreshManager.claimNotice(source,state.revision))
        RefreshNotice.show(PlaylistActivity.this,true);
      }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){

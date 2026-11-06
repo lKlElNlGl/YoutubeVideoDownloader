@@ -15,6 +15,11 @@ public final class Release058Rules {
  public static boolean canSelect(boolean cached,boolean done,boolean failed){
   return cached||done||failed;
  }
+ /** A brief upward tap moves one screen unless already at the list's top;
+  * holding the arrow returns to the beginning, including the playlist cover. */
+ public static boolean playlistArrowShouldJumpToTop(boolean held,boolean atListTop){
+  return held||atListTop;
+ }
  public static boolean showCancel(long cancelledAt,long now){
   return cancelledAt>0&&now>=cancelledAt&&now-cancelledAt<15000;
  }

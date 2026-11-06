@@ -30,6 +30,13 @@
 
 ## Изменения
 
+### v0.5.8
+- Плейлисты: карточка с обложкой и описанием уходит вверх при прокрутке; заголовок списка и кнопка добавления остаются закреплёнными. Стрелки обеспечивают прокрутку на экран, удержание — к краю.
+- Для каждого видео в фоне определяются реальные доступные разрешения, сохраняемые для повторных открытий. Пока идёт проверка, выбор качества и чекбокс заблокированы, отображается индикатор 20 dp; при ошибке доступен прежний список качеств.
+- Фильтры и массовое качество вынесены в отдельные компактные кнопки 42×38 dp. Сброс фильтров также снимает «Сначала отмеченные»; массовое качество учитывает доступные разрешения каждого видео.
+- Отмена обновления показывает сообщение на 15 секунд с плавным появлением и исчезновением; улучшено переключение вкладок, контраст выделения, ширина бейджей и интервалы.
+- Красные элементы управления используют акцент #FE1F2C, при этом утверждённая палитра «Цвета 050», градиент кнопок и оригинальная иконка A не изменены.
+
 ### v0.5.7
 - Плейлист: исправлены обрезанные названия индивидуального качества, массовая смена качества, восстановление позиции при фильтрации и снятие чекбоксов после добавления в очередь.
 - Подсветка выбранной строки теперь на всю ширину и немного заметнее; добавлены плавающие кнопки прокрутки как в очереди, исправлен свайп назад.
@@ -123,6 +130,13 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.8
+- Playlist cover and description slide away while scrolling; the list heading and Add to queue button stay pinned. Floating arrows move one screen per tap or to the edge when held.
+- Actual supported video resolutions are discovered in the background and cached. Quality and selection controls stay disabled with a 20 dp indicator until discovery finishes; the standard quality list remains available on failure.
+- Filters and bulk quality now have separate compact 42×38 dp buttons. Reset also clears Selected first; bulk quality respects each video's available resolutions.
+- Cancelled refresh status appears for 15 seconds with smooth expansion and retraction. Improved tab switching, row selection contrast, badge widths and spacing.
+- Accent red uses #FE1F2C while Colors 050, the primary-button gradient, and the original approved A launcher icon are preserved.
 
 ### v0.5.7
 - Fixed cropped per-video quality labels, bulk quality changes and filtered scroll restoration; checkboxes reset after successful enqueue while qualities persist.

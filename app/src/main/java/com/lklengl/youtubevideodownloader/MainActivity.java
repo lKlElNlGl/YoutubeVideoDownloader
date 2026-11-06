@@ -362,6 +362,9 @@ public final class MainActivity extends Activity {
         previewCard.addView(stats,previewStatsParams);
         previewDuration=statView(stats,"clock");
         previewQuality=statView(stats,"quality");
+        // Equal badge widths: the 6dp gap belongs to the first badge only.
+        LinearLayout.LayoutParams secondBadge=(LinearLayout.LayoutParams)stats.getChildAt(1).getLayoutParams();
+        secondBadge.rightMargin=0;stats.getChildAt(1).setLayoutParams(secondBadge);
         previewAllQualities=text("",12);
         previewAllQualities.setTextColor(ThemeStyle.subdued(this));
         previewAllQualities.setPadding(dp(4),dp(9),dp(4),0);
@@ -739,9 +742,17 @@ public final class MainActivity extends Activity {
             ThemeStyle.styleTab(stickyPageTabs[i],i==currentPage,
                new String[]{"play","queue","settings"}[i],
                new String[]{UiStrings.translate(this,"Загрузка"),UiStrings.translate(this,"Очередь"),UiStrings.translate(this,"Настройки")}[i]);
-        mainScroll.post(()->{
-            mainScroll.scrollTo(0,Math.max(0,pageScrollPosition[currentPage]));
-            updateFloatingNavigation();
+        // Restore position immediately before drawing the destination, never a stale frame.
+        final int destination=currentPage;
+        viewport.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener(){
+            @Override public boolean onPreDraw(){
+                viewport.getViewTreeObserver().removeOnPreDrawListener(this);
+                if(destination==currentPage){
+                    mainScroll.scrollTo(0,Math.max(0,pageScrollPosition[destination]));
+                    updateFloatingNavigation();
+                }
+                return true;
+            }
         });
         // Tab selection is intentionally not persisted across fresh launches.
     }
@@ -956,6 +967,11 @@ public final class MainActivity extends Activity {
         if(previewCard==null||url==null)return;
         boolean valid=previewSnapshot!=null && previewSnapshot.matches(url.getText().toString());
         if(valid)attachInfoRow(previewSnapshot.playlist);
+        LinearLayout.LayoutParams previewGap=(LinearLayout.LayoutParams)previewCard.getLayoutParams();
+        if(previewGap!=null){
+            int wanted=dp(valid&&previewSnapshot.playlist?6:8);
+            if(previewGap.topMargin!=wanted){previewGap.topMargin=wanted;previewCard.setLayoutParams(previewGap);}
+        }
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
         previewHeroView.setVisibility(valid?View.VISIBLE:View.GONE);
         previewStatsView.setVisibility(valid?View.VISIBLE:View.GONE);

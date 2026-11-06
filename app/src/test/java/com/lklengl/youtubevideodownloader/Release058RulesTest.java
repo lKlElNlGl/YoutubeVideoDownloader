@@ -24,6 +24,11 @@ public class Release058RulesTest {
   assertTrue(Release058Rules.playlistArrowShouldJumpToTop(true,false));
   assertTrue(Release058Rules.playlistArrowShouldJumpToTop(false,true));
  }
+ @Test public void bulkRespectsRealOptionsWithoutLosingNearestVideoTarget(){
+  assertEquals("720",Release058Rules.closestSupported("1080",Arrays.asList("best","720","480")));
+  assertEquals("720",Release058Rules.closestSupported("480",Arrays.asList("best","1080","720")));
+  assertEquals("best",Release058Rules.closestSupported("best",Arrays.asList("best","1080","720")));
+ }
  @Test public void resetIncludesSortCheckbox(){
   assertTrue(Release058Rules.hasActiveFilters(0,0,0,true));
   assertFalse(Release058Rules.hasActiveFilters(0,0,0,false));

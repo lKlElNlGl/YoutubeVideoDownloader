@@ -22,6 +22,8 @@ public final class PlaylistRefreshManager {
  private static final ExecutorService worker=Executors.newSingleThreadExecutor();
  private static volatile Snapshot latest=new Snapshot("","",Stage.IDLE,"","",0,0);
  private static long displayedNoticeRevision=-1;
+ private static volatile long cancelledAtMs=0;
+ public static long cancellationTimeMs(){return cancelledAtMs;}
  /** Only the currently visible screen can claim a terminal refresh notification. */
  public static synchronized boolean claimNotice(String url,long revision){
   if(latest.revision!=revision||!latest.url.equals(url)||
@@ -34,6 +36,7 @@ public final class PlaylistRefreshManager {
  public static Snapshot current(){return latest;}
  public static synchronized boolean start(Context context,String url,String proxy){
   if(latest.running())return url.equals(latest.url);
+  cancelledAtMs=0;
   String id=UUID.randomUUID().toString();
   final Context application=context.getApplicationContext();
   final long serial=latest.revision+1;
@@ -77,6 +80,7 @@ public final class PlaylistRefreshManager {
   synchronized(PlaylistRefreshManager.class){
    if(!latest.running()||!latest.url.equals(url))return;
    id=latest.processId;
+   cancelledAtMs=SystemClock.elapsedRealtime();
    latest=new Snapshot(latest.url,id,Stage.CANCELLED,"",latest.message,
     latest.startedMs,latest.revision+1);
   }

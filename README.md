@@ -37,14 +37,6 @@
 - Отмена обновления показывает сообщение на 15 секунд с плавным появлением и исчезновением; улучшено переключение вкладок, контраст выделения, ширина бейджей и интервалы.
 - Красные элементы управления используют акцент #FE1F2C, при этом утверждённая палитра «Цвета 050», градиент кнопок и оригинальная иконка A не изменены.
 
-### v0.5.8
-- Плейлист: шапка с обложкой уходит вверх при прокрутке, список расширяется под закреплённой строкой навигации. Стрелка вверх возвращает список и шапку к началу.
-- Качество каждого видео определяется по YouTube отдельно и в фоне. Пока нет данных, индивидуальный список и чекбокс неактивны, рядом вращается индикатор. Ошибка запроса открывает стандартный набор; результаты кешируются.
-- Настройки плейлиста разделены: отдельное окно фильтров и отдельное окно массового выбора качества, новая кнопка с утверждённым вектором «480». Сброс фильтров также снимает «Сначала отмеченные».
-- Устранены скачки при переключении вкладок, индивидуальные надписи качества центрированы без изменения размеров, выделение строки усилено до 30%.
-- Сообщение об отмене обновления на вкладках «Загрузка» и «Плейлист» исчезает через 15 секунд; сдвиг блоков анимирован за 0,6 секунды.
-- Выравнивание бейджей информации о плейлисте, межблочный отступ 6 dp. Цвет акцентов и чекбоксов изменён на #FE1F2C, основной градиент и иконка приложения A сохранены.
-
 ### v0.5.7
 - Плейлист: исправлены обрезанные названия индивидуального качества, массовая смена качества, восстановление позиции при фильтрации и снятие чекбоксов после добавления в очередь.
 - Подсветка выбранной строки теперь на всю ширину и немного заметнее; добавлены плавающие кнопки прокрутки как в очереди, исправлен свайп назад.
@@ -145,14 +137,6 @@ Playlists let you choose individual entries and set per-video quality. Available
 - Filters and bulk quality now have separate compact 42×38 dp buttons. Reset also clears Selected first; bulk quality respects each video's available resolutions.
 - Cancelled refresh status appears for 15 seconds with smooth expansion and retraction. Improved tab switching, row selection contrast, badge widths and spacing.
 - Accent red uses #FE1F2C while Colors 050, the primary-button gradient, and the original approved A launcher icon are preserved.
-
-### v0.5.8
-- Collapsible playlist cover, expanded scrolling list beneath fixed toolbar and full return-to-top navigation.
-- Lazy per-video YouTube format discovery with inline spinner, disabled input while waiting, fallback presets on error, and reusable cache.
-- Separate filter and bulk-quality dialogs plus approved symmetric vector "480" shortcut; reset clears Selected first.
-- Atomic tab restoration, centered quality labels without resizing, slightly stronger full-width selected-row highlight.
-- Animated cancellation notices expire after 15 seconds on Download and Playlist; consistent metadata badges and spacing.
-- Accent red is #FE1F2C throughout, including checkboxes; approved app icon A and primary gradient retained.
 
 ### v0.5.7
 - Fixed cropped per-video quality labels, bulk quality changes and filtered scroll restoration; checkboxes reset after successful enqueue while qualities persist.

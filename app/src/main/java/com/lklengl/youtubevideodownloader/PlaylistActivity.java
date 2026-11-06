@@ -28,7 +28,7 @@ public final class PlaylistActivity extends Activity {
  private BaseAdapter adapter;
  private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
  private CheckBox selectAll;
- private ImageView filterIcon;
+ private ImageView filterIcon,bulkQualityIcon;
  private View filterDot;
  private final List<Integer> visibleRows=new ArrayList<>();
  private int[] videoStatus=new int[0];
@@ -40,7 +40,10 @@ public final class PlaylistActivity extends Activity {
  private float swipeStartX,swipeStartY;
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
- private LinearLayout progressPanel;
+ private LinearLayout progressPanel,rootLayout;
+ private FrameLayout headerClip;
+ private int headerExpandedHeight=-1,priorListFirst=-1,priorListTop=0;
+ private boolean returningToTop=false;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
  private FrameLayout listFrame;
@@ -96,6 +99,8 @@ public final class PlaylistActivity extends Activity {
    handler.postDelayed(this,600);
   }
  };
+ private long cancelledRevision=-1,expiredCancelledRevision=-1;
+ private Runnable cancelExpiry;
  private int dp(float v){return ThemeStyle.dp(this,v);}
  private TextView txt(String t,int size){
   TextView view=new TextView(this);view.setText(UiStrings.display(this,t));view.setTextSize(size);
@@ -250,7 +255,7 @@ public final class PlaylistActivity extends Activity {
   rebuildVisible(true);
  }
  private void buildScreen(){
-  LinearLayout root=column();
+  LinearLayout root=column();rootLayout=root;
   root.setBackgroundColor(ThemeStyle.background(this));
   root.setPadding(dp(13),dp(8),dp(13),dp(8));setContentView(root);
   LinearLayout toolbar=new LinearLayout(this);toolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -283,7 +288,12 @@ public final class PlaylistActivity extends Activity {
   cancelRefreshButton.setOnClickListener(v->cancelRefresh());
   root.addView(progressPanel,margin(1,6));progressPanel.setVisibility(View.GONE);
 
-  LinearLayout header=panel();root.addView(header,margin(2,9));
+  LinearLayout header=panel();
+  headerClip=new FrameLayout(this);
+  headerClip.setClipChildren(true);headerClip.setClipToPadding(true);
+  headerClip.addView(header,new FrameLayout.LayoutParams(-1,-2));
+  root.addView(headerClip,margin(2,9));
+  headerClip.post(()->{if(headerExpandedHeight<0)headerExpandedHeight=headerClip.getHeight();});
   LinearLayout hero=new LinearLayout(this);hero.setGravity(Gravity.CENTER_VERTICAL);
   header.addView(hero);
   ImageView cover=new ImageView(this);
@@ -336,6 +346,17 @@ public final class PlaylistActivity extends Activity {
   filterIcon=new ImageView(this);filterIcon.setScaleType(ImageView.ScaleType.CENTER);
   filterIcon.setContentDescription(UiStrings.display(this,"Настройки списка видео"));
   FrameLayout filterFrame=new FrameLayout(this);
+  bulkQualityIcon=new ImageView(this);
+  bulkQualityIcon.setScaleType(ImageView.ScaleType.CENTER);
+  android.graphics.drawable.Drawable approved=getDrawable(R.drawable.ic_quality_480_symmetric).mutate();
+  approved.setTint(ThemeStyle.text(this));
+  bulkQualityIcon.setImageDrawable(approved);
+  bulkQualityIcon.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(this),
+   ThemeStyle.buttonStroke(this),dp(9)));
+  bulkQualityIcon.setContentDescription(UiStrings.display(this,"Качество для отмеченных"));
+  LinearLayout.LayoutParams batchButton=new LinearLayout.LayoutParams(dp(42),dp(38));
+  batchButton.rightMargin=dp(6);selectRow.addView(bulkQualityIcon,batchButton);
+  bulkQualityIcon.setOnClickListener(v->showBulkQuality());
   selectRow.addView(filterFrame,new LinearLayout.LayoutParams(dp(42),dp(38)));
   filterFrame.addView(filterIcon,new FrameLayout.LayoutParams(-1,-1));
   filterDot=new View(this);
@@ -548,7 +569,7 @@ public final class PlaylistActivity extends Activity {
   int base=ThemeStyle.cardColor(this);
   if(!active)return base;
   int tint=ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP:ThemeStyle.field(this);
-  float amount=.26f;
+  float amount=.30f;
   return Color.rgb(
    Math.round(Color.red(base)*(1-amount)+Color.red(tint)*amount),
    Math.round(Color.green(base)*(1-amount)+Color.green(tint)*amount),

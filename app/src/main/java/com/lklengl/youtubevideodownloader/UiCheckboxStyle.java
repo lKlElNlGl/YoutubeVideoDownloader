@@ -12,7 +12,7 @@ public final class UiCheckboxStyle {
   box.setButtonTintList(null);
   int size=ThemeStyle.dp(c,21);
   StateListDrawable states=new StateListDrawable();
-  states.addState(new int[]{android.R.attr.state_checked},new Mark(size,true,0xFFEF2830));
+  states.addState(new int[]{android.R.attr.state_checked},new Mark(size,true,ThemeStyle.RED));
   states.addState(new int[]{},new Mark(size,false,ThemeStyle.isDark(c)?0xFFF4F5F8:0xFF596477));
   // No OEM press halo or ripple: retain the approved checked/unchecked glyphs.
   box.setButtonDrawable(states);

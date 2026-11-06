@@ -21,12 +21,12 @@ public final class PlaylistResolutionWorker {
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final LinkedBlockingDeque<PlaylistRepository.Entry> queue=new LinkedBlockingDeque<>();
- private final Map<String,PlaylistRepository.Entry> pending=new HashMap<>();
+ private final Map<String,PlaylistRepository.Entry> pending=new ConcurrentHashMap<>();
  private final Map<String,List<String>> cache=new HashMap<>();
  private final Set<String> finished=new HashSet<>();
  private final Set<String> failures=new HashSet<>();
  private volatile boolean closed=false;
- private int generation=0;
+ private volatile int generation=0;
  public PlaylistResolutionWorker(Context context,String proxy,Listener listener){
   app=context.getApplicationContext();this.proxy=proxy==null?"":proxy;this.listener=listener;
  }

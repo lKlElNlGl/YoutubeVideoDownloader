@@ -836,9 +836,12 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  boolean all=!visibleRows.isEmpty();
-  for(int i:visibleRows)if(!selected[i]){all=false;break;}
-  selectAll.setChecked(all);
+  boolean all=true;int enabled=0;
+  for(int i:visibleRows)if(formatsWorker.ready(playlist.entries.get(i).id)){
+   enabled++;if(!selected[i])all=false;
+  }
+  selectAll.setChecked(enabled>0&&all);
+  selectAll.setEnabled(enabled>0);selectAll.setAlpha(enabled>0?1f:.55f);
  }
  private void addCompactSpinner(LinearLayout content,Spinner spinner){
   FrameLayout frame=new FrameLayout(this);
@@ -949,7 +952,11 @@ public final class PlaylistActivity extends Activity {
    }
    if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
    qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
-   for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
+   for(int i=0;i<selected.length;i++)if(selected[i]){
+    List<String> available=formatsWorker.cached(playlist.entries.get(i).id);
+    if(available!=null)qualities.set(i,Release058Rules.closestSupported(qualities.get(i),available));
+    markQualityOverride(i);
+   }
    quality=PlaylistQualityPolicy.VALUES[index];
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();

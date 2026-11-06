@@ -34,3 +34,5 @@ Publish v0.5.5: per-stream and total progress, fixed playlist state, 46dp UI sta
 Publish v0.5.6: approved playlist/queue UI fixes, correct progress and folder labels, thumbnail retries and 300ms queue navigation fade. Signed release from main.
 
 Publish v0.5.7: autonomous playlist refresh and five-second results, improved playlist quality/filtering/scrolling, checkbox reset on enqueue, group-heading queue arrows, more prominent notifications. Signed release from main.
+
+Publish v0.5.8: per-video resolution discovery and cache, separate filter/bulk-quality dialogs, collapsible playlist cover, scroll arrows, refresh-cancel feedback, approved launcher and Colors 050; signed release from main.

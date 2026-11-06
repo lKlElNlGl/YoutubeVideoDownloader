@@ -574,6 +574,24 @@ public final class PlaylistActivity extends Activity {
     list.post(PlaylistActivity.this::updateListArrows);
    }
   });
+  // At the list boundary, consume vertical drag to reveal/hide the cover first.
+  final float[] lastTouch={Float.NaN};
+  list.setOnTouchListener((v,event)->{
+   int action=event.getActionMasked();
+   if(action==MotionEvent.ACTION_DOWN){lastTouch[0]=event.getRawY();return false;}
+   if(action==MotionEvent.ACTION_MOVE){
+    float dy=event.getRawY()-lastTouch[0];lastTouch[0]=event.getRawY();
+    if(!returningToTop&&headerExpandedHeight>0&&
+       !list.canScrollVertically(-1)&&Math.abs(dy)>0.5f&&
+       ((dy>0&&headerCollapsePx>0)||(dy<0&&headerCollapsePx<headerExpandedHeight))){
+     setHeaderCollapse(headerCollapsePx-Math.round(dy));
+     return true;
+    }
+   }else if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
+    lastTouch[0]=Float.NaN;
+   }
+   return false;
+  });
   list.post(()->{
    if(savedScroll!=null){
     list.setSelectionFromTop(savedScroll[0],savedScroll[1]);

@@ -694,89 +694,94 @@ public final class PlaylistActivity extends Activity {
  }
  private void showListSettings(){
   ScrollView scroll=new ScrollView(this);
-  LinearLayout content=column();
-  content.setPadding(dp(17),dp(6),dp(17),dp(9));
+  LinearLayout content=column();content.setPadding(dp(17),dp(6),dp(17),dp(9));
   scroll.addView(content);
-  TextView filterHeading=txt("Фильтр отображения загрузок",15);
-  filterHeading.setTypeface(null,Typeface.BOLD);content.addView(filterHeading,margin(7,8));
+  TextView title=txt("Фильтр отображения загрузок",15);
+  title.setTypeface(null,Typeface.BOLD);content.addView(title,margin(7,8));
   Spinner choose=settingsChoice(content,"Отобразить отмеченные/неотмеченные загрузки",
     new String[]{"Все","Только отмеченные","Только неотмеченные"},selectionFilter);
   Spinner downloads=settingsChoice(content,"Отобразить скачанные/нескачанные загрузки",
     new String[]{"Все","Скачанные","Нескачанные"},downloadFilter);
   Spinner queued=settingsChoice(content,"Отобразить находящиеся/отсутствующие в очереди загрузки",
     new String[]{"Все","Уже добавленные","Ещё не добавленные"},queueFilter);
+  CheckBox sort=new CheckBox(this);
+  UiCheckboxStyle.apply(sort);UiCheckboxStyle.applyLabelGap(sort);
+  sort.setText(UiStrings.display(this,"Сначала отмеченные"));
+  sort.setTextColor(ThemeStyle.text(this));sort.setTextSize(13);
+  sort.setChecked(selectedFirst);content.addView(sort,margin(12,4));
   TextView reset=txt("Сбросить фильтры",13);
   reset.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
-  reset.setPadding(0,dp(1),0,dp(1));content.addView(reset);
+  reset.setPadding(0,dp(10),dp(1),dp(1));content.addView(reset,margin(5,3));
   Runnable updateReset=()->{
-   boolean changed=choose.getSelectedItemPosition()!=0||
-    downloads.getSelectedItemPosition()!=0||queued.getSelectedItemPosition()!=0;
+   boolean changed=Release058Rules.hasActiveFilters(
+    choose.getSelectedItemPosition(),downloads.getSelectedItemPosition(),
+    queued.getSelectedItemPosition(),sort.isChecked());
    reset.setEnabled(changed);
-   reset.setTextColor(changed?(ThemeStyle.isDark(this)?0xFFE77A80:ThemeStyle.RED):ThemeStyle.subdued(this));
+   reset.setTextColor(changed?ThemeStyle.text(this):ThemeStyle.subdued(this));
    reset.setAlpha(changed?1f:.55f);
   };
-  AdapterView.OnItemSelectedListener listener=new AdapterView.OnItemSelectedListener(){
+  AdapterView.OnItemSelectedListener changes=new AdapterView.OnItemSelectedListener(){
    @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){updateReset.run();}
    @Override public void onNothingSelected(AdapterView<?> parent){updateReset.run();}
   };
-  choose.setOnItemSelectedListener(listener);
-  downloads.setOnItemSelectedListener(listener);
-  queued.setOnItemSelectedListener(listener);
-  reset.setOnClickListener(v->{choose.setSelection(0);downloads.setSelection(0);queued.setSelection(0);updateReset.run();});
+  choose.setOnItemSelectedListener(changes);
+  downloads.setOnItemSelectedListener(changes);
+  queued.setOnItemSelectedListener(changes);
+  sort.setOnCheckedChangeListener((button,checked)->updateReset.run());
+  reset.setOnClickListener(v->{
+   choose.setSelection(0);downloads.setSelection(0);queued.setSelection(0);
+   sort.setChecked(false);updateReset.run();
+  });
   updateReset.run();
-  View sectionBreak=new View(this);sectionBreak.setBackgroundColor(ThemeStyle.border(this));
-  content.addView(sectionBreak,margin(4,4));
-  TextView info=txt("Качество для отмеченных",13);
-  info.setTypeface(null,Typeface.BOLD);
-  content.addView(info,margin(3,4));
+  ThemeStyle.dialog(this)
+   .setTitle(UiStrings.display(this,"Настройки списка видео"))
+   .setView(scroll)
+   .setNegativeButton(UiStrings.display(this,"Отмена"),null)
+   .setPositiveButton(UiStrings.display(this,"Применить"),(d,w)->{
+    selectionFilter=choose.getSelectedItemPosition();
+    downloadFilter=downloads.getSelectedItemPosition();
+    queueFilter=queued.getSelectedItemPosition();selectedFirst=sort.isChecked();
+    getSharedPreferences("playlist_display",0).edit()
+      .putInt("selection",selectionFilter).putInt("download",downloadFilter)
+      .putInt("queue",queueFilter).putBoolean("selectedFirst",selectedFirst).apply();
+    int first=list.getFirstVisiblePosition();
+    int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
+    int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
+    scrollRestoring=true;
+    rebuildVisible(true);
+    int restored=Release057Rules.anchorPosition(visibleRows,anchor);
+    list.post(()->{
+     if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
+     list.post(()->{scrollRestoring=false;updateListArrows();});
+    });
+   }).show();
+ }
+ private void showBulkQuality(){
+  LinearLayout content=column();content.setPadding(dp(17),dp(6),dp(17),dp(12));
   Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
   bulk.setSelection(PlaylistQualityPolicy.index(quality));
   addCompactSpinner(content,bulk);
-  TextView applyQuality=txt("Применить качество к отмеченным",13);
-  applyQuality.setTextColor(ThemeStyle.isDark(this)?0xFFE77A80:ThemeStyle.RED);
-  applyQuality.setGravity(Gravity.CENTER);
-  content.addView(applyQuality,margin(4,8));
-  applyQuality.setOnClickListener(v->{
-   int index=bulk.getSelectedItemPosition();
+  AlertDialog dialog=ThemeStyle.dialog(this)
+    .setTitle(UiStrings.display(this,"Качество для отмеченных"))
+    .setView(content)
+    .setNegativeButton(UiStrings.display(this,"Отмена"),null)
+    .setPositiveButton(UiStrings.display(this,"Применить"),null)
+    .create();
+  dialog.setOnShowListener(v->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(click->{
+   int index=bulk.getSelectedItemPosition(),count=0;
+   for(boolean checked:selected)if(checked)count++;
+   if(count==0){
+    Toast.makeText(this,UiStrings.display(this,"Выберите видео"),Toast.LENGTH_SHORT).show();return;
+   }
    if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
    qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
    for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
    quality=PlaylistQualityPolicy.VALUES[index];
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
-  });
-  CheckBox sort=new CheckBox(this);
-  UiCheckboxStyle.apply(sort);UiCheckboxStyle.applyLabelGap(sort);
-  sort.setText(UiStrings.display(this,"Сначала отмеченные"));
-  sort.setTextColor(ThemeStyle.text(this));sort.setTextSize(13);
-  sort.setChecked(selectedFirst);
-  content.addView(sort,margin(12,4));
-  ThemeStyle.dialog(this)
-    .setTitle(UiStrings.display(this,"Настройки списка видео"))
-    .setView(scroll)
-    .setNegativeButton(UiStrings.display(this,"Отмена"),null)
-    .setPositiveButton(UiStrings.display(this,"Применить"),(d,w)->{
-      selectionFilter=choose.getSelectedItemPosition();
-      downloadFilter=downloads.getSelectedItemPosition();
-      queueFilter=queued.getSelectedItemPosition();
-      selectedFirst=sort.isChecked();
-      getSharedPreferences("playlist_display",0).edit()
-       .putInt("selection",selectionFilter)
-       .putInt("download",downloadFilter)
-       .putInt("queue",queueFilter)
-       .putBoolean("selectedFirst",selectedFirst).apply();
-      // Preserve the first visible video and its exact pixel offset across filtering.
-      int first=list.getFirstVisiblePosition();
-      int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
-      int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
-      scrollRestoring=true;
-      rebuildVisible(true);
-      int restored=Release057Rules.anchorPosition(visibleRows,anchor);
-      list.post(()->{
-       if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
-       list.post(()->{scrollRestoring=false;updateListArrows();});
-      });
-    }).show();
+   dialog.dismiss();
+  }));
+  dialog.show();
  }
  private void addSelected(){
   int count=0,duplicates=0;

@@ -150,11 +150,8 @@ public final class MainActivity extends Activity {
                         previewCard.setVisibility(View.VISIBLE);
                         if(cancelInfoExpiryRevision!=state.revision){
                             cancelInfoExpiryRevision=state.revision;
-                            android.view.ViewGroup holder=(android.view.ViewGroup)infoStatusRow.getParent();
-                            if(holder!=null)android.transition.TransitionManager.beginDelayedTransition(
-                                holder,new android.transition.AutoTransition().setDuration(600));
-                            // The cancellation line occupies additional space, then collapses on expiry.
-                            infoStatusRow.setMinimumHeight(infoStatusRow.getHeight()+dp(18));
+                            // Restore the slim v0.5.7 status row; only its display time is extended.
+                            infoStatusRow.setMinimumHeight(0);
                             infoStatusRow.setVisibility(View.VISIBLE);
                             infoIndicator.setVisibility(View.GONE);
                             cancelInfoButton.setVisibility(View.GONE);
@@ -164,9 +161,6 @@ public final class MainActivity extends Activity {
                             final long revision=state.revision;
                             cancelInfoExpiry=()->{
                                 if(revision!=cancelInfoExpiryRevision)return;
-                                android.view.ViewGroup container=(android.view.ViewGroup)infoStatusRow.getParent();
-                                if(container!=null)android.transition.TransitionManager.beginDelayedTransition(
-                                    container,new android.transition.AutoTransition().setDuration(600));
                                 infoStatusRow.setVisibility(View.GONE);
                                 infoStatusRow.setMinimumHeight(0);
                                 cancelInfoExpiry=null;

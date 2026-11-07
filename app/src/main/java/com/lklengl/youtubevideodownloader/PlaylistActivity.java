@@ -83,9 +83,8 @@ public final class PlaylistActivity extends Activity {
     refreshControl.setEnabled(true);
     if(cancelled&&cancelledRevision!=state.revision){
      cancelledRevision=state.revision;
-     android.transition.TransitionManager.beginDelayedTransition(
-       rootLayout,new android.transition.AutoTransition().setDuration(600));
-     progressPanel.setMinimumHeight(progressPanel.getHeight()+dp(18));
+
+     progressPanel.setMinimumHeight(0);
      progressPanel.setVisibility(View.VISIBLE);
      refreshSpinner.setVisibility(View.GONE);cancelRefreshButton.setVisibility(View.GONE);
      progressText.setText(UiStrings.display(PlaylistActivity.this,
@@ -94,8 +93,7 @@ public final class PlaylistActivity extends Activity {
      cancelExpiry=()->{
       if(revision!=cancelledRevision)return;
       expiredCancelledRevision=revision;
-      android.transition.TransitionManager.beginDelayedTransition(
-       rootLayout,new android.transition.AutoTransition().setDuration(600));
+
       progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
       cancelExpiry=null;
      };
@@ -103,8 +101,7 @@ public final class PlaylistActivity extends Activity {
     }else if(!cancelled&&progressPanel.getVisibility()!=View.GONE){
      if(cancelledRevision!=state.revision||
        expiredCancelledRevision!=state.revision){
-      android.transition.TransitionManager.beginDelayedTransition(
-        rootLayout,new android.transition.AutoTransition().setDuration(600));
+
       progressPanel.setVisibility(View.GONE);progressPanel.setMinimumHeight(0);
      }
     }

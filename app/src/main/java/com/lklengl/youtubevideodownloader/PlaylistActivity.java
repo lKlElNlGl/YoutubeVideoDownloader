@@ -42,7 +42,7 @@ public final class PlaylistActivity extends Activity {
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
  private LinearLayout playlistHeroHolder,stickyControls;
- private View listHeader,stickySpacer;
+ private View stickySpacer;
  private TextView listEmpty;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
@@ -398,7 +398,6 @@ public final class PlaylistActivity extends Activity {
   headerContent.addView(playlistHeroHolder,new LinearLayout.LayoutParams(-1,-2));
   stickySpacer=new View(this);
   headerContent.addView(stickySpacer,new LinearLayout.LayoutParams(-1,dp(90)));
-  listHeader=headerContent;
   list.addHeaderView(headerContent,null,false);
   list.setDivider(new android.graphics.drawable.InsetDrawable(
     new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)),dp(10),0,dp(10),0));
@@ -839,14 +838,15 @@ public final class PlaylistActivity extends Activity {
       .putInt("selection",selectionFilter).putInt("download",downloadFilter)
       .putInt("queue",queueFilter).putBoolean("selectedFirst",selectedFirst).apply();
     int first=list.getFirstVisiblePosition();
-    int anchor=first>=0&&first<visibleRows.size()?visibleRows.get(first):0;
+    int videoIndex=first-list.getHeaderViewsCount();
+    int anchor=videoIndex>=0&&videoIndex<visibleRows.size()?visibleRows.get(videoIndex):0;
     int offset=list.getChildCount()>0?list.getChildAt(0).getTop():0;
     scrollRestoring=true;
     rebuildVisible(true);
-    int restored=Release057Rules.anchorPosition(visibleRows,anchor);
+    int restored=first==0?0:Release057Rules.anchorPosition(visibleRows,anchor)+list.getHeaderViewsCount();
     list.post(()->{
-     if(!visibleRows.isEmpty())list.setSelectionFromTop(restored,offset);
-     list.post(()->{scrollRestoring=false;updateListArrows();});
+     list.setSelectionFromTop(restored,offset);
+     list.post(()->{scrollRestoring=false;updateStickyControls();updateListArrows();});
     });
    }).show();
  }

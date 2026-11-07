@@ -30,6 +30,13 @@
 
 ## Изменения
 
+### v0.5.9
+- Плейлист прокручивается непрерывно, как главная страница: обложка и описание уходят обычным движением, а «Видео в плейлисте», счётчик, «Выбрать всё», массовое качество и фильтр закрепляются под верхней панелью только после достижения её края. Убраны искусственное сворачивание и перехват касаний; стрелки и восстановление позиции адаптированы.
+- Возвращён быстрый фиксированный выбор индивидуального качества: «Максимальное», 2160p, 1440p, 1080p, 720p, 480p и 360p. Отключены фоновые проверки разрешений каждого видео и связанные с ними спиннеры/блокировки чекбоксов; массовое качество сохранено.
+- Компактное поле качества: 7 dp слева от текста и 3 dp справа до зоны стрелки при неизменной ширине.
+- Выделение активной строки: 31% в тёмной теме, 60% в светлой (цвет #E6E7EB). Палитра остальных элементов и иконка A не менялись.
+- Полосы «Запрос обновления информации отменён» на страницах «Загрузка» и «Плейлист» снова тонкие, как в v0.5.7; время отображения — 15 секунд.
+
 ### v0.5.8
 - Плейлисты: карточка с обложкой и описанием уходит вверх при прокрутке; заголовок списка и кнопка добавления остаются закреплёнными. Стрелки обеспечивают прокрутку на экран, удержание — к краю.
 - Для каждого видео в фоне определяются реальные доступные разрешения, сохраняемые для повторных открытий. Пока идёт проверка, выбор качества и чекбокс заблокированы, отображается индикатор 20 dp; при ошибке доступен прежний список качеств.
@@ -130,6 +137,13 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.9
+- Playlist cover and description scroll away normally; list heading, selection count, Select all, bulk quality and filters become sticky only when they reach the fixed toolbar. One continuous scroll replaces the collapsing cover and touch interception, preserving navigation arrows and scroll position.
+- Restored immediate, fixed per-video quality choices (Best, 2160p, 1440p, 1080p, 720p, 480p, 360p). Removed per-video YouTube resolution probes, waiting indicators and blocked checkboxes; bulk quality remains available.
+- Compact quality label padding is now 7 dp from the left edge and 3 dp to the arrow area without increasing field width.
+- Active row highlight strength: 31% in dark mode and 60% in light mode (tint #E6E7EB). Other palette colors and approved Icon A are unchanged.
+- Cancellation notices on Downloads and Playlist return to the slim v0.5.7 layout, keeping the 15-second lifetime.
 
 ### v0.5.8
 - Playlist cover and description slide away while scrolling; the list heading and Add to queue button stay pinned. Floating arrows move one screen per tap or to the edge when held.

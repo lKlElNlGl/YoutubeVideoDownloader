@@ -41,9 +41,9 @@ public final class PlaylistActivity extends Activity {
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
- private FrameLayout headerClip;
- private int headerExpandedHeight=-1,headerCollapsePx=0,priorListFirst=-1,priorListTop=0;
- private boolean returningToTop=false;
+ private LinearLayout playlistHeroHolder,stickyControls;
+ private View listHeader,stickySpacer;
+ private TextView listEmpty;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
  private FrameLayout listFrame;
@@ -223,6 +223,7 @@ public final class PlaylistActivity extends Activity {
    for(int i:next)if(!visibleRows.contains(i))visibleRows.add(i);
   }
   if(adapter!=null)adapter.notifyDataSetChanged();
+  if(listEmpty!=null)listEmpty.setVisibility(visibleRows.isEmpty()?View.VISIBLE:View.GONE);
   updateFilterIcon();updateFooter();
  }
  private void updateFilterIcon(){
@@ -312,12 +313,10 @@ public final class PlaylistActivity extends Activity {
   cancelRefreshButton.setOnClickListener(v->cancelRefresh());
   root.addView(progressPanel,margin(1,6));progressPanel.setVisibility(View.GONE);
 
+  // The playlist summary moves with the scrolling list without clipping or collapsing.
+  playlistHeroHolder=column();
   LinearLayout header=panel();
-  headerClip=new FrameLayout(this);
-  headerClip.setClipChildren(true);headerClip.setClipToPadding(true);
-  headerClip.addView(header,new FrameLayout.LayoutParams(-1,-2));
-  root.addView(headerClip,margin(2,9));
-  headerClip.post(()->{if(headerExpandedHeight<0)headerExpandedHeight=headerClip.getHeight();});
+  playlistHeroHolder.addView(header,margin(2,9));
   LinearLayout hero=new LinearLayout(this);hero.setGravity(Gravity.CENTER_VERTICAL);
   header.addView(hero);
   ImageView cover=new ImageView(this);
@@ -342,19 +341,25 @@ public final class PlaylistActivity extends Activity {
   listCard.setClipChildren(false);listCard.setClipToPadding(false);
   listCard.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(14)));
   root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
+  // One controls view: naturally scrolls until it reaches the fixed toolbar, then pins.
+  stickyControls=column();
+  stickyControls.setPadding(dp(10),dp(2),dp(10),dp(6));
+  stickyControls.setBackground(ThemeStyle.rounded(
+    ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(12)));
+  stickyControls.setClickable(true);
   LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);
-  listCard.addView(section,margin(2,0));
+  stickyControls.addView(section,margin(2,0));
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
   section.post(()->sectionTitle.setTranslationY(
    sectionCount.getTop()+sectionCount.getBaseline()-sectionTitle.getTop()-sectionTitle.getBaseline()-dp(2)));
   section.addView(sectionTitle,new LinearLayout.LayoutParams(0,-2,1));
   sectionCount=txt("",12);sectionCount.setTextColor(ThemeStyle.subdued(this));section.addView(sectionCount);sectionCount.setTranslationY(-dp(2));
   View rule=new View(this);rule.setBackgroundColor(ThemeStyle.border(this));
-  listCard.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
+  stickyControls.addView(rule,new LinearLayout.LayoutParams(-1,dp(1)));
 
   LinearLayout selectRow=new LinearLayout(this);
   selectRow.setGravity(Gravity.CENTER_VERTICAL);
-  listCard.addView(selectRow,new LinearLayout.LayoutParams(-1,dp(46)));
+  stickyControls.addView(selectRow,new LinearLayout.LayoutParams(-1,dp(46)));
   selectAll=new CheckBox(this);
   selectAll.setText(UiStrings.display(this,"Выбрать всё"));
   selectAll.setTextColor(ThemeStyle.text(this));selectAll.setTextSize(13);
@@ -392,6 +397,12 @@ public final class PlaylistActivity extends Activity {
   filterFrame.setOnClickListener(v->showListSettings());
   updateFilterIcon();
   list=new ListView(this);
+  LinearLayout headerContent=column();
+  headerContent.addView(playlistHeroHolder,new LinearLayout.LayoutParams(-1,-2));
+  stickySpacer=new View(this);
+  headerContent.addView(stickySpacer,new LinearLayout.LayoutParams(-1,dp(90)));
+  listHeader=headerContent;
+  list.addHeaderView(headerContent,null,false);
   list.setDivider(new android.graphics.drawable.InsetDrawable(
     new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)),dp(10),0,dp(10),0));
   list.setDividerHeight(dp(1));list.setCacheColorHint(Color.TRANSPARENT);
@@ -405,7 +416,22 @@ public final class PlaylistActivity extends Activity {
   TextView empty=txt("Нет видео, соответствующих фильтру",13);
   empty.setGravity(Gravity.CENTER);
   listFrame.addView(empty,new FrameLayout.LayoutParams(-1,-1));
-  list.setEmptyView(empty);
+  listEmpty=empty;empty.setVisibility(View.GONE);
+  listFrame.addView(stickyControls,new FrameLayout.LayoutParams(-1,-2,Gravity.TOP));
+  stickyControls.addOnLayoutChangeListener((v,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
+   int height=bottom-top;
+   ViewGroup.LayoutParams spacerParams=stickySpacer.getLayoutParams();
+   if(spacerParams!=null&&spacerParams.height!=height){
+    spacerParams.height=height;stickySpacer.setLayoutParams(spacerParams);
+   }
+   if(listArrowUp!=null){
+    FrameLayout.LayoutParams upParams=(FrameLayout.LayoutParams)listArrowUp.getLayoutParams();
+    if(upParams.topMargin!=height+dp(8)){
+     upParams.topMargin=height+dp(8);listArrowUp.setLayoutParams(upParams);
+    }
+   }
+   updateStickyControls();
+  });
   adapter=new BaseAdapter(){
    @Override public int getCount(){return visibleRows.size();}
    @Override public Object getItem(int i){return playlist.entries.get(visibleRows.get(i));}
@@ -523,52 +549,17 @@ public final class PlaylistActivity extends Activity {
   list.setAdapter(adapter);
   listArrowUp=playlistArrow(true);listArrowDown=playlistArrow(false);
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
-   private boolean moving=false;
-   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){
-    moving=state!=android.widget.AbsListView.OnScrollListener.SCROLL_STATE_IDLE;
-   }
+   @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
-    promoteVisibleFormats();
-    if(list.getChildCount()>0){
-     int top=list.getChildAt(0).getTop();
-     if(moving&&!returningToTop&&!scrollRestoring&&priorListFirst>=0){
-      int delta=(first-priorListFirst)*dp(70)+priorListTop-top;
-      if(delta>0&&headerCollapsePx<headerExpandedHeight)
-       setHeaderCollapse(headerCollapsePx+delta);
-      else if(delta<0&&first==0&&!list.canScrollVertically(-1))
-       setHeaderCollapse(headerCollapsePx+delta);
-     }
-     priorListFirst=first;priorListTop=top;
-    }
+    updateStickyControls();
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
     list.post(PlaylistActivity.this::updateListArrows);
    }
   });
-  // At the list boundary, consume vertical drag to reveal/hide the cover first.
-  final float[] lastTouch={Float.NaN};
-  list.setOnTouchListener((v,event)->{
-   int action=event.getActionMasked();
-   if(action==MotionEvent.ACTION_DOWN){lastTouch[0]=event.getRawY();return false;}
-   if(action==MotionEvent.ACTION_MOVE){
-    float dy=event.getRawY()-lastTouch[0];lastTouch[0]=event.getRawY();
-    if(!returningToTop&&headerExpandedHeight>0&&
-       !list.canScrollVertically(-1)&&Math.abs(dy)>0.5f&&
-       ((dy>0&&headerCollapsePx>0)||(dy<0&&headerCollapsePx<headerExpandedHeight))){
-     setHeaderCollapse(headerCollapsePx-Math.round(dy));
-     return true;
-    }
-   }else if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
-    lastTouch[0]=Float.NaN;
-   }
-   return false;
-  });
   list.post(()->{
-   if(savedScroll!=null){
-    list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
-    if(savedScroll[0]>0)setHeaderCollapse(headerExpandedHeight);
-   }
-   list.post(()->{scrollRestoring=false;updateListArrows();});
+   if(savedScroll!=null)list.setSelectionFromTop(savedScroll[0],savedScroll[1]);
+   list.post(()->{scrollRestoring=false;updateStickyControls();updateListArrows();});
   });
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
@@ -578,35 +569,17 @@ public final class PlaylistActivity extends Activity {
   bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
   addButton.setOnClickListener(v->addSelected());
  }
- /** Hide the cover as the list scrolls; the toolbar and list heading stay fixed. */
- private void setHeaderCollapse(int pixels){
-  if(headerClip==null||headerExpandedHeight<=0)return;
-  int next=Math.max(0,Math.min(headerExpandedHeight,pixels));
-  if(headerCollapsePx==next)return;
-  headerCollapsePx=next;
-  LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)headerClip.getLayoutParams();
-  p.height=headerExpandedHeight-next;
-  float fraction=(headerExpandedHeight-next)/(float)headerExpandedHeight;
-  p.topMargin=Math.round(dp(2)*fraction);
-  p.bottomMargin=Math.round(dp(9)*fraction);
-  headerClip.setLayoutParams(p);
-  // Translate upward inside the clipping viewport, rather than cutting the cover from below.
-  if(headerClip.getChildCount()>0)headerClip.getChildAt(0).setTranslationY(-next);
-  updateListArrows();
+ /** The hero scrolls in the list while one overlay follows its reserved spacer. */
+ private void updateStickyControls(){
+  if(list==null||stickyControls==null||playlistHeroHolder==null)return;
+  int heroHeight=playlistHeroHolder.getHeight();
+  int top=list.getFirstVisiblePosition()==0&&list.getChildCount()>0
+    ?list.getChildAt(0).getTop():-heroHeight;
+  stickyControls.setTranslationY(Release059Rules.stickyControlsY(top,heroHeight));
  }
  private void scrollToPlaylistTop(){
   if(list==null)return;
-  returningToTop=true;
   list.smoothScrollToPositionFromTop(0,0,600);
-  if(headerExpandedHeight<=0){returningToTop=false;return;}
-  android.animation.ValueAnimator anim=android.animation.ValueAnimator.ofInt(headerCollapsePx,0);
-  anim.setDuration(600);
-  anim.addUpdateListener(a->setHeaderCollapse((Integer)a.getAnimatedValue()));
-  anim.addListener(new android.animation.AnimatorListenerAdapter(){
-   @Override public void onAnimationEnd(android.animation.Animator a){
-    returningToTop=false;priorListFirst=-1;updateListArrows();
-   }
-  });anim.start();
  }
  /** Floating queue-style arrows control only the playlist ListView. */
  private android.graphics.drawable.GradientDrawable arrowSkin(boolean pressed){
@@ -622,12 +595,13 @@ public final class PlaylistActivity extends Activity {
   button.setContentDescription(UiStrings.display(this,up?"Прокрутить вверх":"Прокрутить вниз"));
   FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(78),dp(38),
    Gravity.CENTER_HORIZONTAL|(up?Gravity.TOP:Gravity.BOTTOM));
-  if(up)p.topMargin=dp(8);else p.bottomMargin=dp(8);
+  if(up)p.topMargin=stickyControls.getHeight()+dp(8);
+  else p.bottomMargin=dp(8);
   listFrame.addView(button,p);button.setVisibility(View.GONE);button.setAlpha(0f);
   final boolean[] held={false};
   final Runnable edge=()->{
    held[0]=true;
-   if(list.getCount()==0)return;
+   if(visibleRows.isEmpty())return;
    if(up)scrollToPlaylistTop();
    else list.smoothScrollToPositionFromTop(list.getCount()-1,0,600);
   };
@@ -665,7 +639,7 @@ public final class PlaylistActivity extends Activity {
  }
  private void updateListArrows(){
   if(list==null)return;
-  fadeListArrow(listArrowUp,headerExpandedHeight>0&&headerCollapsePx>=headerExpandedHeight);
+  fadeListArrow(listArrowUp,list.canScrollVertically(-1)&&stickyControls.getTranslationY()<=0f);
   fadeListArrow(listArrowDown,list.canScrollVertically(1));
  }
  private int rowHighlight(boolean active){

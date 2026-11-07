@@ -22,7 +22,6 @@ public final class PlaylistActivity extends Activity {
  private boolean priority;
  private String source,quality,format,proxy,folder;
  private PlaylistRepository.Playlist playlist;
- private PlaylistResolutionWorker formatsWorker;
  private boolean[] selected;
  private List<String> qualities;
  private ListView list;
@@ -112,9 +111,6 @@ public final class PlaylistActivity extends Activity {
     if(observedRunning&&same){
      if(state.stage==PlaylistRefreshManager.Stage.DONE){
       refreshData(true);
-      PlaylistResolutionWorker.takeRefreshFlag(PlaylistActivity.this,source);
-      formatsWorker.start(playlist,true);
-      promoteVisibleFormats();
       if(PlaylistRefreshManager.claimNotice(source,state.revision))
        RefreshNotice.show(PlaylistActivity.this,true);
      }else if(state.stage==PlaylistRefreshManager.Stage.ERROR){
@@ -163,14 +159,7 @@ public final class PlaylistActivity extends Activity {
   downloadFilter=display.getInt("download",0);
   queueFilter=display.getInt("queue",0);
   selectedFirst=display.getBoolean("selectedFirst",false);
-  formatsWorker=new PlaylistResolutionWorker(this,proxy,(id,failed)->{
-   if(isFinishing()||isDestroyed()||adapter==null)return;
-   adapter.notifyDataSetChanged();updateFooter();
-  });
   buildScreen();ThemeStyle.applySystemBarInsets(this);refreshData(false);
-  boolean force=PlaylistResolutionWorker.takeRefreshFlag(this,source);
-  formatsWorker.start(playlist,force);
-  list.post(()->{promoteVisibleFormats();adapter.notifyDataSetChanged();});
  }
  /** Back swipe begins in free screen space; inputs and vertical scrolling win. */
  private boolean touchesInteractive(View v,float x,float y){
@@ -268,10 +257,7 @@ public final class PlaylistActivity extends Activity {
      PlaylistSelectionPolicy.resume(legacy,urls,already);
   }
   selected=new boolean[flags.size()];
-  for(int i=0;i<flags.size();i++){
-   // Pending formats never permit a prechecked item.
-   selected[i]=flags.get(i)&&formatsWorker.ready(playlist.entries.get(i).id);
-  }
+  for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
   PlaylistCache.saveSelectionById(this,source,playlist,selected);
   qualities=PlaylistCache.readQualities(this,source,playlist,quality);
   heading.setText(playlist.title);
@@ -375,9 +361,8 @@ public final class PlaylistActivity extends Activity {
   UiCheckboxStyle.apply(selectAll);UiCheckboxStyle.applyLabelGap(selectAll);
   selectRow.addView(selectAll,new LinearLayout.LayoutParams(0,dp(44),1));
   selectAll.setOnClickListener(v->{
-   boolean all=true;for(int i:visibleRows)if(formatsWorker.ready(playlist.entries.get(i).id)&&!selected[i]){all=false;break;}
-   for(int i:new ArrayList<>(visibleRows))
-    if(formatsWorker.ready(playlist.entries.get(i).id))selected[i]=!all;
+   boolean all=true;for(int i:visibleRows)if(!selected[i]){all=false;break;}
+   for(int i:new ArrayList<>(visibleRows))selected[i]=!all;
    persistSelection();
    if(selectionFilter!=0)rebuildVisible(false);
    else{adapter.notifyDataSetChanged();updateFooter();}
@@ -463,7 +448,7 @@ public final class PlaylistActivity extends Activity {
      h.qualityValue.setIncludeFontPadding(false);
      h.qualityValue.setSingleLine(true);
      h.qualityValue.setEllipsize(TextUtils.TruncateAt.END);
-     h.qualityValue.setPadding(0,0,dp(18),0);
+     h.qualityValue.setPadding(dp(2),0,dp(16),0);
      h.qualityFrame.addView(h.qualityValue,new FrameLayout.LayoutParams(-1,-1));
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
@@ -478,12 +463,6 @@ public final class PlaylistActivity extends Activity {
      arrow.setImageDrawable(new UiIcons("chevron",ThemeStyle.text(PlaylistActivity.this),dp(13)));
      arrow.setPadding(dp(4),0,dp(4),0);
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(18),-1,Gravity.END));
-     h.qualityLoader=new ProgressBar(PlaylistActivity.this,null,
-       android.R.attr.progressBarStyleSmall);
-     h.qualityLoader.setIndeterminateTintList(ColorStateList.valueOf(ThemeStyle.text(PlaylistActivity.this)));
-     LinearLayout.LayoutParams loaderParams=new LinearLayout.LayoutParams(dp(20),dp(20));
-     loaderParams.leftMargin=dp(6);
-     detail.addView(h.qualityLoader,loaderParams);
       ((RotatingSpinner)h.quality).setArrow(arrow);
       // Closed spinner is 20dp; popup menu rows stay at 46dp.
      arrow.setOnClickListener(v->{
@@ -501,8 +480,8 @@ public final class PlaylistActivity extends Activity {
        // Programmatic row binding and bulk updates do not count as user changes.
        if(!holder.qualityUserInteraction)return;
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
-          chosen>=holder.qualityOptions.size())return;
-       String value=holder.qualityOptions.get(chosen);
+          chosen>=PlaylistQualityPolicy.VALUES.length)return;
+       String value=PlaylistQualityPolicy.VALUES[chosen];
        if(value.equals(qualities.get(holder.position)))return;
        holder.qualityUserInteraction=false;
        qualities.set(holder.position,value);
@@ -520,25 +499,17 @@ public final class PlaylistActivity extends Activity {
      imageItem.id=imageKey;imageItem.url=entry.url;
      QueueThumbnails.show(PlaylistActivity.this,imageItem,h.image,dp(7));
     }
-    h.check.setChecked(formatsWorker.ready(entry.id)&&selected[h.position]);
+    h.check.setChecked(selected[h.position]);
     h.root.setBackgroundColor(rowHighlight(activeTitle==h.position));
     h.name.setText(entry.title);
      TitleMarquee.show(h.name,activeTitle==h.position);
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
     h.qualityUserInteraction=false;
-    boolean waiting=!formatsWorker.ready(entry.id);
-    List<String> allowed=formatsWorker.choices(entry.id);
-    if(!allowed.equals(h.qualityOptions)){
-     h.qualityOptions=new ArrayList<>(allowed);
-     replaceRowQualityChoices(h);
-    }
-    int choice=h.qualityOptions.indexOf(qualities.get(h.position));
-    h.quality.setSelection(waiting?0:Math.max(0,choice));
-    h.quality.setEnabled(!waiting);
-    h.qualityLoader.setVisibility(waiting?View.VISIBLE:View.GONE);
-    h.qualityValue.setTextColor(waiting?ThemeStyle.subdued(PlaylistActivity.this):ThemeStyle.text(PlaylistActivity.this));
-    h.check.setEnabled(!waiting);h.check.setAlpha(waiting?.55f:1f);
+    h.quality.setSelection(PlaylistQualityPolicy.index(qualities.get(h.position)));
+    h.quality.setEnabled(true);
+    h.qualityValue.setTextColor(ThemeStyle.text(PlaylistActivity.this));
+    h.check.setEnabled(true);h.check.setAlpha(1f);
     updateRowQuality(h);
      int status=h.position<videoStatus.length?videoStatus[h.position]:PlaylistHistory.NEW;
      h.already.setVisibility(status==PlaylistHistory.NEW?View.GONE:View.VISIBLE);
@@ -700,18 +671,13 @@ public final class PlaylistActivity extends Activity {
  private int rowHighlight(boolean active){
   int base=ThemeStyle.cardColor(this);
   if(!active)return base;
-  int tint=ThemeStyle.isDark(this)?Palette050.NIGHT_POPUP:ThemeStyle.field(this);
-  float amount=.30f;
-  return Color.rgb(
-   Math.round(Color.red(base)*(1-amount)+Color.red(tint)*amount),
-   Math.round(Color.green(base)*(1-amount)+Color.green(tint)*amount),
-   Math.round(Color.blue(base)*(1-amount)+Color.blue(tint)*amount));
+  boolean dark=ThemeStyle.isDark(this);
+  int tint=dark?Palette050.NIGHT_POPUP:0xFFE6E7EB;
+  return Release059Rules.highlightColor(base,tint,dark);
  }
  private static final class Row{
   LinearLayout root;CheckBox check;ImageView image;TextView name,duration,already;
   Spinner quality;FrameLayout qualityFrame;LinearLayout detail;
-  ProgressBar qualityLoader;
-  List<String> qualityOptions=Collections.emptyList();
   TextView qualityValue;boolean qualityUserInteraction=false;String qualityLabel="";
   String imageId="";int position=-1;
  }
@@ -740,41 +706,6 @@ public final class PlaylistActivity extends Activity {
   s.setAdapter(a);s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
   return s;
  }
- /** Restrict popup options to this video's confirmed heights. */
- private void replaceRowQualityChoices(Row row){
-  String[] labels=new String[row.qualityOptions.size()];
-  for(int i=0;i<labels.length;i++)
-   labels[i]=UiStrings.display(this,PlaylistQualityPolicy.LABELS[
-     PlaylistQualityPolicy.index(row.qualityOptions.get(i))]);
-  final RotatingSpinner spinner=(RotatingSpinner)row.quality;
-  ArrayAdapter<String> choices=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,labels){
-   @Override public View getView(int index,View recycled,ViewGroup parent){
-    TextView t=(TextView)super.getView(index,recycled,parent);
-    t.setTextColor(Color.TRANSPARENT);t.setTextSize(12);
-    t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);return t;
-   }
-   @Override public View getDropDownView(int index,View recycled,ViewGroup parent){
-    TextView t=(TextView)super.getDropDownView(index,recycled,parent);
-    t.setTextColor(ThemeStyle.text(PlaylistActivity.this));t.setTextSize(13);
-    t.setPadding(dp(12),0,dp(12),0);t.setGravity(Gravity.CENTER_VERTICAL);
-    t.setLayoutParams(new AbsListView.LayoutParams(-1,dp(ThemeStyle.POPUP_ITEM_HEIGHT_DP)));
-    t.setBackground(ThemeStyle.popupRowBackground(PlaylistActivity.this,
-      index==spinner.getSelectedItemPosition(),index,getCount()));
-    return t;
-   }
-  };
-  row.qualityUserInteraction=false;
-  spinner.setAdapter(choices);
-  spinner.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
- }
- private void promoteVisibleFormats(){
-  if(formatsWorker==null||list==null||playlist==null)return;
-  List<PlaylistRepository.Entry> visible=new ArrayList<>();
-  int first=list.getFirstVisiblePosition();
-  for(int i=first;i<first+list.getChildCount()&&i<visibleRows.size();i++)
-   visible.add(playlist.entries.get(visibleRows.get(i)));
-  formatsWorker.prioritize(visible);
- }
  private String qualityOverrideKey(int index){
   return source.hashCode()+"_"+playlist.entries.get(index).id;
  }
@@ -795,10 +726,9 @@ public final class PlaylistActivity extends Activity {
     PlaylistHistory.actualHeight(this,entry.url),
     qualities.get(row.position),hasQualityOverride(row.position)));
   // Draw closed-state text ourselves: OEM Spinner padding otherwise truncates it.
-  row.qualityValue.setText(formatsWorker.ready(entry.id)?row.qualityLabel:"Максимальное");
+  row.qualityValue.setText(row.qualityLabel);
   int textWidth=(int)Math.ceil(row.qualityValue.getPaint().measureText(row.qualityValue.getText().toString()));
-  int available=row.detail.getWidth()-durationWidth-dp(1)-
-    (formatsWorker.ready(entry.id)?0:dp(26));
+  int available=row.detail.getWidth()-durationWidth-dp(1);
   if(row.detail.getWidth()==0){
    row.detail.post(()->{
     if(row.root.isAttachedToWindow())updateRowQuality(row);
@@ -813,8 +743,7 @@ public final class PlaylistActivity extends Activity {
   }
  }
  private void toggle(int position,Row row){
-  if(position<0||position>=selected.length||animatingSelection||
-     !formatsWorker.ready(playlist.entries.get(position).id))return;
+  if(position<0||position>=selected.length||animatingSelection)return;
   selected[position]=!selected[position];persistSelection();
   row.check.setChecked(selected[position]);updateFooter();
   boolean disappears=selectionFilter==1&&!selected[position]||
@@ -854,12 +783,11 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  boolean all=true;int enabled=0;
-  for(int i:visibleRows)if(formatsWorker.ready(playlist.entries.get(i).id)){
-   enabled++;if(!selected[i])all=false;
-  }
-  selectAll.setChecked(enabled>0&&all);
-  selectAll.setEnabled(enabled>0);selectAll.setAlpha(enabled>0?1f:.55f);
+  boolean all=true;
+  for(int i:visibleRows)if(!selected[i])all=false;
+  selectAll.setChecked(!visibleRows.isEmpty()&&all);
+  selectAll.setEnabled(!visibleRows.isEmpty());
+  selectAll.setAlpha(visibleRows.isEmpty()?.55f:1f);
  }
  private void addCompactSpinner(LinearLayout content,Spinner spinner){
   FrameLayout frame=new FrameLayout(this);
@@ -970,11 +898,7 @@ public final class PlaylistActivity extends Activity {
    }
    if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
    qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
-   for(int i=0;i<selected.length;i++)if(selected[i]){
-    List<String> available=formatsWorker.cached(playlist.entries.get(i).id);
-    if(available!=null)qualities.set(i,Release058Rules.closestSupported(qualities.get(i),available));
-    markQualityOverride(i);
-   }
+   for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
    quality=PlaylistQualityPolicy.VALUES[index];
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
@@ -1038,7 +962,6 @@ public final class PlaylistActivity extends Activity {
  @Override protected void onDestroy(){
   handler.removeCallbacks(tick);
   if(cancelExpiry!=null)handler.removeCallbacks(cancelExpiry);
-  if(formatsWorker!=null)formatsWorker.close();
   super.onDestroy();
  }
 

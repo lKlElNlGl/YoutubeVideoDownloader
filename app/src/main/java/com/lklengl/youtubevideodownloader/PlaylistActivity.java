@@ -42,7 +42,7 @@ public final class PlaylistActivity extends Activity {
  private final Map<String,String> queuedQualities=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
  private LinearLayout playlistHeroHolder,stickyControls;
- private View stickySpacer;
+ private View stickySpacer,cardSurface,cardStroke;
  private TextView listEmpty;
  private ProgressBar refreshSpinner;
  private Button cancelRefreshButton,addButton;
@@ -333,17 +333,23 @@ public final class PlaylistActivity extends Activity {
   owner=txt("",12);owner.setTextColor(ThemeStyle.subdued(this));descriptions.addView(owner);
   subheading=txt("",12);subheading.setTextColor(ThemeStyle.subdued(this));descriptions.addView(subheading);
 
+  // Keep the original card geometry, but don't draw a second card behind the cover.
+  // The card surface starts below the scrolling playlist summary and pins with controls.
   LinearLayout listCard=column();
-  listCard.setPadding(dp(10),dp(8),dp(10),dp(6));
+  listCard.setPadding(0,0,0,0);
   listCard.setClipChildren(false);listCard.setClipToPadding(false);
-  listCard.setBackground(ThemeStyle.rounded(ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(14)));
   root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
   // One controls view: naturally scrolls until it reaches the fixed toolbar, then pins.
   stickyControls=column();
-  stickyControls.setPadding(dp(10),dp(2),dp(10),dp(6));
-  stickyControls.setBackground(ThemeStyle.rounded(
-    ThemeStyle.cardColor(this),ThemeStyle.border(this),dp(12)));
-  stickyControls.setClickable(true);
+  stickyControls.setPadding(dp(10),dp(Release060Rules.playlistCardTopInsetDp()),dp(10),0);
+  // The controls share the one list-card outline. There must be no second border.
+  android.graphics.drawable.GradientDrawable controlsFill=new android.graphics.drawable.GradientDrawable();
+  controlsFill.setColor(ThemeStyle.cardColor(this));
+  float corner=dp(Release060Rules.playlistCardRadiusDp());
+  controlsFill.setCornerRadii(new float[]{corner,corner,corner,corner,0,0,0,0});
+  stickyControls.setBackground(controlsFill);
+  // Unused header space must not swallow swipes intended to scroll the list.
+  stickyControls.setClickable(false);
   LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);
   stickyControls.addView(section,margin(2,0));
   TextView sectionTitle=txt("Видео в плейлисте",16);sectionTitle.setTypeface(null,Typeface.BOLD);
@@ -402,18 +408,64 @@ public final class PlaylistActivity extends Activity {
   list.setDivider(new android.graphics.drawable.InsetDrawable(
     new android.graphics.drawable.ColorDrawable(ThemeStyle.border(this)),dp(10),0,dp(10),0));
   list.setDividerHeight(dp(1));list.setCacheColorHint(Color.TRANSPARENT);
-  list.setBackgroundColor(ThemeStyle.cardColor(this));
+  // The old list's scrollbar stays on the right edge. The header is transparent:
+  // the cover must not be painted over by the list's card-colored background.
+  list.setBackgroundColor(Color.TRANSPARENT);
   list.setVerticalScrollBarEnabled(true);
+  list.setVerticalScrollbarPosition(View.SCROLLBAR_POSITION_RIGHT);
+  list.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+  // v0.5.8 kept 6dp of breathing room between the last row and the card bottom.
+  list.setPadding(0,0,0,dp(6));
+  list.setClipToPadding(true);
   listFrame=new FrameLayout(this);
   LinearLayout.LayoutParams listSpan=new LinearLayout.LayoutParams(-1,0,1);
-  listSpan.setMargins(-dp(10),0,-dp(10),0);
   listCard.addView(listFrame,listSpan);
+  // Clip all list content to the original 14dp card outline, including bottom corners.
+  listFrame.setOutlineProvider(new ViewOutlineProvider(){
+   @Override public void getOutline(View v,android.graphics.Outline outline){
+    outline.setRoundRect(0,0,v.getWidth(),v.getHeight(),
+      dp(Release060Rules.playlistCardRadiusDp()));
+   }
+  });
+  listFrame.setClipToOutline(true);
+  final android.graphics.drawable.GradientDrawable originalCard=ThemeStyle.rounded(
+    ThemeStyle.cardColor(this),ThemeStyle.border(this),
+    dp(Release060Rules.playlistCardRadiusDp()));
+  cardSurface=new View(this){
+   @Override protected void onDraw(android.graphics.Canvas canvas){
+    super.onDraw(canvas);
+    int y=Math.max(0,Math.min(getHeight(),Math.round(stickyControls.getTranslationY())));
+    originalCard.setBounds(0,y,getWidth(),getHeight());
+    originalCard.draw(canvas);
+   }
+  };
+  listFrame.addView(cardSurface,new FrameLayout.LayoutParams(-1,-1));
   listFrame.addView(list,new FrameLayout.LayoutParams(-1,-1));
   TextView empty=txt("Нет видео, соответствующих фильтру",13);
   empty.setGravity(Gravity.CENTER);
   listFrame.addView(empty,new FrameLayout.LayoutParams(-1,-1));
   listEmpty=empty;empty.setVisibility(View.GONE);
+  // Draw the same original card border *above* row backgrounds so rectangular
+  // row fills cannot create the protruding square corners seen in v0.5.9.
+  final android.graphics.Paint borderPaint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+  borderPaint.setColor(ThemeStyle.border(this));
+  borderPaint.setStrokeWidth(1f);
+  borderPaint.setStyle(android.graphics.Paint.Style.STROKE);
+  cardStroke=new View(this){
+   @Override protected void onDraw(android.graphics.Canvas canvas){
+    super.onDraw(canvas);
+    float top=Math.max(0f,stickyControls.getTranslationY())+.5f;
+    float right=getWidth()-.5f,bottom=getHeight()-.5f;
+    if(top>=bottom||right<=0f)return;
+    canvas.drawRoundRect(.5f,top,right,bottom,
+      dp(Release060Rules.playlistCardRadiusDp()),
+      dp(Release060Rules.playlistCardRadiusDp()),borderPaint);
+   }
+  };
+  cardStroke.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
   listFrame.addView(stickyControls,new FrameLayout.LayoutParams(-1,-2,Gravity.TOP));
+  // The one shared outline is drawn above both rows and the controls' fill.
+  listFrame.addView(cardStroke,new FrameLayout.LayoutParams(-1,-1));
   stickyControls.addOnLayoutChangeListener((v,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
    int height=bottom-top;
    ViewGroup.LayoutParams spacerParams=stickySpacer.getLayoutParams();
@@ -470,7 +522,8 @@ public final class PlaylistActivity extends Activity {
      h.qualityValue.setIncludeFontPadding(false);
      h.qualityValue.setSingleLine(true);
      h.qualityValue.setEllipsize(TextUtils.TruncateAt.END);
-     h.qualityValue.setPadding(dp(2),0,dp(16),0);
+     h.qualityValue.setPadding(dp(Release060Rules.qualityTextPaddingLeftDp()),0,
+        dp(Release060Rules.qualityTextPaddingRightDp()),0);
      h.qualityFrame.addView(h.qualityValue,new FrameLayout.LayoutParams(-1,-1));
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
@@ -568,10 +621,12 @@ public final class PlaylistActivity extends Activity {
  /** The hero scrolls in the list while one overlay follows its reserved spacer. */
  private void updateStickyControls(){
   if(list==null||stickyControls==null||playlistHeroHolder==null)return;
-  int heroHeight=playlistHeroHolder.getHeight();
-  int top=list.getFirstVisiblePosition()==0&&list.getChildCount()>0
-    ?list.getChildAt(0).getTop():-heroHeight;
-  stickyControls.setTranslationY(Release059Rules.stickyControlsY(top,heroHeight));
+  int first=list.getFirstVisiblePosition();
+  int top=first==0&&list.getChildCount()>0?list.getChildAt(0).getTop():0;
+  stickyControls.setTranslationY(Release060Rules.cardTop(
+    first,top,playlistHeroHolder.getHeight()));
+  if(cardSurface!=null)cardSurface.invalidate();
+  if(cardStroke!=null)cardStroke.invalidate();
  }
  private void scrollToPlaylistTop(){
   if(list==null)return;
@@ -851,7 +906,8 @@ public final class PlaylistActivity extends Activity {
    }).show();
  }
  private void showBulkQuality(){
-  LinearLayout content=column();content.setPadding(dp(17),dp(6),dp(17),dp(12));
+  LinearLayout content=column();content.setPadding(dp(17),
+    dp(Release060Rules.bulkDialogTopInsetDp(6)),dp(17),dp(12));
   Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
   bulk.setSelection(PlaylistQualityPolicy.index(quality));
   addCompactSpinner(content,bulk);

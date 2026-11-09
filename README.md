@@ -30,6 +30,13 @@
 
 ## Изменения
 
+### v0.5.10
+- Восстановлен утверждённый внешний вид страницы плейлиста из v0.5.8 без возврата старого механизма прокрутки. Информационная карточка прокручивается естественно, а «Видео в плейлисте», счётчик, чекбокс и кнопки качества/фильтра закрепляются под верхней панелью.
+- Убраны двойные скруглённые рамки и торчащие прямоугольные углы вложенных блоков: одна общая карточка списка с прежними радиусом 14 dp, отступом 8 dp и корректным обрезанием содержимого. Полоса прокрутки расположена справа.
+- Поле индивидуального качества: от текста до левой рамки 8 dp, от текста до зоны стрелки 2 dp (смещение текста на 1 dp вправо без изменения ширины поля).
+- В диалоге «Качество для отмеченных» расстояние между заголовком и выпадающим списком увеличено на 3 dp относительно v0.5.9; отступы до нижних кнопок не менялись.
+- Фиксированный список разрешений, мгновенная доступность выбора, компактные уведомления и усиленное выделение строк из v0.5.9 сохранены; палитра и утверждённая иконка A не менялись.
+
 ### v0.5.9
 - Плейлист прокручивается непрерывно, как главная страница: обложка и описание уходят обычным движением, а «Видео в плейлисте», счётчик, «Выбрать всё», массовое качество и фильтр закрепляются под верхней панелью только после достижения её края. Убраны искусственное сворачивание и перехват касаний; стрелки и восстановление позиции адаптированы.
 - Возвращён быстрый фиксированный выбор индивидуального качества: «Максимальное», 2160p, 1440p, 1080p, 720p, 480p и 360p. Отключены фоновые проверки разрешений каждого видео и связанные с ними спиннеры/блокировки чекбоксов; массовое качество сохранено.
@@ -137,6 +144,13 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.10
+- Restored the original v0.5.8 playlist appearance without reverting the new continuous scrolling: the playlist summary scrolls naturally and list controls pin below the fixed toolbar.
+- Removed doubled rounded borders and protruding rectangular corners, using one shared card surface and original 14dp corner radius and 8dp top inset, clipping list items correctly. Scrollbar remains at the right edge.
+- Individual quality text now has 8dp on the left and 2dp before the arrow area, moving text 1dp to the right with unchanged field width.
+- Added exactly 3dp above the bulk-quality dropdown compared with v0.5.9; spacing below it remains unchanged.
+- Retained instant preset quality options, compact refresh cancellation notices, approved theme contrast and launcher Icon A.
 
 ### v0.5.9
 - Playlist cover and description scroll away normally; list heading, selection count, Select all, bulk quality and filters become sticky only when they reach the fixed toolbar. One continuous scroll replaces the collapsing cover and touch interception, preserving navigation arrows and scroll position.

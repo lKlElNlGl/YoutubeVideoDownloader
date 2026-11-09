@@ -414,6 +414,9 @@ public final class PlaylistActivity extends Activity {
   list.setVerticalScrollBarEnabled(true);
   list.setVerticalScrollbarPosition(View.SCROLLBAR_POSITION_RIGHT);
   list.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+  // v0.5.8 kept 6dp of breathing room between the last row and the card bottom.
+  list.setPadding(0,0,0,dp(6));
+  list.setClipToPadding(true);
   listFrame=new FrameLayout(this);
   LinearLayout.LayoutParams listSpan=new LinearLayout.LayoutParams(-1,0,1);
   listCard.addView(listFrame,listSpan);

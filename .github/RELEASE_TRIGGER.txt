@@ -38,3 +38,5 @@ Publish v0.5.7: autonomous playlist refresh and five-second results, improved pl
 Publish v0.5.8: per-video resolution discovery and cache, separate filter/bulk-quality dialogs, collapsible playlist cover, scroll arrows, refresh-cancel feedback, approved launcher and Colors 050; signed release from main.
 
 Publish v0.5.9: instant preset playlist qualities, natural sticky scrolling, compact cancellation statuses, approved selection contrast and 7/3dp spacing; signed release from main.
+
+Publish v0.5.10: original playlist styling restored with one clipped rounded card and correct scrollbar, sticky continuous scrolling retained, precise +3dp bulk dialog and 8/2dp individual quality spacing; signed release from main.

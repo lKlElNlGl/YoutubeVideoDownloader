@@ -460,8 +460,9 @@ public final class PlaylistActivity extends Activity {
    }
   };
   cardStroke.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-  listFrame.addView(cardStroke,new FrameLayout.LayoutParams(-1,-1));
   listFrame.addView(stickyControls,new FrameLayout.LayoutParams(-1,-2,Gravity.TOP));
+  // The one shared outline is drawn above both rows and the controls' fill.
+  listFrame.addView(cardStroke,new FrameLayout.LayoutParams(-1,-1));
   stickyControls.addOnLayoutChangeListener((v,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
    int height=bottom-top;
    ViewGroup.LayoutParams spacerParams=stickySpacer.getLayoutParams();

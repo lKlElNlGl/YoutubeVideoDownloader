@@ -1063,11 +1063,48 @@ public final class PlaylistActivity extends Activity {
  private void showBulkQuality(){
   LinearLayout content=column();content.setPadding(dp(17),
     dp(Release060Rules.bulkDialogTopInsetDp(6)),dp(17),dp(12));
-  Spinner bulk=spinner(PlaylistQualityPolicy.LABELS);
-  bulk.setSelection(PlaylistQualityPolicy.index(quality));
+  boolean english=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
+  int firstSelected=-1;
+  for(int i=0;i<selected.length;i++)if(selected[i]){firstSelected=i;break;}
+  final int first=firstSelected;
+  final int initial=first>=0&&"mp3".equals(formats.get(first))?1:0;
+  TextView formatLabel=txt("Формат загрузки",13);
+  formatLabel.setTextColor(ThemeStyle.subdued(this));
+  content.addView(formatLabel,margin(5,4));
+  Spinner mode=spinner(new String[]{"Видео MP4","Аудио MP3"});
+  mode.setSelection(initial);
+  addCompactSpinner(content,mode);
+  TextView qualityLabel=txt(initial==0?"Качество видео":"Качество аудио",13);
+  qualityLabel.setTextColor(ThemeStyle.subdued(this));
+  content.addView(qualityLabel,margin(9,4));
+  String[] defaults=initial==0?PlaylistQualityPolicy.VALUES:PlaylistMediaPolicy.AUDIO_VALUES;
+  String[] captions=new String[defaults.length];
+  for(int i=0;i<defaults.length;i++)
+   captions[i]=PlaylistMediaPolicy.full(initial==0?"mp4":"mp3",defaults[i],english);
+  Spinner bulk=spinner(captions);
+  int initialQuality=first>=0?Arrays.asList(defaults).indexOf(qualities.get(first)):0;
+  bulk.setSelection(Math.max(0,initialQuality));
   addCompactSpinner(content,bulk);
+  final String[][] qualityValues={defaults};
+  mode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+   @Override public void onNothingSelected(AdapterView<?> parent){}
+   @Override public void onItemSelected(AdapterView<?> parent,View view,int position,long id){
+    String fileFormat=position==1?"mp3":"mp4";
+    String[] options=position==1?PlaylistMediaPolicy.AUDIO_VALUES:PlaylistQualityPolicy.VALUES;
+    String[] labels=new String[options.length];
+    for(int i=0;i<options.length;i++)
+     labels[i]=PlaylistMediaPolicy.full(fileFormat,options[i],english);
+    qualityLabel.setText(UiStrings.display(PlaylistActivity.this,
+     position==1?"Качество аудио":"Качество видео"));
+    qualityValues[0]=options;
+    setSpinnerItems(bulk,labels,null);
+    int choice=first>=0&&fileFormat.equals(formats.get(first))?
+     Arrays.asList(options).indexOf(qualities.get(first)):0;
+    bulk.setSelection(Math.max(0,choice));
+   }
+  });
   AlertDialog dialog=ThemeStyle.dialog(this)
-    .setTitle(UiStrings.display(this,"Качество для отмеченных"))
+    .setTitle(UiStrings.display(this,"Формат и качество для отмеченных"))
     .setView(content)
     .setNegativeButton(UiStrings.display(this,"Отмена"),null)
     .setPositiveButton(UiStrings.display(this,"Применить"),null)
@@ -1078,10 +1115,13 @@ public final class PlaylistActivity extends Activity {
    if(count==0){
     Toast.makeText(this,UiStrings.display(this,"Выберите видео"),Toast.LENGTH_SHORT).show();return;
    }
-   if(index<0||index>=PlaylistQualityPolicy.VALUES.length)return;
-   qualities=PlaylistQualityPolicy.applyToSelected(qualities,selected,PlaylistQualityPolicy.VALUES[index]);
-   for(int i=0;i<selected.length;i++)if(selected[i])markQualityOverride(i);
-   quality=PlaylistQualityPolicy.VALUES[index];
+   if(index<0||index>=qualityValues[0].length)return;
+   String targetFormat=mode.getSelectedItemPosition()==1?"mp3":"mp4";
+   String targetQuality=qualityValues[0][index];
+   if(!PlaylistMediaPolicy.allowed(targetFormat,targetQuality))return;
+   for(int i=0;i<selected.length;i++)if(selected[i]){
+    formats.set(i,targetFormat);qualities.set(i,targetQuality);markQualityOverride(i);
+   }
    persistQualities();adapter.notifyDataSetChanged();
    Toast.makeText(this,UiStrings.display(this,"Качество отмеченных обновлено"),Toast.LENGTH_SHORT).show();
    dialog.dismiss();
@@ -1106,7 +1146,7 @@ public final class PlaylistActivity extends Activity {
   try{
    List<Boolean> flags=new ArrayList<>();for(boolean flag:selected)flags.add(flag);
    int count=DownloadQueue.enqueuePlaylist(this,playlist,flags,
-    "mp3".equals(format)||"m4a".equals(format),qualities,proxy,folder,priority,format,source);
+    formats,qualities,proxy,folder,priority,source);
    // A successfully enqueued selection is consumed; retain each video's quality.
    Arrays.fill(selected,false);
    persistSelection();

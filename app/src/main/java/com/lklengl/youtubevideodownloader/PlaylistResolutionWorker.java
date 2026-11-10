@@ -26,7 +26,24 @@ public final class PlaylistResolutionWorker {
  private final Set<String> finished=new HashSet<>();
  private final Set<String> failures=new HashSet<>();
  private volatile boolean closed=false;
+ private volatile boolean scanning=false;
+ private volatile String currentProcessId="";
+ private volatile int completed=0,total=0;
  private volatile int generation=0;
+ private static final String SETTINGS="playlist_quality_scan_options";
+ public static boolean enabled(Context c){
+  return c.getApplicationContext().getSharedPreferences(SETTINGS,0).getBoolean("enabled",false);
+ }
+ public static void setEnabled(Context c,boolean yes){
+  c.getApplicationContext().getSharedPreferences(SETTINGS,0).edit()
+   .putBoolean("enabled",yes).apply();
+ }
+ public boolean scanning(){return scanning;}
+ public int completed(){return completed;}
+ public int total(){return total;}
+ public boolean pending(String id){return scanning&&!ready(id)&&!failed(id);}
+ public boolean started(){return total>0;}
+
  public PlaylistResolutionWorker(Context context,String proxy,Listener listener){
   app=context.getApplicationContext();this.proxy=proxy==null?"":proxy;this.listener=listener;
  }
@@ -65,10 +82,13 @@ public final class PlaylistResolutionWorker {
  public void start(PlaylistRepository.Playlist playlist,boolean force){
   final int serial=++generation;
   queue.clear();pending.clear();finished.clear();failures.clear();
+  total=playlist.entries.size();completed=0;
   for(PlaylistRepository.Entry entry:playlist.entries){
-   if(!force&&cached(entry.id)!=null)continue;
+   if(!force&&cached(entry.id)!=null){completed++;continue;}
    queue.addLast(entry);pending.put(entry.id,entry);
   }
+  scanning=!queue.isEmpty();
+  if(!scanning){main.post(()->listener.changed("",false));return;}
   worker.execute(()->{
    try{YoutubeDL.getInstance().init(app);}catch(Exception ignored){}
    while(!closed&&serial==generation){
@@ -78,12 +98,14 @@ public final class PlaylistResolutionWorker {
     List<String> result=null;boolean failure=false;
     try{
      YoutubeDLRequest request=new YoutubeDLRequest(entry.url);
+     String process="quality-"+java.util.UUID.randomUUID();
+     currentProcessId=process;
      request.addOption("--no-playlist");request.addOption("--dump-single-json");
      request.addOption("--skip-download");request.addOption("--no-warnings");
      request.addOption("--socket-timeout","8");request.addOption("--retries","1");
      request.addOption("--extractor-retries","1");
      if(!proxy.isEmpty())request.addOption("--proxy",proxy);
-     String raw=YoutubeDL.getInstance().execute(request).getOut();
+     String raw=YoutubeDL.getInstance().execute(request,process,null).getOut();
      JSONObject info=new JSONObject(raw);
      JSONArray streams=info.optJSONArray("formats");
      if(streams==null)throw new IllegalStateException("Formats missing");
@@ -99,6 +121,7 @@ public final class PlaylistResolutionWorker {
      app.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
       .putString(key(entry.id),json.toString()).apply();
     }catch(Exception e){failure=true;}
+    currentProcessId="";
     if(closed||serial!=generation)break;
     final List<String> resolved=result;
     final boolean failed=failure;
@@ -107,8 +130,14 @@ public final class PlaylistResolutionWorker {
      if(resolved!=null)cache.put(entry.id,Collections.unmodifiableList(resolved));
      if(failed)failures.add(entry.id);
      finished.add(entry.id);
+     completed++;
+     if(completed>=total)scanning=false;
      listener.changed(entry.id,failed);
     });
+   }
+   if(serial==generation){
+    scanning=false;
+    main.post(()->{if(!closed&&serial==generation)listener.changed("",false);});
    }
   });
  }
@@ -121,5 +150,13 @@ public final class PlaylistResolutionWorker {
    }
   }
  }
- public void close(){closed=true;generation++;queue.clear();worker.shutdownNow();}
+ /** Cancels a very slow quality scan without deleting completed cached results. */
+ public void stop(){
+  generation++;scanning=false;queue.clear();pending.clear();
+  String process=currentProcessId;currentProcessId="";
+  if(!process.isEmpty())try{YoutubeDL.getInstance().destroyProcessById(process);}
+   catch(Exception ignored){}
+  main.post(()->{if(!closed)listener.changed("",false);});
+ }
+ public void close(){stop();closed=true;worker.shutdownNow();}
 }

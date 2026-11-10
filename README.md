@@ -30,6 +30,16 @@
 
 ## Изменения
 
+### v0.5.11
+- Плейлист: два варианта добавления отмеченных файлов — обычная очередь и «Скачать без очереди»; индивидуальные MP4/MP3 и качество сохраняются по ID видео при повторном открытии и перестановке.
+- Общий диалог «Формат и качество для отмеченных» переключает видео MP4 (Максимальное, 4K–360p) и аудио MP3 (Максимальное, 128/192/256/320 кбит/с). В строках компактные подписи MP4 · Макс., MP4 · 1080p, MP3 · Макс., MP3 · 192k; русская и английская локализация.
+- Настройки → Плейлисты: добровольное определение реальных качеств YouTube для каждого видео; по умолчанию отключено, с предупреждением о длительности. До получения сведений доступны предустановленные варианты, возле поля отображаются часы/спинер/галочка/предупреждение. Проверка видимых и отмеченных видео приоритетна, полученные сведения кэшируются. Проверку можно остановить и возобновить.
+- На странице «Загрузка» после определения плейлиста скрываются «Параметры загрузки» и «Скачивание»; одиночные видео работают как прежде. Прокси-поле отключается вместе с чекбоксом, сохраняя значение.
+- На странице плейлиста индикатор прокрутки появляется только вместе с верхней стрелкой и рисуется ниже закреплённых фильтров. При эффекте резинки фон/контур синхронизирован с фактическим положением информационного блока. Исходный эффект резинки сохранён.
+- Индивидуальное поле качества: 9/2 dp и ширина +1 dp. Общие рамки светлой темы усилены на 15% (#B3B8C1); тёмная тема не меняется.
+- Ограничение разрешения видео без масштабирования вверх. Для MP3 при скачивании определяется исходный аудиобитрейт и выбирается разумное ограничение кодирования (при недоступности сведений — консервативный предел 192 кбит/с); фактическое качество скачанных файлов отображается, когда оно известно.
+- Утверждённая иконка A и прежняя цветовая палитра сохранены.
+
 ### v0.5.10
 - Восстановлен утверждённый внешний вид страницы плейлиста из v0.5.8 без возврата старого механизма прокрутки. Информационная карточка прокручивается естественно, а «Видео в плейлисте», счётчик, чекбокс и кнопки качества/фильтра закрепляются под верхней панелью.
 - Убраны двойные скруглённые рамки и торчащие прямоугольные углы вложенных блоков: одна общая карточка списка с прежними радиусом 14 dp, отступом 8 dp и корректным обрезанием содержимого. Полоса прокрутки расположена справа.
@@ -144,6 +154,16 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.11
+- Playlist: normal and priority queue actions for selected items; each entry has independent MP4/MP3 output and quality, saved by stable video ID across revisits and reorderings.
+- One “Format and quality for selected” dialog chooses MP4 video (Maximum, 4K–360p) or MP3 audio (Maximum, 128/192/256/320 kbps). Compact per-row labels show MP4 · Max, MP4 · 1080p, MP3 · Max or MP3 · 192k in English and Russian.
+- Settings → Playlists: opt-in, potentially very slow per-video YouTube quality verification. Preset choices remain usable while loading; spinner, clock, check or warning indicates the state. Selected/visible entries take priority; results are cached. Scan can be stopped or restarted.
+- On Downloads, after a playlist is identified, hide the Download options and Downloading panels. Single-video controls remain. Disable the proxy address input whenever its checkbox is off, retaining the address.
+- Playlist scroll thumb is shown only with the up arrow and strictly below pinned filters; align card drawing with its changing header during overscroll. Retain Android stretch behavior.
+- Approved individual quality insets 9/2 dp with 1dp wider field; darken shared light-theme borders by 15% (#B3B8C1) without changing dark colors.
+- No video upscaling: selected resolution acts as a ceiling. MP3 output bitrate uses source information where available at download time (conservative 192 kbps ceiling if unavailable); show observed media quality when recorded.
+- Approved Icon A and the established palette are unchanged.
 
 ### v0.5.10
 - Restored the original v0.5.8 playlist appearance without reverting the new continuous scrolling: the playlist summary scrolls naturally and list controls pin below the fixed toolbar.

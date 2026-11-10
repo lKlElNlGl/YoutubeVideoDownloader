@@ -120,6 +120,14 @@ public final class UiIcons extends Drawable {
                 c.drawLine(4,19,20,19,p);c.drawLine(4,19,4,16,p);c.drawLine(20,19,20,16,p);break;
             case "queue":
                 for(int y:new int[]{6,12,18}){c.drawCircle(4,y,1,p);c.drawLine(9,y,20,y,p);}break;
+            case "check-circle":
+                c.drawCircle(12,12,9,p);
+                c.drawLine(7,12,10,15,p);c.drawLine(10,15,17,8,p);break;
+            case "alert-triangle":
+                Path warning=new Path();warning.moveTo(12,2);
+                warning.lineTo(22,21);warning.lineTo(2,21);warning.close();
+                c.drawPath(warning,p);c.drawLine(12,9,12,14,p);
+                p.setStyle(Paint.Style.FILL);c.drawCircle(12,18,1.1f,p);break;
             case "clock":
                 c.drawCircle(12,12,9,p);c.drawLine(12,7,12,12,p);c.drawLine(12,12,16,14,p);break;
             case "quality":

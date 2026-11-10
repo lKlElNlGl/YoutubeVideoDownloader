@@ -182,7 +182,7 @@ public final class MainActivity extends Activity {
         }
     }
     private String previewErrorLog="";
-    private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow;
+    private LinearLayout previewCard,previewHeroView,previewStatsView,downloadLinkCard,infoStatusRow,formatCard,downloadActionsCard;
     private int infoStatusBaseIndex=-1;
     private LinearLayout.LayoutParams previewStatsParams;
     private ImageView thumbnail;
@@ -420,7 +420,7 @@ public final class MainActivity extends Activity {
         previewCard.addView(reopenPlaylistButton);
         previewCard.setVisibility(View.GONE);
 
-        LinearLayout formatCard=ThemeStyle.card(download,"Параметры загрузки");
+        formatCard=ThemeStyle.card(download,"Параметры загрузки");
         mode=parameterSpinner(formatCard,"Формат",formatChoices.labels().toArray(new String[0]));
         quality=parameterSpinner(formatCard,"Качество видео",qualityChoices.labels().toArray(new String[0]));
         mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
@@ -431,6 +431,7 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout actions=ThemeStyle.card(download,"Скачивание");
+        downloadActionsCard=actions;
         Button immediate=button(actions,"Скачать без очереди");
         ThemeStyle.styleButton(immediate,true);ThemeStyle.icon(immediate,"download",19);
         immediate.setOnClickListener(v->{
@@ -500,6 +501,27 @@ public final class MainActivity extends Activity {
         proxy=new EditText(this);ThemeStyle.styleField(proxy);proxy.setHint("http://server:8118");
         proxy.setHintTextColor(ThemeStyle.isDark(this)?0xFF404A5E:0xFFC3C4C7);
          network.addView(proxy,new LinearLayout.LayoutParams(-1,dp(46)));
+        proxyEnabled.setOnCheckedChangeListener((button,checked)->{
+            proxy.setEnabled(checked);
+            proxy.setAlpha(checked?1f:.50f);
+        });
+        proxy.setEnabled(false);proxy.setAlpha(.50f);
+
+        LinearLayout playlists=ThemeStyle.card(settingsPage,"Плейлисты");
+        CheckBox detectPlaylistQualities=new CheckBox(this);
+        UiCheckboxStyle.apply(detectPlaylistQualities);
+        UiCheckboxStyle.applyLabelGap(detectPlaylistQualities);
+        detectPlaylistQualities.setText(UiStrings.display(this,"Определять доступное качество каждого видео"));
+        detectPlaylistQualities.setTextSize(13);
+        detectPlaylistQualities.setTextColor(ThemeStyle.text(this));
+        detectPlaylistQualities.setChecked(PlaylistResolutionWorker.enabled(this));
+        playlists.addView(detectPlaylistQualities);
+        detectPlaylistQualities.setOnCheckedChangeListener((button,checked)->
+          PlaylistResolutionWorker.setEnabled(this,checked));
+        TextView slowNote=text("Получение информации с YouTube может занимать очень много времени, особенно для больших плейлистов. Проверка выполняется в фоновом режиме и не мешает выбору видео и добавлению в очередь.",12);
+        slowNote.setTextColor(ThemeStyle.subdued(this));
+        slowNote.setPadding(dp(5),dp(5),dp(5),dp(3));
+        playlists.addView(slowNote);
 
         LinearLayout save=ThemeStyle.card(settingsPage,"Сохранение файлов");
         label(save,"Папка сохранения");
@@ -1001,6 +1023,9 @@ public final class MainActivity extends Activity {
             if(previewGap.topMargin!=wanted){previewGap.topMargin=wanted;previewCard.setLayoutParams(previewGap);}
         }
         previewCard.setVisibility(valid?View.VISIBLE:View.GONE);
+        boolean playlistDetected=valid&&previewSnapshot.playlist;
+        if(formatCard!=null)formatCard.setVisibility(playlistDetected?View.GONE:View.VISIBLE);
+        if(downloadActionsCard!=null)downloadActionsCard.setVisibility(playlistDetected?View.GONE:View.VISIBLE);
         previewHeroView.setVisibility(valid?View.VISIBLE:View.GONE);
         previewStatsView.setVisibility(valid?View.VISIBLE:View.GONE);
         if(previewButton!=null)previewButton.setVisibility(valid&&previewSnapshot.playlist?View.GONE:View.VISIBLE);
@@ -1170,6 +1195,20 @@ public final class MainActivity extends Activity {
             (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
     }
     private String queueFormat(DownloadQueue.Item j){
+        if(j.playlistTitle!=null&&!j.playlistTitle.isEmpty()&&
+           ("mp3".equals(j.format)||"mp4".equals(j.format))){
+            boolean english=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
+            String chosen=j.quality==null?(j.audio?"a:best":"best"):j.quality;
+            String shown=PlaylistMediaPolicy.compact(j.format,chosen,english);
+            if(DownloadQueue.DONE.equals(j.status)){
+                if(j.audio&&j.actualAudioKbps>0)
+                    shown="MP3 · "+j.actualAudioKbps+"k";
+                else if(!j.audio&&j.actualHeight>0)
+                    shown="MP4 · "+j.actualHeight+"p";
+            }
+            String duration=j.durationSeconds>=0?QueueRules.readableDuration(j.durationSeconds):"—";
+            return shown+" · "+duration;
+        }
         String info=QueueMetadata.label(j.audio,j.quality,j.format,j.actualHeight,j.durationSeconds);
         return DownloadQueue.DONE.equals(j.status)?info.replace("Определяется…","Качество неизвестно"):info;
     }

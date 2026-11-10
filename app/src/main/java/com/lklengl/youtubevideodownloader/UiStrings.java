@@ -44,6 +44,22 @@ public final class UiStrings {
         strings.put("Открыть список видео", "Open video list");
         strings.put("Обновить информацию", "Refresh information");
         strings.put("Параметры загрузки", "Download options");
+        strings.put("Плейлисты", "Playlists");
+        strings.put("Определять доступное качество каждого видео", "Detect available quality for each video");
+        strings.put("Получение информации с YouTube может занимать очень много времени, особенно для больших плейлистов. Проверка выполняется в фоновом режиме и не мешает выбору видео и добавлению в очередь.",
+            "Fetching quality information from YouTube can take a very long time, especially for large playlists. This runs in the background without blocking video selection or adding to queue.");
+        strings.put("Формат и качество для отмеченных", "Format and quality for selected");
+        strings.put("Формат загрузки", "Download format");
+        strings.put("Качество аудио", "Audio quality");
+        strings.put("Аудио MP3", "Audio MP3");
+        strings.put("Доступные качества получены с YouTube", "Available qualities verified with YouTube");
+        strings.put("Получение качеств с YouTube", "Fetching YouTube qualities");
+        strings.put("Предустановленные варианты", "Preset quality options");
+        strings.put("Не удалось определить качество", "Could not detect quality");
+        strings.put("Повторить проверку качества", "Retry quality check");
+        strings.put("Остановить проверку качеств", "Stop quality scan");
+        strings.put("Проверка качеств остановлена", "Quality scan stopped");
+        strings.put("Определено качеств: ", "Qualities checked: ");
         strings.put("Формат", "Format");
         strings.put("Качество видео", "Video quality");
         strings.put("Скачивание", "Downloading");

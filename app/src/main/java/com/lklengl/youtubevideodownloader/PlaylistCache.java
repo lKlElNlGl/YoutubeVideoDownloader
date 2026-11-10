@@ -76,14 +76,14 @@ public final class PlaylistCache {
    JSONArray a=stored==null?null:new JSONArray(stored);
    for(int i=0;i<count;i++){
     String v=a!=null&&i<a.length()?a.optString(i,fallback):fallback;
-    result.add(PlaylistQualityPolicy.allowed(v)?v:fallback);
+    result.add(PlaylistMediaPolicy.allowedAny(v)?v:fallback);
    }
   }catch(Exception ex){for(int i=result.size();i<count;i++)result.add(fallback);}
   return result;
  }
  public static void saveQualities(Context c,String url,List<String> qualities){
   JSONArray a=new JSONArray();
-  for(String value:qualities)a.put(PlaylistQualityPolicy.allowed(value)?value:"best");
+  for(String value:qualities)a.put(PlaylistMediaPolicy.allowedAny(value)?value:"best");
   c.getSharedPreferences("playlist_quality",0).edit().putString(key(url),a.toString()).apply();
  }
  public static List<String> readQualities(Context c,String url,PlaylistRepository.Playlist playlist,String fallback){
@@ -93,7 +93,7 @@ public final class PlaylistCache {
   List<String> result=new ArrayList<>();
   for(PlaylistRepository.Entry entry:playlist.entries){
    String value=obj==null?fallback:obj.optString(entry.id,fallback);
-   result.add(PlaylistQualityPolicy.allowed(value)?value:fallback);
+   result.add(PlaylistMediaPolicy.allowedAny(value)?value:fallback);
   }
   return result;
  }
@@ -103,11 +103,33 @@ public final class PlaylistCache {
   try{
    for(int i=0;i<qualities.size();i++){
     String v=qualities.get(i);
-    if(PlaylistQualityPolicy.allowed(v))saved.put(playlist.entries.get(i).id,v);
+    if(PlaylistMediaPolicy.allowedAny(v))saved.put(playlist.entries.get(i).id,v);
    }
    c.getSharedPreferences("playlist_quality_by_id",0).edit()
     .putString(key(url),saved.toString()).apply();
   }catch(Exception ex){throw new IllegalStateException("Невозможно сохранить качество",ex);}
+ }
+ /** Per-entry output formats are stored by stable video ID, surviving reordering. */
+ public static List<String> readFormats(Context c,String url,PlaylistRepository.Playlist playlist){
+  String raw=c.getSharedPreferences("playlist_formats_by_id",0).getString(key(url),null);
+  JSONObject saved=null;
+  try{if(raw!=null)saved=new JSONObject(raw);}catch(Exception ignored){}
+  List<String> result=new ArrayList<>();
+  for(PlaylistRepository.Entry item:playlist.entries){
+   String value=saved==null?"mp4":saved.optString(item.id,"mp4");
+   result.add("mp3".equals(value)?"mp3":"mp4");
+  }
+  return result;
+ }
+ public static void saveFormats(Context c,String url,PlaylistRepository.Playlist playlist,List<String> formats){
+  if(formats.size()!=playlist.entries.size())throw new IllegalArgumentException("Изменился список видео");
+  JSONObject saved=new JSONObject();
+  try{
+   for(int i=0;i<formats.size();i++)
+    saved.put(playlist.entries.get(i).id,"mp3".equals(formats.get(i))?"mp3":"mp4");
+   c.getSharedPreferences("playlist_formats_by_id",0).edit()
+    .putString(key(url),saved.toString()).apply();
+  }catch(Exception ex){throw new IllegalStateException("Невозможно сохранить форматы",ex);}
  }
  /** Video-id keyed choices survive playlist reordering. */
  public static Map<String,Boolean> readSelectionById(Context c,String url){

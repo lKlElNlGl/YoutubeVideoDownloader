@@ -535,8 +535,8 @@ public final class PlaylistActivity extends Activity {
      h.qualityValue.setIncludeFontPadding(false);
      h.qualityValue.setSingleLine(true);
      h.qualityValue.setEllipsize(TextUtils.TruncateAt.END);
-     h.qualityValue.setPadding(dp(Release060Rules.qualityTextPaddingLeftDp()),0,
-        dp(Release060Rules.qualityTextPaddingRightDp()),0);
+     h.qualityValue.setPadding(dp(Release061Rules.individualTextPaddingLeftDp()),0,
+        dp(Release061Rules.individualTextPaddingRightDp()),0);
      h.qualityFrame.addView(h.qualityValue,new FrameLayout.LayoutParams(-1,-1));
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
@@ -553,6 +553,16 @@ public final class PlaylistActivity extends Activity {
      h.qualityFrame.addView(arrow,new FrameLayout.LayoutParams(dp(18),-1,Gravity.END));
       ((RotatingSpinner)h.quality).setArrow(arrow);
       // Closed spinner is 20dp; popup menu rows stay at 46dp.
+     h.qualityStatus=new FrameLayout(PlaylistActivity.this);
+     LinearLayout.LayoutParams qualityStatusParams=new LinearLayout.LayoutParams(dp(18),dp(22));
+     qualityStatusParams.leftMargin=dp(2);
+     detail.addView(h.qualityStatus,qualityStatusParams);
+     h.qualityLoader=new ProgressBar(PlaylistActivity.this,null,android.R.attr.progressBarStyleSmall);
+     h.qualityLoader.setIndeterminateTintList(ColorStateList.valueOf(ThemeStyle.RED));
+     h.qualityStatus.addView(h.qualityLoader,new FrameLayout.LayoutParams(dp(14),dp(14),Gravity.CENTER));
+     h.qualityStateIcon=new ImageView(PlaylistActivity.this);
+     h.qualityStateIcon.setScaleType(ImageView.ScaleType.CENTER);
+     h.qualityStatus.addView(h.qualityStateIcon,new FrameLayout.LayoutParams(-1,-1));
      arrow.setOnClickListener(v->{
       if(!holder.quality.isEnabled())return;
       holder.qualityUserInteraction=true;holder.quality.performClick();
@@ -568,13 +578,19 @@ public final class PlaylistActivity extends Activity {
        // Programmatic row binding and bulk updates do not count as user changes.
        if(!holder.qualityUserInteraction)return;
        if(holder.position<0||holder.position>=qualities.size()||chosen<0||
-          chosen>=PlaylistQualityPolicy.VALUES.length)return;
-       String value=PlaylistQualityPolicy.VALUES[chosen];
-       if(value.equals(qualities.get(holder.position)))return;
+          chosen>=holder.qualityCodes.length)return;
+       String code=holder.qualityCodes[chosen];
+       int divider=code.indexOf('|');
+       if(divider<0)return;
+       String newFormat=code.substring(0,divider),value=code.substring(divider+1);
        holder.qualityUserInteraction=false;
+       if(value.equals(qualities.get(holder.position))&&
+          newFormat.equals(formats.get(holder.position)))return;
+       formats.set(holder.position,newFormat);
        qualities.set(holder.position,value);
        markQualityOverride(holder.position);
-       persistQualities();updateRowQuality(holder);
+       persistQualities();
+       adapter.notifyDataSetChanged();
       }
      });
     }else h=(Row)old.getTag();
@@ -594,8 +610,9 @@ public final class PlaylistActivity extends Activity {
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
     h.qualityUserInteraction=false;
-    h.quality.setSelection(PlaylistQualityPolicy.index(qualities.get(h.position)));
+    configureRowChoices(h,entry);
     h.quality.setEnabled(true);
+    showRowQualityStatus(h,entry);
     h.qualityValue.setTextColor(ThemeStyle.text(PlaylistActivity.this));
     h.check.setEnabled(true);h.check.setAlpha(1f);
     updateRowQuality(h);
@@ -811,23 +828,31 @@ public final class PlaylistActivity extends Activity {
  private void updateRowQuality(Row row){
   if(row.position<0||row.position>=qualities.size())return;
   PlaylistRepository.Entry entry=playlist.entries.get(row.position);
-  row.qualityLabel=UiStrings.display(this,PlaylistQualityText.label(
-    row.position<videoStatus.length?videoStatus[row.position]:PlaylistHistory.NEW,
-    queuedQualities.containsKey(entry.url)?queuedQualities.get(entry.url):"best",
-    PlaylistHistory.actualHeight(this,entry.url),
-    qualities.get(row.position),hasQualityOverride(row.position)));
+  boolean english=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
+  String selectedFormat=formats.get(row.position),selectedQuality=qualities.get(row.position);
+  int status=row.position<videoStatus.length?videoStatus[row.position]:PlaylistHistory.NEW;
+  if(status==PlaylistHistory.QUEUED&&queuedFormats.containsKey(entry.url)){
+   selectedFormat=queuedFormats.get(entry.url);
+   selectedQuality=queuedQualities.get(entry.url);
+  }
+  row.qualityLabel=PlaylistMediaPolicy.compact(selectedFormat,selectedQuality,english);
+  if(status==PlaylistHistory.DOWNLOADED&&!hasQualityOverride(row.position)&&
+     "mp4".equals(selectedFormat)){
+   int actual=PlaylistHistory.actualHeight(this,entry.url);
+   if(actual>0)row.qualityLabel="MP4 · "+actual+"p";
+  }
   // Draw closed-state text ourselves: OEM Spinner padding otherwise truncates it.
   row.qualityValue.setText(row.qualityLabel);
   int textWidth=(int)Math.ceil(row.qualityValue.getPaint().measureText(row.qualityValue.getText().toString()));
-  int available=row.detail.getWidth()-durationWidth-dp(1);
+  int available=row.detail.getWidth()-durationWidth-dp(21);
   if(row.detail.getWidth()==0){
    row.detail.post(()->{
     if(row.root.isAttachedToWindow())updateRowQuality(row);
    });
-   available=getResources().getDisplayMetrics().widthPixels-dp(165)-durationWidth;
+   available=getResources().getDisplayMetrics().widthPixels-dp(183)-durationWidth;
   }
-  int wanted=Release057Rules.qualityWidth(textWidth,dp(3+18+7),
-    Math.max(dp(50),available));
+  int wanted=Release057Rules.qualityWidth(textWidth,
+    dp(Release061Rules.individualExtraWidthDp()),Math.max(dp(50),available));
   if(row.qualityFrame.getLayoutParams().width!=wanted){
    row.qualityFrame.getLayoutParams().width=wanted;
    row.qualityFrame.requestLayout();

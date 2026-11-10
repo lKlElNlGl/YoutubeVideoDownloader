@@ -197,6 +197,35 @@ public final class DownloadService extends Service {
             currentId=null;cancelCurrent=false;pauseCurrent=false;
         }
     }
+    /** Discover source bitrate at actual download time, never while opening a playlist.
+     * When extraction fails, a conservative 192kbps ceiling avoids bloated audio. */
+    private int audioBitrateForSource(DownloadQueue.Item item) {
+        if(item.quality==null||!item.quality.startsWith("a:"))return 192;
+        if("a:128".equals(item.quality))return 128;
+        int abr=0;String codec="";
+        try{
+            YoutubeDLRequest probe=new YoutubeDLRequest(item.url);
+            probe.addOption("--no-playlist");
+            probe.addOption("--dump-single-json");
+            probe.addOption("--skip-download");
+            probe.addOption("--no-warnings");
+            probe.addOption("--socket-timeout","8");
+            probe.addOption("--retries","1");
+            if(item.proxy!=null&&!item.proxy.isEmpty())probe.addOption("--proxy",item.proxy);
+            org.json.JSONObject info=new org.json.JSONObject(
+                YoutubeDL.getInstance().execute(probe,item.id+"-audio-info",null).getOut());
+            org.json.JSONArray streams=info.optJSONArray("formats");
+            if(streams!=null)for(int i=0;i<streams.length();i++){
+                org.json.JSONObject stream=streams.optJSONObject(i);
+                if(stream==null||"none".equals(stream.optString("acodec","none"))||
+                   !"none".equals(stream.optString("vcodec","none")))continue;
+                int rate=(int)Math.round(stream.optDouble("abr",stream.optDouble("tbr",0)));
+                if(rate>abr){abr=rate;codec=stream.optString("acodec","");}
+            }
+        }catch(Exception ignored){} // Never block a download on optional format inspection.
+        return PlaylistMediaPolicy.mp3Kbps(item.quality,abr,codec);
+    }
+
     private void attemptDownload(DownloadQueue.Item item,File temp) throws Exception {
             if(!temp.isDirectory()&&!temp.mkdirs())throw new IOException("Невозможно создать папку загрузки");
             progress(item,"Подготовка загрузки",0);
@@ -217,7 +246,7 @@ public final class DownloadService extends Service {
             if(item.audio || export.equals("mp3") || export.equals("m4a")){
                 request.addOption("-x");
                 request.addOption("--audio-format",export.equals("m4a")?"m4a":"mp3");
-                if(!export.equals("m4a"))request.addOption("--audio-quality","192K");
+                if(!export.equals("m4a"))request.addOption("--audio-quality",audioBitrateForSource(item)+"K");
             }else request.addOption("--merge-output-format",
                 export.equals("webm")?"webm":export.equals("mkv")?"mkv":"mp4");
             if(!item.proxy.isEmpty())request.addOption("--proxy",item.proxy);

@@ -47,6 +47,7 @@ public final class PlaylistActivity extends Activity {
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
  private final Map<String,String> queuedFormats=new HashMap<>();
+ private final Map<String,Integer> queuedAudioKbps=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
  private LinearLayout playlistHeroHolder,stickyControls;
  private View stickySpacer,cardSurface,cardStroke;
@@ -213,8 +214,8 @@ public final class PlaylistActivity extends Activity {
  private void refreshStatuses(){
   PlaylistHistory.syncFromQueue(this);
   List<DownloadQueue.Item> items=DownloadQueue.all(this);
-  queuedQualities.clear();queuedFormats.clear();
-  for(DownloadQueue.Item item:items){queuedQualities.put(item.url,item.quality);queuedFormats.put(item.url,item.format);}
+  queuedQualities.clear();queuedFormats.clear();queuedAudioKbps.clear();
+  for(DownloadQueue.Item item:items){queuedQualities.put(item.url,item.quality);queuedFormats.put(item.url,item.format);queuedAudioKbps.put(item.url,item.actualAudioKbps);}
   videoStatus=new int[playlist.entries.size()];
   for(int i=0;i<videoStatus.length;i++)
    videoStatus[i]=PlaylistHistory.status(this,playlist.entries.get(i).url,items);
@@ -891,10 +892,12 @@ public final class PlaylistActivity extends Activity {
    selectedQuality=queuedQualities.get(entry.url);
   }
   row.qualityLabel=PlaylistMediaPolicy.compact(selectedFormat,selectedQuality,english);
-  if(status==PlaylistHistory.DOWNLOADED&&!hasQualityOverride(row.position)&&
-     "mp4".equals(selectedFormat)){
-   int actual=PlaylistHistory.actualHeight(this,entry.url);
-   if(actual>0)row.qualityLabel="MP4 · "+actual+"p";
+  if(status==PlaylistHistory.DOWNLOADED&&!hasQualityOverride(row.position)){
+   if("mp4".equals(selectedFormat)){
+    int actual=PlaylistHistory.actualHeight(this,entry.url);
+    if(actual>0)row.qualityLabel="MP4 · "+actual+"p";
+   }else if(queuedAudioKbps.getOrDefault(entry.url,0)>0)
+    row.qualityLabel="MP3 · "+queuedAudioKbps.get(entry.url)+"k";
   }
   // Draw closed-state text ourselves: OEM Spinner padding otherwise truncates it.
   row.qualityValue.setText(row.qualityLabel);

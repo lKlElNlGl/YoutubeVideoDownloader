@@ -53,7 +53,7 @@ public final class PlaylistActivity extends Activity {
  private View stickySpacer,cardSurface,cardStroke;
  private TextView listEmpty;
  private ProgressBar refreshSpinner;
- private Button cancelRefreshButton,addButton;
+ private Button cancelRefreshButton,addButton,priorityButton;
  private FrameLayout listFrame;
  private ImageView listArrowUp,listArrowDown;
  private final Handler arrowHandler=new Handler(Looper.getMainLooper());
@@ -688,11 +688,18 @@ public final class PlaylistActivity extends Activity {
   });
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
+  priorityButton=new Button(this);
+  priorityButton.setText(UiStrings.display(this,"Скачать без очереди"));
+  ThemeStyle.styleButton(priorityButton,true);
+  ThemeStyle.icon(priorityButton,"download",18);
+  LinearLayout.LayoutParams urgent=new LinearLayout.LayoutParams(-1,dp(44));
+  urgent.bottomMargin=dp(5);bottom.addView(priorityButton,urgent);
+  priorityButton.setOnClickListener(v->addSelected(true));
   addButton=new Button(this);addButton.setText(UiStrings.display(PlaylistActivity.this, "Добавить в очередь"));
-  ThemeStyle.styleButton(addButton,true);
+  ThemeStyle.styleButton(addButton,false);
   ThemeStyle.icon(addButton,"plus",18);
-  bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(46)));
-  addButton.setOnClickListener(v->addSelected());
+  bottom.addView(addButton,new LinearLayout.LayoutParams(-1,dp(44)));
+  addButton.setOnClickListener(v->addSelected(false));
  }
  /** The hero scrolls in the list while one overlay follows its reserved spacer. */
  private int renderCardTop(){
@@ -1003,6 +1010,7 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
+  if(priorityButton!=null)priorityButton.setEnabled(count>0);
   boolean all=true;
   for(int i:visibleRows)if(!selected[i])all=false;
   selectAll.setChecked(!visibleRows.isEmpty()&&all);
@@ -1168,7 +1176,7 @@ public final class PlaylistActivity extends Activity {
   }));
   dialog.show();
  }
- private void addSelected(){
+ private void addSelected(boolean urgent){
   int count=0,duplicates=0;
   Set<String> already=previouslyAdded();
   for(int i=0;i<selected.length;i++)if(selected[i]){
@@ -1179,19 +1187,19 @@ public final class PlaylistActivity extends Activity {
    ThemeStyle.dialog(this).setTitle(UiStrings.display(PlaylistActivity.this, "Повторное добавление"))
     .setMessage(UiStrings.display(PlaylistActivity.this, "Уже добавлено: "+duplicates+". Добавить их повторно?"))
     .setNegativeButton(UiStrings.display(PlaylistActivity.this, "Отмена"),null)
-    .setPositiveButton(UiStrings.display(PlaylistActivity.this, "Добавить"),(d,w)->reallyAdd()).show();
-  }else reallyAdd();
+    .setPositiveButton(UiStrings.display(PlaylistActivity.this, "Добавить"),(d,w)->reallyAdd(urgent)).show();
+  }else reallyAdd(urgent);
  }
- private void reallyAdd(){
+ private void reallyAdd(boolean urgent){
   try{
    List<Boolean> flags=new ArrayList<>();for(boolean flag:selected)flags.add(flag);
    int count=DownloadQueue.enqueuePlaylist(this,playlist,flags,
-    formats,qualities,proxy,folder,priority,source);
+    formats,qualities,proxy,folder,urgent,source);
    // A successfully enqueued selection is consumed; retain each video's quality.
    Arrays.fill(selected,false);
    persistSelection();
    refreshStatuses();rebuildVisible(true);DownloadService.kick(this);
-   QueueNotice.show(this,QueueNotice.message(count,priority),()->{
+   QueueNotice.show(this,QueueNotice.message(count,urgent),()->{
      android.content.Intent intent=new android.content.Intent(this,MainActivity.class);
      intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
         android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);

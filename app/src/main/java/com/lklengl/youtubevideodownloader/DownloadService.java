@@ -285,7 +285,7 @@ public final class DownloadService extends Service {
                 } catch(Exception ignored){}
                 checkCancel();
             }
-            int duration=-1,height=0;
+            int duration=-1,height=0,audioKbps=0;
             try{
                 android.media.MediaMetadataRetriever mmr=new android.media.MediaMetadataRetriever();
                 try{
@@ -294,9 +294,13 @@ public final class DownloadService extends Service {
                     String h=mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
                     if(ms!=null)duration=(int)(Long.parseLong(ms)/1000L);
                     if(h!=null)height=Integer.parseInt(h);
+                    if(item.audio){
+                        String rate=mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE);
+                        if(rate!=null)audioKbps=(int)Math.round(Long.parseLong(rate)/1000d);
+                    }
                 }finally{mmr.release();}
             }catch(Exception ignored){}
-            DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length(),duration,height);
+            DownloadQueue.complete(this,item.id,finished.getName(),saved.toString(),finished.length(),duration,height,audioKbps);
             PlaylistHistory.markDownloaded(this,item.url,saved.toString(),height);
             announce();
     }

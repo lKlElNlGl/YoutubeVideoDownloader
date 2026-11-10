@@ -73,7 +73,7 @@ public final class PlaylistMediaPolicy {
    String format=codec==null?"":codec.toLowerCase(Locale.ROOT);
    double multiplier=format.contains("opus")?1.35:format.contains("aac")||format.contains("mp4a")?1.25:1.0;
    double equivalent=sourceKbps*multiplier;
-   useful=equivalent<=128?128:equivalent<=192?192:equivalent<=256?256:320;
+   useful=equivalent<=160?128:equivalent<=224?192:equivalent<=288?256:320;
   }
   return Math.min(Math.max(128,ceiling),useful);
  }

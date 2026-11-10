@@ -65,7 +65,7 @@ public final class ThemeStyle {
     public static int subdued(Context c){return isDark(c)?0xFFD3DAE6:0xFF596477;}
     public static int background(Context c){return isDark(c)?NIGHT_BG:DAY_BG;}
     public static int cardColor(Context c){return isDark(c)?NIGHT_CARD:DAY_CARD;}
-    public static int border(Context c){return isDark(c)?Palette050.NIGHT_BORDER:0xFFD2D9E3;}
+    public static int border(Context c){return isDark(c)?Palette050.NIGHT_BORDER:0xFFB3B8C1;}
     public static int field(Context c){return isDark(c)?Palette050.NIGHT_FIELD:0xFFF0F2F6;}
     public static int buttonFill(Context c){return isDark(c)?Palette050.NIGHT_BUTTON:0xFFEDEFF5;}
     public static int buttonStroke(Context c){return isDark(c)?Palette050.NIGHT_BUTTON_BORDER:0xFFD4DAE4;}

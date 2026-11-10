@@ -13,8 +13,8 @@ public class Release061RulesTest {
    Release061Rules.individualExtraWidthDp(),4,14));
  }
  @Test public void scrollbarStartsOnlyBelowPinnedControls(){
-  assertFalse(Release061Rules.showScrollbar(0,true));
-  assertFalse(Release061Rules.showScrollbar(1,false));
+  assertFalse(Release061Rules.showScrollbar(1,true,false));
+  assertFalse(Release061Rules.showScrollbar(0,false,true));
   assertTrue(Release061Rules.showScrollbar(0,true,true));
   assertFalse(Release061Rules.showScrollbar(4,true,false));
   assertEquals(108,Release061Rules.scrollbarTopPx(100,8));

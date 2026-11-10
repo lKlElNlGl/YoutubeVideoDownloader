@@ -30,7 +30,7 @@ public final class PlaylistActivity extends Activity {
  private TextView scanText;
  private Button scanButton;
  private View scrollbarOverlay;
- private ListView list;
+ private PlaylistListView list;
  private BaseAdapter adapter;
  private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
  private CheckBox selectAll;
@@ -430,7 +430,7 @@ public final class PlaylistActivity extends Activity {
   });
   stickyControls.addView(scanRow,new LinearLayout.LayoutParams(-1,-2));
   scanRow.setVisibility(View.GONE);
-  list=new ListView(this);
+  list=new PlaylistListView(this);
   LinearLayout headerContent=column();
   headerContent.addView(playlistHeroHolder,new LinearLayout.LayoutParams(-1,-2));
   stickySpacer=new View(this);
@@ -442,9 +442,8 @@ public final class PlaylistActivity extends Activity {
   // The old list's scrollbar stays on the right edge. The header is transparent:
   // the cover must not be painted over by the list's card-colored background.
   list.setBackgroundColor(Color.TRANSPARENT);
-  list.setVerticalScrollBarEnabled(true);
-  list.setVerticalScrollbarPosition(View.SCROLLBAR_POSITION_RIGHT);
-  list.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+  // Draw a shared scroll thumb only below the pinned filter controls.
+  list.setVerticalScrollBarEnabled(false);
   // v0.5.8 kept 6dp of breathing room between the last row and the card bottom.
   list.setPadding(0,0,0,dp(6));
   list.setClipToPadding(true);
@@ -465,7 +464,7 @@ public final class PlaylistActivity extends Activity {
   cardSurface=new View(this){
    @Override protected void onDraw(android.graphics.Canvas canvas){
     super.onDraw(canvas);
-    int y=Math.max(0,Math.min(getHeight(),Math.round(stickyControls.getTranslationY())));
+    int y=Math.max(0,Math.min(getHeight(),renderCardTop()));
     originalCard.setBounds(0,y,getWidth(),getHeight());
     originalCard.draw(canvas);
    }
@@ -485,7 +484,7 @@ public final class PlaylistActivity extends Activity {
   cardStroke=new View(this){
    @Override protected void onDraw(android.graphics.Canvas canvas){
     super.onDraw(canvas);
-    float top=Math.max(0f,stickyControls.getTranslationY())+.5f;
+    float top=Math.max(0f,renderCardTop())+.5f;
     float right=getWidth()-.5f,bottom=getHeight()-.5f;
     if(top>=bottom||right<=0f)return;
     canvas.drawRoundRect(.5f,top,right,bottom,
@@ -497,6 +496,28 @@ public final class PlaylistActivity extends Activity {
   listFrame.addView(stickyControls,new FrameLayout.LayoutParams(-1,-2,Gravity.TOP));
   // The one shared outline is drawn above both rows and the controls' fill.
   listFrame.addView(cardStroke,new FrameLayout.LayoutParams(-1,-1));
+  scrollbarOverlay=new View(this){
+   private final android.graphics.Paint thumb=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+   @Override protected void onDraw(android.graphics.Canvas canvas){
+    super.onDraw(canvas);
+    if(list==null||stickyControls==null)return;
+    int y=renderCardTop();
+    boolean pinned=y<=0;
+    if(!Release061Rules.showScrollbar(y,list.canScrollVertically(-1),pinned))return;
+    int top=Release061Rules.scrollbarTopPx(stickyControls.getHeight(),dp(7));
+    int height=getHeight()-top-dp(7);
+    int range=list.scrollRange(),extent=list.scrollExtent();
+    if(height<=0||range<=extent||extent<=0)return;
+    float length=Math.max(dp(24),height*Math.min(1f,extent/(float)range));
+    float percent=Math.max(0f,Math.min(1f,list.scrollOffset()/(float)(range-extent)));
+    float start=top+(height-length)*percent;
+    thumb.setColor(ThemeStyle.isDark(PlaylistActivity.this)?0xFF89909D:0xFF959DAA);
+    canvas.drawRoundRect(getWidth()-dp(6),start,getWidth()-dp(3),
+      start+length,dp(2),dp(2),thumb);
+   }
+  };
+  scrollbarOverlay.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+  listFrame.addView(scrollbarOverlay,new FrameLayout.LayoutParams(-1,-1));
   stickyControls.addOnLayoutChangeListener((v,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
    int height=bottom-top;
    ViewGroup.LayoutParams spacerParams=stickySpacer.getLayoutParams();
@@ -645,6 +666,11 @@ public final class PlaylistActivity extends Activity {
   final int[] savedScroll=scrollSession.get(source);
   list.setAdapter(adapter);
   listArrowUp=playlistArrow(true);listArrowDown=playlistArrow(false);
+  list.setOnTouchListener((v,event)->{
+   if(event.getActionMasked()==MotionEvent.ACTION_MOVE)
+    list.postOnAnimation(this::updateStickyControls);
+   return false;
+  });
   list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener(){
    @Override public void onScrollStateChanged(android.widget.AbsListView v,int state){}
    @Override public void onScroll(android.widget.AbsListView v,int first,int visible,int total){
@@ -668,14 +694,18 @@ public final class PlaylistActivity extends Activity {
   addButton.setOnClickListener(v->addSelected());
  }
  /** The hero scrolls in the list while one overlay follows its reserved spacer. */
- private void updateStickyControls(){
-  if(list==null||stickyControls==null||playlistHeroHolder==null)return;
+ private int renderCardTop(){
+  if(list==null||playlistHeroHolder==null)return 0;
   int first=list.getFirstVisiblePosition();
   int top=first==0&&list.getChildCount()>0?list.getChildAt(0).getTop():0;
-  stickyControls.setTranslationY(Release060Rules.cardTop(
-    first,top,playlistHeroHolder.getHeight()));
+  return Release060Rules.cardTop(first,top,playlistHeroHolder.getHeight());
+ }
+ private void updateStickyControls(){
+  if(list==null||stickyControls==null||playlistHeroHolder==null)return;
+  stickyControls.setTranslationY(renderCardTop());
   if(cardSurface!=null)cardSurface.invalidate();
   if(cardStroke!=null)cardStroke.invalidate();
+  if(scrollbarOverlay!=null)scrollbarOverlay.invalidate();
  }
  private void scrollToPlaylistTop(){
   if(list==null)return;
@@ -741,6 +771,7 @@ public final class PlaylistActivity extends Activity {
   if(list==null)return;
   fadeListArrow(listArrowUp,list.canScrollVertically(-1)&&stickyControls.getTranslationY()<=0f);
   fadeListArrow(listArrowDown,list.canScrollVertically(1));
+  if(scrollbarOverlay!=null)scrollbarOverlay.invalidate();
  }
  private int rowHighlight(boolean active){
   int base=ThemeStyle.cardColor(this);
@@ -748,6 +779,12 @@ public final class PlaylistActivity extends Activity {
   boolean dark=ThemeStyle.isDark(this);
   int tint=dark?Palette050.NIGHT_POPUP:0xFFE6E7EB;
   return Release059Rules.highlightColor(base,tint,dark);
+ }
+ private static final class PlaylistListView extends ListView {
+  PlaylistListView(android.content.Context context){super(context);}
+  int scrollRange(){return computeVerticalScrollRange();}
+  int scrollExtent(){return computeVerticalScrollExtent();}
+  int scrollOffset(){return computeVerticalScrollOffset();}
  }
  private static final class Row{
   LinearLayout root;CheckBox check;ImageView image;TextView name,duration,already;

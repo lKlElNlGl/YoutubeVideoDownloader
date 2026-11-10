@@ -1195,6 +1195,20 @@ public final class MainActivity extends Activity {
             (!TextUtils.isEmpty(j.filename)?j.filename:j.url);
     }
     private String queueFormat(DownloadQueue.Item j){
+        if(j.playlistTitle!=null&&!j.playlistTitle.isEmpty()&&
+           ("mp3".equals(j.format)||"mp4".equals(j.format))){
+            boolean english=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
+            String chosen=j.quality==null?(j.audio?"a:best":"best"):j.quality;
+            String shown=PlaylistMediaPolicy.compact(j.format,chosen,english);
+            if(DownloadQueue.DONE.equals(j.status)){
+                if(j.audio&&j.actualAudioKbps>0)
+                    shown="MP3 · "+j.actualAudioKbps+"k";
+                else if(!j.audio&&j.actualHeight>0)
+                    shown="MP4 · "+j.actualHeight+"p";
+            }
+            String duration=j.durationSeconds>=0?QueueRules.readableDuration(j.durationSeconds):"—";
+            return shown+" · "+duration;
+        }
         String info=QueueMetadata.label(j.audio,j.quality,j.format,j.actualHeight,j.durationSeconds);
         return DownloadQueue.DONE.equals(j.status)?info.replace("Определяется…","Качество неизвестно"):info;
     }

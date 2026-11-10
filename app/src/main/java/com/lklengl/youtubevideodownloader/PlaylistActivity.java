@@ -398,7 +398,7 @@ public final class PlaylistActivity extends Activity {
   bulkQualityIcon.setImageDrawable(approved);
   bulkQualityIcon.setBackground(ThemeStyle.rounded(ThemeStyle.buttonFill(this),
    ThemeStyle.buttonStroke(this),dp(9)));
-  bulkQualityIcon.setContentDescription(UiStrings.display(this,"Качество для отмеченных"));
+  bulkQualityIcon.setContentDescription(UiStrings.display(this,"Формат и качество для отмеченных"));
   LinearLayout.LayoutParams batchButton=new LinearLayout.LayoutParams(dp(42),dp(38));
   batchButton.rightMargin=dp(6);selectRow.addView(bulkQualityIcon,batchButton);
   bulkQualityIcon.setOnClickListener(v->showBulkQuality());
@@ -412,6 +412,24 @@ public final class PlaylistActivity extends Activity {
   dotPos.setMargins(0,dp(3),dp(3),0);filterFrame.addView(filterDot,dotPos);
   filterFrame.setOnClickListener(v->showListSettings());
   updateFilterIcon();
+  scanRow=new LinearLayout(this);
+  scanRow.setGravity(Gravity.CENTER_VERTICAL);
+  scanRow.setPadding(dp(12),0,dp(7),0);
+  scanText=txt("",11);scanText.setTextColor(ThemeStyle.subdued(this));
+  scanRow.addView(scanText,new LinearLayout.LayoutParams(0,-2,1));
+  scanButton=new Button(this);scanButton.setAllCaps(false);
+  scanButton.setTextSize(10);
+  scanButton.setMinimumHeight(0);scanButton.setMinHeight(0);
+  ThemeStyle.styleButton(scanButton,false);
+  scanRow.addView(scanButton,new LinearLayout.LayoutParams(-2,dp(30)));
+  scanButton.setOnClickListener(v->{
+   if(scanner==null)return;
+   if(scanner.scanning()){scanner.stop();scanStopped=true;}
+   else startQualityScan(false);
+   updateScanUi();adapter.notifyDataSetChanged();
+  });
+  stickyControls.addView(scanRow,new LinearLayout.LayoutParams(-1,-2));
+  scanRow.setVisibility(View.GONE);
   list=new ListView(this);
   LinearLayout headerContent=column();
   headerContent.addView(playlistHeroHolder,new LinearLayout.LayoutParams(-1,-2));

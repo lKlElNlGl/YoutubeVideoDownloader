@@ -136,6 +136,45 @@ public final class DownloadQueue {
             return count;
         }
     }
+    /** Atomic mixed-format playlist enqueue: each entry carries its own MP4/MP3 and quality. */
+    public static int enqueuePlaylist(Context context,PlaylistRepository.Playlist playlist,List<Boolean> selected,
+            List<String> formats,List<String> qualities,String proxy,String directoryUri,
+            boolean priority,String playlistUrl) {
+        synchronized(LOCK) {
+            int size=playlist.entries.size();
+            if(selected.size()!=size||formats.size()!=size||qualities.size()!=size)
+                throw new IllegalArgumentException("Выбор видео изменился");
+            List<Item> list=read(context);
+            int count=0;
+            for(int n=0;n<size;n++)if(Boolean.TRUE.equals(selected.get(n))){
+                if(!PlaylistMediaPolicy.allowed(formats.get(n),qualities.get(n)))
+                    throw new IllegalArgumentException("Некорректное качество видео");
+                count++;
+            }
+            if(count==0)throw new IllegalArgumentException("Выберите хотя бы одно видео");
+            if(QueueRules.activeCount(list)+count>2000)
+                throw new IllegalStateException("Слишком много задач в очереди (максимум 2000)");
+            String subfolder=PlaylistFolders.folderFor(context,playlistUrl,playlist.title);
+            List<Item> added=new ArrayList<>();
+            for(int n=0;n<size;n++){
+                if(!Boolean.TRUE.equals(selected.get(n)))continue;
+                PlaylistRepository.Entry entry=playlist.entries.get(n);
+                Item item=new Item();
+                item.id=UUID.randomUUID().toString();item.url=entry.url;item.title=entry.title;
+                item.playlistTitle=playlist.title;item.playlistFolder=subfolder;
+                item.format=formats.get(n);item.audio="mp3".equals(item.format);
+                item.quality=qualities.get(n);item.proxy=proxy;item.directoryUri=directoryUri;
+                item.priority=priority;item.contentUri="";item.status=WAITING;
+                item.message="Ожидает";item.filename="";item.durationSeconds=entry.duration;
+                added.add(item);
+            }
+            if(priority)QueueRules.prependPriority(list,added);
+            else QueueRules.addNewest(list,added);
+            save(context,list);
+            for(Item item:added)PlaylistHistory.markQueued(context,item.url,item.quality);
+            return count;
+        }
+    }
     public static Item next(Context context) {
         synchronized(LOCK){
             return QueueRules.nextWaiting(read(context));

@@ -23,7 +23,13 @@ public final class PlaylistActivity extends Activity {
  private String source,quality,format,proxy,folder;
  private PlaylistRepository.Playlist playlist;
  private boolean[] selected;
- private List<String> qualities;
+ private List<String> qualities,formats;
+ private PlaylistResolutionWorker scanner;
+ private boolean scanStopped=false;
+ private LinearLayout scanRow;
+ private TextView scanText;
+ private Button scanButton;
+ private View scrollbarOverlay;
  private ListView list;
  private BaseAdapter adapter;
  private TextView heading,subheading,owner,progressText,refreshControl,sectionCount;
@@ -40,6 +46,7 @@ public final class PlaylistActivity extends Activity {
  private float swipeStartX,swipeStartY;
  private boolean swipeEligible;
  private final Map<String,String> queuedQualities=new HashMap<>();
+ private final Map<String,String> queuedFormats=new HashMap<>();
  private LinearLayout progressPanel,rootLayout;
  private LinearLayout playlistHeroHolder,stickyControls;
  private View stickySpacer,cardSurface,cardStroke;
@@ -206,8 +213,8 @@ public final class PlaylistActivity extends Activity {
  private void refreshStatuses(){
   PlaylistHistory.syncFromQueue(this);
   List<DownloadQueue.Item> items=DownloadQueue.all(this);
-  queuedQualities.clear();
-  for(DownloadQueue.Item item:items)queuedQualities.put(item.url,item.quality);
+  queuedQualities.clear();queuedFormats.clear();
+  for(DownloadQueue.Item item:items){queuedQualities.put(item.url,item.quality);queuedFormats.put(item.url,item.format);}
   videoStatus=new int[playlist.entries.size()];
   for(int i=0;i<videoStatus.length;i++)
    videoStatus[i]=PlaylistHistory.status(this,playlist.entries.get(i).url,items);
@@ -257,7 +264,11 @@ public final class PlaylistActivity extends Activity {
   selected=new boolean[flags.size()];
   for(int i=0;i<flags.size();i++)selected[i]=flags.get(i);
   PlaylistCache.saveSelectionById(this,source,playlist,selected);
-  qualities=PlaylistCache.readQualities(this,source,playlist,quality);
+  qualities=PlaylistCache.readQualities(this,source,playlist,"best");
+  formats=PlaylistCache.readFormats(this,source,playlist);
+  for(int i=0;i<formats.size();i++)
+   if(!PlaylistMediaPolicy.allowed(formats.get(i),qualities.get(i)))
+    qualities.set(i,PlaylistMediaPolicy.defaultQuality(formats.get(i)));
   heading.setText(playlist.title);
   owner.setText(playlist.uploader);
   owner.setVisibility(TextUtils.isEmpty(playlist.uploader)?View.GONE:View.VISIBLE);
@@ -275,6 +286,8 @@ public final class PlaylistActivity extends Activity {
     QueueRules.readableDuration(e.duration)))+dp(6));
   durationWidth=Math.min(durationWidth,dp(95));
   rebuildVisible(true);
+  if(PlaylistResolutionWorker.enabled(this))startQualityScan(
+    fresh&&PlaylistResolutionWorker.takeRefreshFlag(this,source));
  }
  private void buildScreen(){
   LinearLayout root=column();rootLayout=root;
@@ -604,6 +617,7 @@ public final class PlaylistActivity extends Activity {
     if(!scrollRestoring&&visible>0&&list.getChildCount()>0)
      scrollSession.put(source,new int[]{first,list.getChildAt(0).getTop()});
     list.post(PlaylistActivity.this::updateListArrows);
+    prioritizeQualityScan();
    }
   });
   list.post(()->{
@@ -801,7 +815,53 @@ public final class PlaylistActivity extends Activity {
   PlaylistCache.saveSelectionById(this,source,playlist,selected);
   PlaylistCache.saveSelection(this,source,selected);
  }
- private void persistQualities(){PlaylistCache.saveQualities(this,source,playlist,qualities);}
+ private void persistQualities(){
+  PlaylistCache.saveQualities(this,source,playlist,qualities);
+  PlaylistCache.saveFormats(this,source,playlist,formats);
+ }
+ private void startQualityScan(boolean force){
+  if(scanner!=null)scanner.stop();
+  else scanner=new PlaylistResolutionWorker(this,proxy,(videoId,failed)->{
+   if(isFinishing()||isDestroyed())return;
+   if(adapter!=null)adapter.notifyDataSetChanged();
+   updateScanUi();
+  });
+  scanStopped=false;
+  scanner.start(playlist,force);
+  updateScanUi();
+  prioritizeQualityScan();
+ }
+ private void prioritizeQualityScan(){
+  if(scanner==null||!scanner.scanning()||list==null||selected==null)return;
+  List<PlaylistRepository.Entry> important=new ArrayList<>();
+  for(int i=0;i<selected.length;i++)
+   if(selected[i])important.add(playlist.entries.get(i));
+  int from=list.getFirstVisiblePosition()-list.getHeaderViewsCount();
+  for(int n=Math.max(0,from);n<Math.min(visibleRows.size(),
+     Math.max(0,from)+Math.max(1,list.getChildCount()));n++)
+   important.add(playlist.entries.get(visibleRows.get(n)));
+  scanner.prioritize(important);
+ }
+ private void updateScanUi(){
+  if(scanRow==null)return;
+  if(scanner==null||!PlaylistResolutionWorker.enabled(this)){
+   scanRow.setVisibility(View.GONE);return;
+  }
+  boolean running=scanner.scanning();
+  boolean stopped=scanStopped;
+  boolean failed=false;
+  if(!running&&!stopped)for(PlaylistRepository.Entry e:playlist.entries)
+   if(scanner.failed(e.id)){failed=true;break;}
+  if(!running&&!stopped&&!failed){scanRow.setVisibility(View.GONE);return;}
+  scanRow.setVisibility(View.VISIBLE);
+  scanText.setText(UiStrings.display(this,stopped?"Проверка качеств остановлена":
+    failed&&!running?"Не удалось определить качество":
+    "Определено качеств: ")+
+    (running?scanner.completed()+" из "+scanner.total():""));
+  scanButton.setText(UiStrings.display(this,
+   running?"Остановить проверку качеств":"Повторить проверку качества"));
+ }
+
  private void updateFooter(){
   if(selected==null||selectAll==null||addButton==null)return;
   int count=0;for(boolean flag:selected)if(flag)count++;
@@ -978,6 +1038,11 @@ public final class PlaylistActivity extends Activity {
   super.onResume();
   if(progressPanel!=null){
     refreshStatuses();rebuildVisible(false);
+    if(PlaylistResolutionWorker.enabled(this)&&scanner==null)startQualityScan(false);
+    else if(!PlaylistResolutionWorker.enabled(this)&&scanner!=null){
+     scanner.close();scanner=null;scanStopped=false;
+    }
+    updateScanUi();
     handler.removeCallbacks(tick);tick.run();
    }
  }
@@ -989,6 +1054,8 @@ public final class PlaylistActivity extends Activity {
  @Override protected void onDestroy(){
   handler.removeCallbacks(tick);
   if(cancelExpiry!=null)handler.removeCallbacks(cancelExpiry);
+  if(scanner!=null){scanner.close();scanner=null;}
+  arrowHandler.removeCallbacksAndMessages(null);
   super.onDestroy();
  }
 

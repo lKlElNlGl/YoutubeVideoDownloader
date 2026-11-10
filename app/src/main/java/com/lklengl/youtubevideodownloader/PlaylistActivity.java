@@ -719,10 +719,16 @@ public final class PlaylistActivity extends Activity {
   Spinner quality;FrameLayout qualityFrame;LinearLayout detail;
   TextView qualityValue;boolean qualityUserInteraction=false;String qualityLabel="";
   String imageId="";int position=-1;
+  String[] qualityCodes=new String[0];String optionsKey="";
+  FrameLayout qualityStatus;ImageView qualityStateIcon;ProgressBar qualityLoader;
  }
  private Spinner spinner(String[] labels){return spinner(labels,null);}
  private Spinner spinner(String[] labels,java.util.function.Supplier<String> shown){
   Spinner s=new RotatingSpinner(this);
+  setSpinnerItems(s,labels,shown);
+  return s;
+ }
+ private void setSpinnerItems(Spinner s,String[] labels,java.util.function.Supplier<String> shown){
   ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,UiStrings.translateChoices(this,labels)){
    @Override public View getView(int p,View old,android.view.ViewGroup parent){
     TextView t=(TextView)super.getView(p,old,parent);
@@ -743,7 +749,53 @@ public final class PlaylistActivity extends Activity {
   };
   a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
   s.setAdapter(a);s.setPopupBackgroundDrawable(ThemeStyle.popupBackground(this));
-  return s;
+ }
+ /** Keep the same compact spinner style with a dynamically verified video subset. */
+ private void configureRowChoices(Row row,PlaylistRepository.Entry entry){
+  List<String> verified=scanner!=null&&PlaylistResolutionWorker.enabled(this)?
+    scanner.cached(entry.id):null;
+  List<String> codes=new ArrayList<>(),labels=new ArrayList<>();
+  boolean en=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
+  for(String height:PlaylistMediaPolicy.choices("mp4",verified)){
+   codes.add("mp4|"+height);
+   labels.add(PlaylistMediaPolicy.compact("mp4",height,en));
+  }
+  for(String bitrate:PlaylistMediaPolicy.AUDIO_VALUES){
+   codes.add("mp3|"+bitrate);
+   labels.add(PlaylistMediaPolicy.compact("mp3",bitrate,en));
+  }
+  String current=formats.get(row.position)+"|"+qualities.get(row.position);
+  if(!codes.contains(current)){
+   codes.add(current);
+   labels.add(PlaylistMediaPolicy.compact(formats.get(row.position),qualities.get(row.position),en));
+  }
+  String signature=codes.toString()+"|"+en;
+  if(!signature.equals(row.optionsKey)){
+   row.optionsKey=signature;
+   row.qualityCodes=codes.toArray(new String[0]);
+   setSpinnerItems(row.quality,labels.toArray(new String[0]),()->row.qualityLabel);
+  }
+  row.quality.setSelection(codes.indexOf(current));
+ }
+ private void showRowQualityStatus(Row row,PlaylistRepository.Entry entry){
+  if(row.qualityStateIcon==null||row.qualityLoader==null)return;
+  boolean enabled=PlaylistResolutionWorker.enabled(this);
+  boolean ready=enabled&&scanner!=null&&scanner.cached(entry.id)!=null;
+  boolean failed=enabled&&scanner!=null&&scanner.failed(entry.id);
+  boolean pending=enabled&&scanner!=null&&scanner.pending(entry.id);
+  row.qualityLoader.setVisibility(pending?View.VISIBLE:View.GONE);
+  row.qualityStateIcon.setVisibility(pending?View.GONE:View.VISIBLE);
+  if(!pending){
+   String icon=ready?"check-circle":failed?"alert-triangle":"clock";
+   int tint=ready?0xFF39AA76:failed?0xFFE6A43A:ThemeStyle.subdued(this);
+   row.qualityStateIcon.setImageDrawable(new UiIcons(icon,tint,dp(14)));
+  }
+  String desc=ready?"Доступные качества получены с YouTube":
+    pending?"Получение качеств с YouTube":
+    failed?"Не удалось определить качество":"Предустановленные варианты";
+  row.qualityStatus.setContentDescription(UiStrings.display(this,desc));
+  row.qualityStatus.setOnClickListener(v->
+   Toast.makeText(this,UiStrings.display(this,desc),Toast.LENGTH_SHORT).show());
  }
  private String qualityOverrideKey(int index){
   return source.hashCode()+"_"+playlist.entries.get(index).id;

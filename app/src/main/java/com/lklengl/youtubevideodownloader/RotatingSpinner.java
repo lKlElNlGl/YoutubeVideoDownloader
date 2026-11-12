@@ -28,6 +28,7 @@ public final class RotatingSpinner extends Spinner {
  private AdapterView.OnItemSelectedListener chosen;
  private PopupWindow popup;
  private Runnable afterDismiss;
+ private java.util.function.IntConsumer onPopupPick;
  private int sectionBreak=-1;
 
  public RotatingSpinner(Context context){
@@ -39,6 +40,8 @@ public final class RotatingSpinner extends Spinner {
  public void setSectionBreak(int index){sectionBreak=index;}
  public boolean isPopupOpen(){return popup!=null&&popup.isShowing();}
  public void setOnPopupDismiss(Runnable callback){afterDismiss=callback;}
+ /** Called synchronously on an explicit menu pick, before recycled row rebinding. */
+ public void setOnPopupChoiceSelected(java.util.function.IntConsumer callback){onPopupPick=callback;}
  private int dp(float value){return ThemeStyle.dp(getContext(),value);}
  private void rotate(boolean expanded){
   if(arrow!=null)arrow.animate().rotation(expanded?180f:0f).setDuration(150).start();
@@ -121,6 +124,7 @@ public final class RotatingSpinner extends Spinner {
   entries.setOnItemClickListener((parent,view,position,id)->{
    int value=Release062Rules.popupIndexToChoice(position,split);
    if(value<0||value>=original.getCount())return;
+   if(onPopupPick!=null)onPopupPick.accept(value);
    setSelection(value);
    window.dismiss();
   });

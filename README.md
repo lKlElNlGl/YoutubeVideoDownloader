@@ -30,6 +30,15 @@
 
 ## Изменения
 
+### v0.5.12
+- Исправлена отрисовка скруглённых всплывающих списков при прокрутке: общее окно и его содержимое обрезаются по одному округлому контуру. Проверены компоненты выбора качества, фильтров, настроек и меню очереди.
+- Индивидуальный раскрытый список: сначала все качества **видео MP4** (от «Максимальное» до минимального), затем разделитель и все качества **аудио MP3** (от «Максимальное» и 320 кбит/с до 128 кбит/с). Пункты имеют полные названия с единицами; компактная строка остаётся прежней. При наличии только одной группы разделитель не показывается.
+- Реальные качества YouTube продолжают обновляться в фоне, но открытый список не перестраивается и не сбрасывает выбор. При открытии меню выбранный пункт автоматически показывается в видимой области.
+- Надпись фоновой проверки качеств фиксирована в три строки («Определено» / «качеств:» / «N из M»). Кнопка остановки/повтора — с переносом на две строки и вертикальным центрированием, без наложения на счётчик.
+- Кнопка «Скачать без очереди» показывает количество выбранных файлов: «Скачать без очереди (N)», как обычное добавление в очередь.
+- Закреплена обрезка верхней информационной карточки и её содержимого по скруглённым краям, включая движение при резкой прокрутке и эффекте резинки. Фон и обводка списка учитывают смещение верхнего overscroll; эффект резинки сохранён.
+- Сохранены индивидуальные настройки, согласованные цвета 050, затемнение рамок светлой темы и финальная иконка A. Весь новый текст доступен на русском и английском языках.
+
 ### v0.5.11
 - Плейлист: два варианта добавления отмеченных файлов — обычная очередь и «Скачать без очереди»; индивидуальные MP4/MP3 и качество сохраняются по ID видео при повторном открытии и перестановке.
 - Общий диалог «Формат и качество для отмеченных» переключает видео MP4 (Максимальное, 4K–360p) и аудио MP3 (Максимальное, 128/192/256/320 кбит/с). В строках компактные подписи MP4 · Макс., MP4 · 1080p, MP3 · Макс., MP3 · 192k; русская и английская локализация.
@@ -154,6 +163,15 @@ Download the APK from [GitHub Releases](https://github.com/lKlElNlGl/YoutubeVide
 Playlists let you choose individual entries and set per-video quality. Available formats and resolutions depend on the source.
 
 ## What's changed
+
+### v0.5.12
+- Correctly clip scrolling dropdown entries to the one shared rounded popup outline. This applies to individual quality, bulk controls, filters, settings, and the queue action menu.
+- Per-video expanded menu lists all **MP4 video** choices in descending quality order (Maximum first), followed by a nonselectable separator and all **MP3 audio** choices descending from Maximum/320 kbps to 128 kbps. Use full names and units inside the popup while keeping compact field labels. Hide the divider when only one media group is available.
+- Background YouTube quality discovery never rebuilds an open popup or loses a chosen quality; opening a popup scrolls to the current selection.
+- Quality verification counter uses three deliberate lines, and the centered Stop/Retry button uses two lines without text overlap.
+- The urgent action now includes the selected file count: "Download immediately (N)".
+- Constrain playlist header children to its true rounded outline and synchronize list background/border with top overscroll displacement while retaining native stretch behavior.
+- Preserve approved v0.5.11 media controls, color palette, dark theme and final Icon A. RU/EN localization remains supported.
 
 ### v0.5.11
 - Playlist: normal and priority queue actions for selected items; each entry has independent MP4/MP3 output and quality, saved by stable video ID across revisits and reorderings.

@@ -597,14 +597,30 @@ public final class PlaylistActivity extends Activity {
      h.quality.setPadding(dp(3),0,dp(18),0);
      h.quality.setDropDownWidth(dp(270));
      h.qualityFrame.addView(h.quality,new FrameLayout.LayoutParams(-1,-1));
+     ((RotatingSpinner)h.quality).setOnPopupChoiceSelected(chosen->{
+      if(holder.position<0||holder.position>=qualities.size()||
+         chosen<0||chosen>=holder.qualityCodes.length)return;
+      String chosenCode=holder.qualityCodes[chosen];
+      int sep=chosenCode.indexOf('|');
+      if(sep<0)return;
+      String newFormat=chosenCode.substring(0,sep);
+      String newQuality=chosenCode.substring(sep+1);
+      holder.qualityUserInteraction=false;
+      if(newFormat.equals(formats.get(holder.position))&&
+         newQuality.equals(qualities.get(holder.position)))return;
+      formats.set(holder.position,newFormat);
+      qualities.set(holder.position,newQuality);
+      markQualityOverride(holder.position);
+      persistQualities();
+      holder.quality.post(()->adapter.notifyDataSetChanged());
+     });
      ((RotatingSpinner)h.quality).setOnPopupDismiss(()->{
-      holder.quality.postDelayed(()->{
+      holder.quality.post(()->{
        if(holder.position<0||holder.position>=playlist.entries.size()||
           holder.root==null||!holder.root.isAttachedToWindow())return;
-       holder.qualityUserInteraction=false;
        configureRowChoices(holder,playlist.entries.get(holder.position));
        updateRowQuality(holder);
-      },75);
+      });
      });
      h.quality.setOnTouchListener((v,event)->{
       if(event.getActionMasked()==MotionEvent.ACTION_DOWN)holder.qualityUserInteraction=true;

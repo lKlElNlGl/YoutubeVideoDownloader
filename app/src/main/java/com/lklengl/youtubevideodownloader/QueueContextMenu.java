@@ -18,9 +18,16 @@ public final class QueueContextMenu {
   LinearLayout content=new LinearLayout(activity);
   content.setOrientation(LinearLayout.VERTICAL);
   content.setPadding(0,dp,0,dp);
-  // The PopupWindow background draws the single outer outline. Do not draw it twice.
-  PopupWindow popup=new PopupWindow(content,ThemeStyle.dp(activity,250),-2,true);
-  popup.setBackgroundDrawable(ThemeStyle.popupBackground(activity));
+  // The root itself owns the one rounded surface and clips every child row.
+  // The transparent PopupWindow background must not draw a second outline.
+  FrameLayout clipped=new FrameLayout(activity);
+  clipped.setBackground(ThemeStyle.popupBackground(activity));
+  clipped.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+  clipped.setClipToOutline(true);
+  clipped.setClipChildren(true);
+  clipped.addView(content,new FrameLayout.LayoutParams(-1,-2));
+  PopupWindow popup=new PopupWindow(clipped,ThemeStyle.dp(activity,250),-2,true);
+  popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
   popup.setOutsideTouchable(true);popup.setElevation(ThemeStyle.dp(activity,8));
   popup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
   int i=0;int count=actions.size();

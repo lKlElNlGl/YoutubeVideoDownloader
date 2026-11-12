@@ -428,9 +428,9 @@ public final class PlaylistActivity extends Activity {
   scanText.setGravity(Gravity.CENTER_VERTICAL);
   scanRow.addView(scanText,new LinearLayout.LayoutParams(0,-2,1));
   scanButton=new Button(this);scanButton.setAllCaps(false);
-  scanButton.setTextSize(11);
   scanButton.setMinimumHeight(0);scanButton.setMinHeight(0);
   ThemeStyle.styleButton(scanButton,false);
+  scanButton.setTextSize(11);
   scanButton.setSingleLine(false);scanButton.setMaxLines(2);
   scanButton.setIncludeFontPadding(false);
   scanButton.setGravity(Gravity.CENTER);

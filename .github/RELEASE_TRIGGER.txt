@@ -42,3 +42,5 @@ Publish v0.5.9: instant preset playlist qualities, natural sticky scrolling, com
 Publish v0.5.10: original playlist styling restored with one clipped rounded card and correct scrollbar, sticky continuous scrolling retained, precise +3dp bulk dialog and 8/2dp individual quality spacing; signed release from main.
 
 Publish v0.5.11: independent playlist MP4/MP3 formats, capped audio quality, opt-in cached YouTube verification, scrolling/card fixes, light-theme borders and proxy UI; signed APK from main.
+
+Publish v0.5.12: rounded scrollable quality/filter/settings dropdowns and queue menus, sorted video/audio groups, explicit scan progress and priority count, rounded overscroll clipping, RU/EN, signed APK from main.

@@ -48,6 +48,12 @@ public final class Release062Rules {
     ("mp3".equals(format)?"Аудио MP3":"Видео MP4"))+" · "+
     PlaylistMediaPolicy.full(format,quality,english);
  }
+ /** Align the list-card paint with the visual stretch of the ListView's header.
+  * Android's overscroll scrollY is negative when the top is pulled down. */
+ public static int stretchedCardTop(int firstPosition,int firstChildTop,int heroHeight,int overScrollY){
+  int normal=Release060Rules.cardTop(firstPosition,firstChildTop,heroHeight);
+  return Math.max(0,normal-Math.min(0,overScrollY));
+ }
  public static String qualityProgress(int count,int total,boolean english){
   return (english?"Checked\nqualities:\n":"Определено\nкачеств:\n")+
     count+(english?" of ":" из ")+total;

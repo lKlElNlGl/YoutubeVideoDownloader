@@ -327,6 +327,12 @@ public final class PlaylistActivity extends Activity {
   // The playlist summary moves with the scrolling list without clipping or collapsing.
   playlistHeroHolder=column();
   LinearLayout header=panel();
+  // Clip children, not only the background, to the rounded information card
+  // during Android stretch overscroll.
+  header.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+  header.setClipToOutline(true);
+  header.setClipChildren(true);header.setClipToPadding(true);
+  playlistHeroHolder.setClipChildren(true);
   playlistHeroHolder.addView(header,margin(2,9));
   LinearLayout hero=new LinearLayout(this);hero.setGravity(Gravity.CENTER_VERTICAL);
   header.addView(hero);
@@ -351,7 +357,8 @@ public final class PlaylistActivity extends Activity {
   // The card surface starts below the scrolling playlist summary and pins with controls.
   LinearLayout listCard=column();
   listCard.setPadding(0,0,0,0);
-  listCard.setClipChildren(false);listCard.setClipToPadding(false);
+  // Keep list and overlays inside the actual rounded list frame during stretch.
+  listCard.setClipChildren(true);listCard.setClipToPadding(true);
   root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
   // One controls view: naturally scrolls until it reaches the fixed toolbar, then pins.
   stickyControls=column();
@@ -417,12 +424,18 @@ public final class PlaylistActivity extends Activity {
   scanRow.setGravity(Gravity.CENTER_VERTICAL);
   scanRow.setPadding(dp(12),0,dp(7),0);
   scanText=txt("",11);scanText.setTextColor(ThemeStyle.subdued(this));
+  scanText.setSingleLine(false);scanText.setMaxLines(3);
+  scanText.setGravity(Gravity.CENTER_VERTICAL);
   scanRow.addView(scanText,new LinearLayout.LayoutParams(0,-2,1));
   scanButton=new Button(this);scanButton.setAllCaps(false);
-  scanButton.setTextSize(10);
+  scanButton.setTextSize(11);
   scanButton.setMinimumHeight(0);scanButton.setMinHeight(0);
   ThemeStyle.styleButton(scanButton,false);
-  scanRow.addView(scanButton,new LinearLayout.LayoutParams(-2,dp(30)));
+  scanButton.setSingleLine(false);scanButton.setMaxLines(2);
+  scanButton.setIncludeFontPadding(false);
+  scanButton.setGravity(Gravity.CENTER);
+  scanButton.setPadding(dp(8),0,dp(8),0);
+  scanRow.addView(scanButton,new LinearLayout.LayoutParams(dp(182),dp(45)));
   scanButton.setOnClickListener(v->{
    if(scanner==null)return;
    if(scanner.scanning()){scanner.stop();scanStopped=true;}
@@ -443,6 +456,7 @@ public final class PlaylistActivity extends Activity {
   // The old list's scrollbar stays on the right edge. The header is transparent:
   // the cover must not be painted over by the list's card-colored background.
   list.setBackgroundColor(Color.TRANSPARENT);
+  list.setClipChildren(true);
   // Draw a shared scroll thumb only below the pinned filter controls.
   list.setVerticalScrollBarEnabled(false);
   // v0.5.8 kept 6dp of breathing room between the last row and the card bottom.
@@ -689,7 +703,7 @@ public final class PlaylistActivity extends Activity {
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
   priorityButton=new Button(this);
-  priorityButton.setText(UiStrings.display(this,"Скачать без очереди"));
+  priorityButton.setText(UiStrings.display(this,"Скачать без очереди (0)"));
   ThemeStyle.styleButton(priorityButton,true);
   ThemeStyle.icon(priorityButton,"download",18);
   LinearLayout.LayoutParams urgent=new LinearLayout.LayoutParams(-1,dp(44));
@@ -996,12 +1010,14 @@ public final class PlaylistActivity extends Activity {
    if(scanner.failed(e.id)){failed=true;break;}
   if(!running&&!stopped&&!failed){scanRow.setVisibility(View.GONE);return;}
   scanRow.setVisibility(View.VISIBLE);
-  scanText.setText(UiStrings.display(this,stopped?"Проверка качеств остановлена":
-    failed&&!running?"Не удалось определить качество":
-    "Определено качеств: ")+
-    (running?scanner.completed()+" из "+scanner.total():""));
+  boolean english=!"ru".equals(getSharedPreferences("design",0)
+    .getString("language","en"));
+  scanText.setText(running?
+    Release062Rules.qualityProgress(scanner.completed(),scanner.total(),english):
+    UiStrings.display(this,stopped?"Проверка качеств остановлена":
+      failed?"Не удалось определить качество":"Определено качеств: "));
   scanButton.setText(UiStrings.display(this,
-   running?"Остановить проверку качеств":"Повторить проверку качества"));
+   running?"Остановить\nпроверку":"Повторить\nпроверку"));
  }
 
  private void updateFooter(){
@@ -1010,7 +1026,12 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  if(priorityButton!=null)priorityButton.setEnabled(count>0);
+  if(priorityButton!=null){
+   boolean english=!"ru".equals(getSharedPreferences("design",0)
+    .getString("language","en"));
+   priorityButton.setText(Release062Rules.priorityLabel(count,english));
+   priorityButton.setEnabled(count>0);
+  }
   boolean all=true;
   for(int i:visibleRows)if(!selected[i])all=false;
   selectAll.setChecked(!visibleRows.isEmpty()&&all);

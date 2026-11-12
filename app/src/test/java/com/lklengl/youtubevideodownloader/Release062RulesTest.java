@@ -42,6 +42,12 @@ public class Release062RulesTest {
   assertEquals("Аудио MP3 · 320 кбит/с",Release062Rules.fullChoice("mp3|a:320",false));
   assertEquals("Audio MP3 · 192 kbps",Release062Rules.fullChoice("mp3|a:192",true));
  }
+ @Test public void stretchOverscrollMovesListCardDownWithTheHeader(){
+  assertEquals(146,Release062Rules.stretchedCardTop(0,0,126,-20));
+  assertEquals(126,Release062Rules.stretchedCardTop(0,0,126,0));
+  assertEquals(66,Release062Rules.stretchedCardTop(0,-60,126,0));
+  assertEquals(0,Release062Rules.stretchedCardTop(1,-60,126,0));
+ }
  @Test public void qualityProgressUsesThreeFixedLinesAndPriorityButtonShowsCount(){
   assertEquals("Определено\nкачеств:\n35 из 326",Release062Rules.qualityProgress(35,326,false));
   assertEquals("Checked\nqualities:\n35 of 326",Release062Rules.qualityProgress(35,326,true));

@@ -58,6 +58,8 @@ public final class UiStrings {
         strings.put("Не удалось определить качество", "Could not detect quality");
         strings.put("Повторить проверку качества", "Retry quality check");
         strings.put("Остановить проверку качеств", "Stop quality scan");
+        strings.put("Остановить\nпроверку", "Stop\nchecking");
+        strings.put("Повторить\nпроверку", "Retry\ncheck");
         strings.put("Проверка качеств остановлена", "Quality scan stopped");
         strings.put("Определено качеств: ", "Qualities checked: ");
         strings.put("Формат", "Format");

@@ -327,6 +327,12 @@ public final class PlaylistActivity extends Activity {
   // The playlist summary moves with the scrolling list without clipping or collapsing.
   playlistHeroHolder=column();
   LinearLayout header=panel();
+  // Clip children, not only the background, to the rounded information card
+  // during Android stretch overscroll.
+  header.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+  header.setClipToOutline(true);
+  header.setClipChildren(true);header.setClipToPadding(true);
+  playlistHeroHolder.setClipChildren(true);
   playlistHeroHolder.addView(header,margin(2,9));
   LinearLayout hero=new LinearLayout(this);hero.setGravity(Gravity.CENTER_VERTICAL);
   header.addView(hero);
@@ -351,7 +357,8 @@ public final class PlaylistActivity extends Activity {
   // The card surface starts below the scrolling playlist summary and pins with controls.
   LinearLayout listCard=column();
   listCard.setPadding(0,0,0,0);
-  listCard.setClipChildren(false);listCard.setClipToPadding(false);
+  // Keep list and overlays inside the actual rounded list frame during stretch.
+  listCard.setClipChildren(true);listCard.setClipToPadding(true);
   root.addView(listCard,new LinearLayout.LayoutParams(-1,0,1));
   // One controls view: naturally scrolls until it reaches the fixed toolbar, then pins.
   stickyControls=column();
@@ -417,12 +424,18 @@ public final class PlaylistActivity extends Activity {
   scanRow.setGravity(Gravity.CENTER_VERTICAL);
   scanRow.setPadding(dp(12),0,dp(7),0);
   scanText=txt("",11);scanText.setTextColor(ThemeStyle.subdued(this));
+  scanText.setSingleLine(false);scanText.setMaxLines(3);
+  scanText.setGravity(Gravity.CENTER_VERTICAL);
   scanRow.addView(scanText,new LinearLayout.LayoutParams(0,-2,1));
   scanButton=new Button(this);scanButton.setAllCaps(false);
-  scanButton.setTextSize(10);
   scanButton.setMinimumHeight(0);scanButton.setMinHeight(0);
   ThemeStyle.styleButton(scanButton,false);
-  scanRow.addView(scanButton,new LinearLayout.LayoutParams(-2,dp(30)));
+  scanButton.setTextSize(11);
+  scanButton.setSingleLine(false);scanButton.setMaxLines(2);
+  scanButton.setIncludeFontPadding(false);
+  scanButton.setGravity(Gravity.CENTER);
+  scanButton.setPadding(dp(8),0,dp(8),0);
+  scanRow.addView(scanButton,new LinearLayout.LayoutParams(dp(182),dp(45)));
   scanButton.setOnClickListener(v->{
    if(scanner==null)return;
    if(scanner.scanning()){scanner.stop();scanStopped=true;}
@@ -443,6 +456,7 @@ public final class PlaylistActivity extends Activity {
   // The old list's scrollbar stays on the right edge. The header is transparent:
   // the cover must not be painted over by the list's card-colored background.
   list.setBackgroundColor(Color.TRANSPARENT);
+  list.setClipChildren(true);
   // Draw a shared scroll thumb only below the pinned filter controls.
   list.setVerticalScrollBarEnabled(false);
   // v0.5.8 kept 6dp of breathing room between the last row and the card bottom.
@@ -581,8 +595,33 @@ public final class PlaylistActivity extends Activity {
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
      h.quality.setPadding(dp(3),0,dp(18),0);
-     h.quality.setDropDownWidth(dp(190));
+     h.quality.setDropDownWidth(dp(270));
      h.qualityFrame.addView(h.quality,new FrameLayout.LayoutParams(-1,-1));
+     ((RotatingSpinner)h.quality).setOnPopupChoiceSelected(chosen->{
+      if(holder.position<0||holder.position>=qualities.size()||
+         chosen<0||chosen>=holder.qualityCodes.length)return;
+      String chosenCode=holder.qualityCodes[chosen];
+      int sep=chosenCode.indexOf('|');
+      if(sep<0)return;
+      String newFormat=chosenCode.substring(0,sep);
+      String newQuality=chosenCode.substring(sep+1);
+      holder.qualityUserInteraction=false;
+      if(newFormat.equals(formats.get(holder.position))&&
+         newQuality.equals(qualities.get(holder.position)))return;
+      formats.set(holder.position,newFormat);
+      qualities.set(holder.position,newQuality);
+      markQualityOverride(holder.position);
+      persistQualities();
+      holder.quality.post(()->adapter.notifyDataSetChanged());
+     });
+     ((RotatingSpinner)h.quality).setOnPopupDismiss(()->{
+      holder.quality.post(()->{
+       if(holder.position<0||holder.position>=playlist.entries.size()||
+          holder.root==null||!holder.root.isAttachedToWindow())return;
+       configureRowChoices(holder,playlist.entries.get(holder.position));
+       updateRowQuality(holder);
+      });
+     });
      h.quality.setOnTouchListener((v,event)->{
       if(event.getActionMasked()==MotionEvent.ACTION_DOWN)holder.qualityUserInteraction=true;
       return false;
@@ -649,7 +688,7 @@ public final class PlaylistActivity extends Activity {
      TitleMarquee.show(h.name,activeTitle==h.position);
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
-    h.qualityUserInteraction=false;
+    if(!((RotatingSpinner)h.quality).isPopupOpen())h.qualityUserInteraction=false;
     configureRowChoices(h,entry);
     h.quality.setEnabled(true);
     showRowQualityStatus(h,entry);
@@ -689,7 +728,7 @@ public final class PlaylistActivity extends Activity {
 
   LinearLayout bottom=column();root.addView(bottom,margin(7,0));
   priorityButton=new Button(this);
-  priorityButton.setText(UiStrings.display(this,"Скачать без очереди"));
+  priorityButton.setText(UiStrings.display(this,"Скачать без очереди (0)"));
   ThemeStyle.styleButton(priorityButton,true);
   ThemeStyle.icon(priorityButton,"download",18);
   LinearLayout.LayoutParams urgent=new LinearLayout.LayoutParams(-1,dp(44));
@@ -706,7 +745,8 @@ public final class PlaylistActivity extends Activity {
   if(list==null||playlistHeroHolder==null)return 0;
   int first=list.getFirstVisiblePosition();
   int top=first==0&&list.getChildCount()>0?list.getChildAt(0).getTop():0;
-  return Release060Rules.cardTop(first,top,playlistHeroHolder.getHeight());
+  return Release062Rules.stretchedCardTop(
+    first,top,playlistHeroHolder.getHeight(),list.getScrollY());
  }
  private void updateStickyControls(){
   if(list==null||stickyControls==null||playlistHeroHolder==null)return;
@@ -834,28 +874,24 @@ public final class PlaylistActivity extends Activity {
  private void configureRowChoices(Row row,PlaylistRepository.Entry entry){
   List<String> verified=scanner!=null&&PlaylistResolutionWorker.enabled(this)?
     scanner.cached(entry.id):null;
-  List<String> codes=new ArrayList<>(),labels=new ArrayList<>();
+  RotatingSpinner choice=(RotatingSpinner)row.quality;
+  // Never rebuild an open list; new results apply only after the popup closes.
+  if(choice.isPopupOpen())return;
   boolean en=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
-  for(String height:PlaylistMediaPolicy.choices("mp4",verified)){
-   codes.add("mp4|"+height);
-   labels.add(PlaylistMediaPolicy.compact("mp4",height,en));
-  }
-  for(String bitrate:PlaylistMediaPolicy.AUDIO_VALUES){
-   codes.add("mp3|"+bitrate);
-   labels.add(PlaylistMediaPolicy.compact("mp3",bitrate,en));
-  }
   String current=formats.get(row.position)+"|"+qualities.get(row.position);
-  if(!codes.contains(current)){
-   codes.add(current);
-   labels.add(PlaylistMediaPolicy.compact(formats.get(row.position),qualities.get(row.position),en));
-  }
-  String signature=codes.toString()+"|"+en;
+  List<String> codes=Release062Rules.individualChoices(verified,
+    formats.get(row.position),qualities.get(row.position));
+  List<String> labels=new ArrayList<>();
+  for(String code:codes)labels.add(Release062Rules.fullChoice(code,en));
+  int divider=Release062Rules.dividerIndex(codes);
+  String signature=codes.toString()+"|"+en+"|"+divider;
   if(!signature.equals(row.optionsKey)){
    row.optionsKey=signature;
    row.qualityCodes=codes.toArray(new String[0]);
+   choice.setSectionBreak(divider);
    setSpinnerItems(row.quality,labels.toArray(new String[0]),()->row.qualityLabel);
   }
-  row.quality.setSelection(codes.indexOf(current));
+  row.quality.setSelection(Math.max(0,codes.indexOf(current)));
  }
  private void showRowQualityStatus(Row row,PlaylistRepository.Entry entry){
   if(row.qualityStateIcon==null||row.qualityLoader==null)return;
@@ -996,12 +1032,14 @@ public final class PlaylistActivity extends Activity {
    if(scanner.failed(e.id)){failed=true;break;}
   if(!running&&!stopped&&!failed){scanRow.setVisibility(View.GONE);return;}
   scanRow.setVisibility(View.VISIBLE);
-  scanText.setText(UiStrings.display(this,stopped?"Проверка качеств остановлена":
-    failed&&!running?"Не удалось определить качество":
-    "Определено качеств: ")+
-    (running?scanner.completed()+" из "+scanner.total():""));
+  boolean english=!"ru".equals(getSharedPreferences("design",0)
+    .getString("language","en"));
+  scanText.setText(running?
+    Release062Rules.qualityProgress(scanner.completed(),scanner.total(),english):
+    UiStrings.display(this,stopped?"Проверка качеств остановлена":
+      failed?"Не удалось определить качество":"Определено качеств: "));
   scanButton.setText(UiStrings.display(this,
-   running?"Остановить проверку качеств":"Повторить проверку качества"));
+   running?"Остановить\nпроверку":"Повторить\nпроверку"));
  }
 
  private void updateFooter(){
@@ -1010,7 +1048,12 @@ public final class PlaylistActivity extends Activity {
   sectionCount.setText(UiStrings.display(this,"Выбрано: "+count+" из "+selected.length));
   addButton.setText(UiStrings.display(this,"Добавить в очередь")+" ("+count+")");
   addButton.setEnabled(count>0);
-  if(priorityButton!=null)priorityButton.setEnabled(count>0);
+  if(priorityButton!=null){
+   boolean english=!"ru".equals(getSharedPreferences("design",0)
+    .getString("language","en"));
+   priorityButton.setText(Release062Rules.priorityLabel(count,english));
+   priorityButton.setEnabled(count>0);
+  }
   boolean all=true;
   for(int i:visibleRows)if(!selected[i])all=false;
   selectAll.setChecked(!visibleRows.isEmpty()&&all);

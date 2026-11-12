@@ -6,8 +6,8 @@ import java.util.*;
 public final class PlaylistMediaPolicy {
  private PlaylistMediaPolicy(){}
  public static final String VIDEO="mp4", AUDIO="mp3";
- public static final String[] AUDIO_VALUES={"a:best","a:128","a:192","a:256","a:320"};
- public static final String[] AUDIO_LABELS={"Максимальное","128 кбит/с","192 кбит/с","256 кбит/с","320 кбит/с"};
+ public static final String[] AUDIO_VALUES={"a:best","a:320","a:256","a:192","a:128"};
+ public static final String[] AUDIO_LABELS={"Максимальное","320 кбит/с","256 кбит/с","192 кбит/с","128 кбит/с"};
 
  public static String defaultQuality(String format){return AUDIO.equals(format)?"a:best":"best";}
  public static boolean allowed(String format,String quality){

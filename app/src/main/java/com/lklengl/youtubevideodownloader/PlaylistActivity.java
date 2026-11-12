@@ -729,7 +729,8 @@ public final class PlaylistActivity extends Activity {
   if(list==null||playlistHeroHolder==null)return 0;
   int first=list.getFirstVisiblePosition();
   int top=first==0&&list.getChildCount()>0?list.getChildAt(0).getTop():0;
-  return Release060Rules.cardTop(first,top,playlistHeroHolder.getHeight());
+  return Release062Rules.stretchedCardTop(
+    first,top,playlistHeroHolder.getHeight(),list.getScrollY());
  }
  private void updateStickyControls(){
   if(list==null||stickyControls==null||playlistHeroHolder==null)return;

@@ -69,7 +69,7 @@ public final class PlaylistResolutionWorker {
    JSONArray arr=new JSONArray(saved);
    List<String> values=new ArrayList<>();
    for(int i=0;i<arr.length();i++)values.add(arr.getString(i));
-   if(!values.contains("best"))return null;
+   if(!values.contains("best")&&!values.contains("audio-only"))return null;
    known=Collections.unmodifiableList(values);cache.put(videoId,known);return known;
   }catch(Exception ignored){return null;}
  }
@@ -110,13 +110,19 @@ public final class PlaylistResolutionWorker {
      JSONArray streams=info.optJSONArray("formats");
      if(streams==null)throw new IllegalStateException("Formats missing");
      Set<Integer> heights=new HashSet<>();
+     boolean hasVideo=false,hasAudio=false;
      for(int i=0;i<streams.length();i++){
       JSONObject stream=streams.optJSONObject(i);if(stream==null)continue;
+      boolean video=!"none".equals(stream.optString("vcodec","none"));
+      boolean audio=!"none".equals(stream.optString("acodec","none"));
+      hasVideo|=video;hasAudio|=audio;
       int height=stream.optInt("height",0);
-      if(height>0&&!"none".equals(stream.optString("vcodec","none")))heights.add(height);
+      if(video&&height>0)heights.add(height);
      }
-     if(heights.isEmpty())throw new IllegalStateException("No video resolutions");
-     result=Release058Rules.available(heights);
+     if(!hasVideo&&!hasAudio)throw new IllegalStateException("No media formats");
+     result=hasVideo?new ArrayList<>(Release058Rules.available(heights)):
+       new ArrayList<>(Collections.singletonList("audio-only"));
+     if(hasVideo&&!hasAudio)result.add("video-only");
      JSONArray json=new JSONArray();for(String q:result)json.put(q);
      app.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
       .putString(key(entry.id),json.toString()).apply();

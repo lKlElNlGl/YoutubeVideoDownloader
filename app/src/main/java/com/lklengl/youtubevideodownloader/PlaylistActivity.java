@@ -595,8 +595,17 @@ public final class PlaylistActivity extends Activity {
      h.quality=spinner(PlaylistQualityPolicy.LABELS,()->holder.qualityLabel);
      h.quality.setBackgroundColor(Color.TRANSPARENT);
      h.quality.setPadding(dp(3),0,dp(18),0);
-     h.quality.setDropDownWidth(dp(190));
+     h.quality.setDropDownWidth(dp(270));
      h.qualityFrame.addView(h.quality,new FrameLayout.LayoutParams(-1,-1));
+     ((RotatingSpinner)h.quality).setOnPopupDismiss(()->{
+      holder.quality.postDelayed(()->{
+       if(holder.position<0||holder.position>=playlist.entries.size()||
+          holder.root==null||!holder.root.isAttachedToWindow())return;
+       holder.qualityUserInteraction=false;
+       configureRowChoices(holder,playlist.entries.get(holder.position));
+       updateRowQuality(holder);
+      },75);
+     });
      h.quality.setOnTouchListener((v,event)->{
       if(event.getActionMasked()==MotionEvent.ACTION_DOWN)holder.qualityUserInteraction=true;
       return false;
@@ -663,7 +672,7 @@ public final class PlaylistActivity extends Activity {
      TitleMarquee.show(h.name,activeTitle==h.position);
      TitleMarquee.bind(h.name,()->{activeTitle=h.position;adapter.notifyDataSetChanged();});
     h.duration.setText(UiStrings.display(PlaylistActivity.this, entry.duration<0?"Длительность неизвестна":QueueRules.readableDuration(entry.duration)));
-    h.qualityUserInteraction=false;
+    if(!((RotatingSpinner)h.quality).isPopupOpen())h.qualityUserInteraction=false;
     configureRowChoices(h,entry);
     h.quality.setEnabled(true);
     showRowQualityStatus(h,entry);
@@ -848,28 +857,24 @@ public final class PlaylistActivity extends Activity {
  private void configureRowChoices(Row row,PlaylistRepository.Entry entry){
   List<String> verified=scanner!=null&&PlaylistResolutionWorker.enabled(this)?
     scanner.cached(entry.id):null;
-  List<String> codes=new ArrayList<>(),labels=new ArrayList<>();
+  RotatingSpinner choice=(RotatingSpinner)row.quality;
+  // Never rebuild an open list; new results apply only after the popup closes.
+  if(choice.isPopupOpen())return;
   boolean en=!"ru".equals(getSharedPreferences("design",0).getString("language","en"));
-  for(String height:PlaylistMediaPolicy.choices("mp4",verified)){
-   codes.add("mp4|"+height);
-   labels.add(PlaylistMediaPolicy.compact("mp4",height,en));
-  }
-  for(String bitrate:PlaylistMediaPolicy.AUDIO_VALUES){
-   codes.add("mp3|"+bitrate);
-   labels.add(PlaylistMediaPolicy.compact("mp3",bitrate,en));
-  }
   String current=formats.get(row.position)+"|"+qualities.get(row.position);
-  if(!codes.contains(current)){
-   codes.add(current);
-   labels.add(PlaylistMediaPolicy.compact(formats.get(row.position),qualities.get(row.position),en));
-  }
-  String signature=codes.toString()+"|"+en;
+  List<String> codes=Release062Rules.individualChoices(verified,
+    formats.get(row.position),qualities.get(row.position));
+  List<String> labels=new ArrayList<>();
+  for(String code:codes)labels.add(Release062Rules.fullChoice(code,en));
+  int divider=Release062Rules.dividerIndex(codes);
+  String signature=codes.toString()+"|"+en+"|"+divider;
   if(!signature.equals(row.optionsKey)){
    row.optionsKey=signature;
    row.qualityCodes=codes.toArray(new String[0]);
+   choice.setSectionBreak(divider);
    setSpinnerItems(row.quality,labels.toArray(new String[0]),()->row.qualityLabel);
   }
-  row.quality.setSelection(codes.indexOf(current));
+  row.quality.setSelection(Math.max(0,codes.indexOf(current)));
  }
  private void showRowQualityStatus(Row row,PlaylistRepository.Entry entry){
   if(row.qualityStateIcon==null||row.qualityLoader==null)return;
